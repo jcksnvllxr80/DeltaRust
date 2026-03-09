@@ -231,6 +231,13 @@ pub struct Projectile {
 }
 
 #[derive(Clone)]
+pub struct DeathAnimation {
+    pub x: f32,
+    pub y: f32,
+    pub timer: i32,
+}
+
+#[derive(Clone)]
 pub struct ItemDef {
     pub pickup_type: PickupType,
     pub tile_x: usize,

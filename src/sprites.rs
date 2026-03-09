@@ -176,11 +176,11 @@ impl Sprites {
         true
     }
 
-    pub fn draw_hud_boss_key(&self, x: f32, y: f32, size: f32) -> bool {
+    pub fn draw_hud_boss_key(&self, x: f32, y: f32, size: f32, color: Color) -> bool {
         let Some(sheet) = &self.items else {
             return false;
         };
-        draw_frame_to_size(sheet, &self.layout.items.hud_boss_key, x, y, size, size, WHITE);
+        draw_frame_to_size(sheet, &self.layout.items.hud_boss_key, x, y, size, size, color);
         true
     }
 }

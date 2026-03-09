@@ -1,7 +1,7 @@
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
-    Bomb, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState, Projectile, TileGrid,
-    TileType, Transition, WorldSnapshot,
+    Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
+    Projectile, TileGrid, TileType, Transition, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
 use macroquad::prelude::*;
@@ -18,6 +18,7 @@ pub fn draw_game(
     pickups: &[Pickup],
     bombs: &[Bomb],
     projectiles: &[Projectile],
+    death_animations: &[DeathAnimation],
 ) {
     clear_background(color_u8!(17, 17, 17, 255));
     draw_tiles(sprites, &world.tiles, 0.0, 0.0);
@@ -29,6 +30,7 @@ pub fn draw_game(
             draw_enemy(sprites, enemy);
         }
     }
+    draw_death_animations(death_animations);
     draw_player(sprites, player);
     draw_hud(sprites, player, world);
 }
@@ -178,8 +180,24 @@ fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32) {
             if !sprites.draw_tile(*tile, x, y, tile_tint(*tile)) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(*tile));
             }
+            match *tile {
+                TileType::DoorLocked => draw_keyhole(x, y, color_u8!(200, 170, 50, 255)),
+                TileType::BossDoor => draw_keyhole(x, y, color_u8!(220, 40, 40, 255)),
+                _ => {}
+            }
         }
     }
+}
+
+fn draw_keyhole(x: f32, y: f32, color: Color) {
+    let cx = x + TILE / 2.0;
+    let cy = y + TILE / 2.0;
+    // Circle top of keyhole
+    draw_circle(cx, cy - px(2.0), px(5.0), BLACK);
+    draw_circle(cx, cy - px(2.0), px(3.5), color);
+    // Slot bottom of keyhole
+    draw_rectangle(cx - px(2.0), cy + px(1.0), px(4.0), px(6.0), BLACK);
+    draw_rectangle(cx - px(1.0), cy + px(2.0), px(2.0), px(4.0), color);
 }
 
 fn tile_base(tile: TileType) -> Option<TileType> {
@@ -195,8 +213,12 @@ fn tile_base(tile: TileType) -> Option<TileType> {
 fn tile_tint(tile: TileType) -> Color {
     match tile {
         TileType::Tree => color_u8!(34, 102, 51, 255),
+        TileType::Bush => color_u8!(25, 140, 50, 255),
         TileType::Rock => color_u8!(128, 128, 128, 255),
         TileType::Cracked => color_u8!(140, 110, 80, 255),
+        TileType::Stairs => color_u8!(119, 119, 153, 255),
+        TileType::DoorLocked => color_u8!(200, 170, 50, 255),
+        TileType::BossDoor => color_u8!(200, 40, 40, 255),
         _ => WHITE,
     }
 }
@@ -223,6 +245,18 @@ fn tile_color(tile: TileType) -> Color {
         TileType::Goal => color_u8!(255, 221, 34, 255),
         TileType::BossDoor => color_u8!(170, 34, 51, 255),
         TileType::FloorAlt => color_u8!(102, 102, 136, 255),
+    }
+}
+
+fn draw_death_animations(animations: &[DeathAnimation]) {
+    for anim in animations {
+        let progress = 1.0 - (anim.timer as f32 / 20.0);
+        let size = px(8.0) + progress * px(40.0);
+        let alpha = (anim.timer as f32 / 20.0).clamp(0.0, 1.0);
+        let cx = anim.x - size / 2.0;
+        let cy = anim.y + HUD_H - size / 2.0;
+        draw_rectangle(cx, cy, size, size, Color::new(1.0, 1.0, 1.0, alpha * 0.5));
+        draw_rectangle_lines(cx, cy, size, size, px(2.0), Color::new(1.0, 1.0, 0.5, alpha));
     }
 }
 
@@ -306,8 +340,8 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
                 draw_rectangle(x + px(11.0), y_offset + px(25.0), px(10.0), px(3.0), hilt);
             }
             Dir::Left => {
-                draw_rectangle(x - px(12.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x + px(4.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x - px(18.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
+                draw_rectangle(x - px(6.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
             }
             Dir::Right => {
                 draw_rectangle(x + px(26.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
@@ -602,16 +636,18 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         );
     }
     if player.has_boss_key {
-        if !sprites.draw_hud_boss_key(px(80.0), px(28.0), px(16.0)) {
-            draw_rectangle(px(80.0), px(30.0), px(12.0), px(12.0), ORANGE);
+        let boss_key_color = color_u8!(220, 40, 40, 255);
+        if !sprites.draw_hud_boss_key(px(76.0), px(22.0), px(24.0), boss_key_color) {
+            draw_rectangle(px(78.0), px(24.0), px(18.0), px(18.0), boss_key_color);
         }
-        draw_text("BOSS", px(100.0), px(40.0), px(16.0), ORANGE);
+        draw_text("BOSS", px(104.0), px(40.0), px(16.0), boss_key_color);
     }
+    // location label should be smaller and further from bomb counter
     draw_text(
         location_name(world),
-        px(50.0),
+        px(60.0),
         px(20.0),
-        px(20.0),
+        px(14.0),
         LIGHTGRAY,
     );
     draw_minimap(world);

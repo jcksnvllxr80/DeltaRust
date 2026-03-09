@@ -534,10 +534,23 @@ $path = @(
     "pppppppppppppppp","pppppppppppppppp","pppppppppppppppp","pppppppppppppppp"
 )
 $cave = @(
-    "cccccccccccccccc","cccccccccccccccc","cccccccccccccccc","ccc........ccccc",
-    "ccc........ccccc","ccc........ccccc","ccc........ccccc","ccc........ccccc",
-    "ccc........ccccc","ccc........ccccc","cccc......cccccc","cccccccccccccccc",
-    "cccccccccccccccc","cccccccccccccccc","cccccccccccccccc","cccccccccccccccc"
+    # diagonal wedge: dark on left increases each row, grey on right
+    "rrrrrrrrrrrrrrrr",
+    "crrrrrrrrrrrrrrr",
+    "ccrrrrrrrrrrrrrr",
+    "cccrrrrrrrrrrrrr",
+    "ccccrrrrrrrrrrrr",
+    "cccccrrrrrrrrrrr",
+    "ccccccrrrrrrrrrr",
+    "cccccccrrrrrrrrr",
+    "ccccccccrrrrrrrr",
+    "cccccccccrrrrrrr",
+    "ccccccccccrrrrrr",
+    "cccccccccccrrrrr",
+    "ccccccccccccrrrr",
+    "cccccccccccccrrr",
+    "ccccccccccccccrr",
+    "cccccccccccccccr"
 )
 $dungeon = @(
     "mmmmmmmmmmmmmmmm","muuumuuumuuumuuu","muuumuuumuuumuuu","muuumuuumuuumuuu",

@@ -4,8 +4,8 @@ use crate::constants::{
     PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
 };
 use crate::model::{
-    Bomb, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType, Player, PlayerState,
-    Projectile, TileType, Transition,
+    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType,
+    Player, PlayerState, Projectile, TileType, Transition,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -31,6 +31,7 @@ pub struct Game {
     pub pickups: Vec<Pickup>,
     pub bombs: Vec<Bomb>,
     pub projectiles: Vec<Projectile>,
+    pub death_animations: Vec<DeathAnimation>,
     pub audio: Audio,
     pub sprites: Sprites,
 }
@@ -51,6 +52,7 @@ impl Game {
             pickups: vec![],
             bombs: vec![],
             projectiles: vec![],
+            death_animations: vec![],
             audio: Audio::load().await,
             sprites: Sprites::load().await,
         };
@@ -119,6 +121,7 @@ impl Game {
             &self.pickups,
             &self.bombs,
             &self.projectiles,
+            &self.death_animations,
         );
     }
 
@@ -160,6 +163,7 @@ impl Game {
         }
         self.update_enemies();
         self.update_items();
+        self.update_death_animations();
         self.check_damage();
         self.check_pickups();
         if self.player.hp <= 0 {
@@ -381,28 +385,28 @@ impl Game {
     fn sword_hit_check(&mut self) {
         let sword = match self.player.dir {
             Dir::Up => Rect::new(
-                self.player.x + px(3.0),
-                self.player.y - px(12.0),
-                px(10.0),
-                px(14.0),
+                self.player.x - px(4.0),
+                self.player.y - px(18.0),
+                px(22.0),
+                px(24.0),
             ),
             Dir::Down => Rect::new(
-                self.player.x + px(3.0),
-                self.player.y + px(14.0),
-                px(10.0),
-                px(14.0),
+                self.player.x - px(4.0),
+                self.player.y + px(12.0),
+                px(22.0),
+                px(24.0),
             ),
             Dir::Left => Rect::new(
-                self.player.x - px(12.0),
-                self.player.y + px(3.0),
-                px(14.0),
-                px(10.0),
+                self.player.x - px(24.0),
+                self.player.y - px(4.0),
+                px(24.0),
+                px(22.0),
             ),
             Dir::Right => Rect::new(
-                self.player.x + px(14.0),
-                self.player.y + px(3.0),
-                px(14.0),
-                px(10.0),
+                self.player.x + px(16.0),
+                self.player.y - px(4.0),
+                px(24.0),
+                px(22.0),
             ),
         };
         let hits: Vec<usize> = self
@@ -721,6 +725,13 @@ impl Game {
         }
     }
 
+    fn update_death_animations(&mut self) {
+        for anim in &mut self.death_animations {
+            anim.timer -= 1;
+        }
+        self.death_animations.retain(|anim| anim.timer > 0);
+    }
+
     fn check_damage(&mut self) {
         if self.player.invuln_timer <= 0
             && self.player.hurt_timer <= 0
@@ -822,6 +833,11 @@ impl Game {
 
     fn on_enemy_death(&mut self, index: usize) {
         let enemy = self.enemies[index].clone();
+        self.death_animations.push(DeathAnimation {
+            x: enemy.x + enemy.w / 2.0,
+            y: enemy.y + enemy.h / 2.0,
+            timer: 20,
+        });
         let roll = rand::gen_range(0.0, 1.0);
         match enemy.enemy_type {
             EnemyType::Boss => {
@@ -988,8 +1004,8 @@ impl Game {
         self.projectiles.push(Projectile {
             x,
             y,
-            w: px(6.0),
-            h: px(6.0),
+            w: px(24.0),
+            h: px(24.0),
             dx,
             dy,
             from_enemy,
