@@ -1,0 +1,103 @@
+[hero]
+sheet = "hero.png"
+dest_scale = 3.0
+down = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+up = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+left = [
+  { x = 0, y = 32, w = 16, h = 16 },
+  { x = 16, y = 32, w = 16, h = 16 },
+]
+right = [
+  { x = 0, y = 48, w = 16, h = 16 },
+  { x = 16, y = 48, w = 16, h = 16 },
+]
+
+[enemies]
+sheet = "enemies.png"
+
+[enemies.slime]
+frame_time = 18
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+
+[enemies.octorok]
+frame_time = 16
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+
+[enemies.bat]
+frame_time = 8
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 32, w = 16, h = 16 },
+  { x = 16, y = 32, w = 16, h = 16 },
+]
+
+[enemies.darknut]
+frame_time = 16
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 48, w = 16, h = 16 },
+  { x = 16, y = 48, w = 16, h = 16 },
+]
+
+[enemies.boss]
+frame_time = 18
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 64, w = 24, h = 24 },
+  { x = 24, y = 64, w = 24, h = 24 },
+]
+
+[tiles]
+sheet = "tiles.png"
+grass = { x = 0, y = 0, w = 16, h = 16 }
+tree = { x = 16, y = 0, w = 16, h = 16 }
+water = { x = 32, y = 0, w = 16, h = 16 }
+rock = { x = 48, y = 0, w = 16, h = 16 }
+sand = { x = 64, y = 0, w = 16, h = 16 }
+path = { x = 0, y = 16, w = 16, h = 16 }
+cave = { x = 16, y = 16, w = 16, h = 16 }
+dungeon = { x = 32, y = 16, w = 16, h = 16 }
+cracked = { x = 48, y = 16, w = 16, h = 16 }
+bush = { x = 64, y = 16, w = 16, h = 16 }
+bridge = { x = 0, y = 32, w = 16, h = 16 }
+wall = { x = 16, y = 32, w = 16, h = 16 }
+floor = { x = 32, y = 32, w = 16, h = 16 }
+door_locked = { x = 48, y = 32, w = 16, h = 16 }
+door = { x = 64, y = 32, w = 16, h = 16 }
+stairs = { x = 0, y = 48, w = 16, h = 16 }
+chest = { x = 16, y = 48, w = 16, h = 16 }
+goal = { x = 32, y = 48, w = 16, h = 16 }
+boss_door = { x = 48, y = 48, w = 16, h = 16 }
+floor_alt = { x = 64, y = 48, w = 16, h = 16 }
+
+[items]
+sheet = "items.png"
+heart_pickup = { x = 0, y = 0, w = 16, h = 16 }
+heart_container = { x = 16, y = 0, w = 16, h = 16 }
+key = { x = 32, y = 0, w = 16, h = 16 }
+boss_key = { x = 48, y = 0, w = 16, h = 16 }
+bomb_ammo = { x = 0, y = 16, w = 16, h = 16 }
+bombs = { x = 16, y = 16, w = 16, h = 16 }
+bomb = { x = 32, y = 16, w = 16, h = 16 }
+enemy_projectile = { x = 48, y = 16, w = 16, h = 16 }
+player_projectile = { x = 0, y = 32, w = 16, h = 16 }
+hud_heart_full = { x = 16, y = 32, w = 16, h = 16 }
+hud_heart_half = { x = 32, y = 32, w = 16, h = 16 }
+hud_heart_empty = { x = 48, y = 32, w = 16, h = 16 }
+hud_bomb = { x = 0, y = 48, w = 16, h = 16 }
+hud_key = { x = 16, y = 48, w = 16, h = 16 }
+hud_boss_key = { x = 32, y = 48, w = 16, h = 16 }
