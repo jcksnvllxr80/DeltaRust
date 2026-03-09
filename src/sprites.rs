@@ -80,7 +80,7 @@ impl Sprites {
         true
     }
 
-    pub fn draw_tile(&self, tile: TileType, x: f32, y: f32) -> bool {
+    pub fn draw_tile(&self, tile: TileType, x: f32, y: f32, color: Color) -> bool {
         let Some(sheet) = &self.tiles else {
             return false;
         };
@@ -106,7 +106,7 @@ impl Sprites {
             TileType::BossDoor => &self.layout.tiles.boss_door,
             TileType::FloorAlt => &self.layout.tiles.floor_alt,
         };
-        draw_frame_to_size(sheet, frame, x, y, TILE, TILE);
+        draw_frame_to_size(sheet, frame, x, y, TILE, TILE, color);
         true
     }
 
@@ -122,7 +122,7 @@ impl Sprites {
             PickupType::BombAmmo => &self.layout.items.bomb_ammo,
             PickupType::Bombs => &self.layout.items.bombs,
         };
-        draw_frame_to_size(sheet, frame, x, y, w, h);
+        draw_frame_to_size(sheet, frame, x, y, w, h, WHITE);
         true
     }
 
@@ -130,7 +130,7 @@ impl Sprites {
         let Some(sheet) = &self.items else {
             return false;
         };
-        draw_frame_to_size(sheet, &self.layout.items.bomb, x, y, w, h);
+        draw_frame_to_size(sheet, &self.layout.items.bomb, x, y, w, h, WHITE);
         true
     }
 
@@ -143,7 +143,7 @@ impl Sprites {
         } else {
             &self.layout.items.player_projectile
         };
-        draw_frame_to_size(sheet, frame, x, y, projectile.w, projectile.h);
+        draw_frame_to_size(sheet, frame, x, y, projectile.w, projectile.h, WHITE);
         true
     }
 
@@ -156,7 +156,7 @@ impl Sprites {
             HeartState::Half => &self.layout.items.hud_heart_half,
             HeartState::Empty => &self.layout.items.hud_heart_empty,
         };
-        draw_frame_to_size(sheet, frame, x, y, size, size);
+        draw_frame_to_size(sheet, frame, x, y, size, size, WHITE);
         true
     }
 
@@ -164,7 +164,7 @@ impl Sprites {
         let Some(sheet) = &self.items else {
             return false;
         };
-        draw_frame_to_size(sheet, &self.layout.items.hud_bomb, x, y, size, size);
+        draw_frame_to_size(sheet, &self.layout.items.hud_bomb, x, y, size, size, WHITE);
         true
     }
 
@@ -172,7 +172,7 @@ impl Sprites {
         let Some(sheet) = &self.items else {
             return false;
         };
-        draw_frame_to_size(sheet, &self.layout.items.hud_key, x, y, size, size);
+        draw_frame_to_size(sheet, &self.layout.items.hud_key, x, y, size, size, WHITE);
         true
     }
 
@@ -180,7 +180,7 @@ impl Sprites {
         let Some(sheet) = &self.items else {
             return false;
         };
-        draw_frame_to_size(sheet, &self.layout.items.hud_boss_key, x, y, size, size);
+        draw_frame_to_size(sheet, &self.layout.items.hud_boss_key, x, y, size, size, WHITE);
         true
     }
 }
@@ -291,15 +291,15 @@ fn draw_centered_frame(sheet: &Sheet, frame: &FrameRect, x: f32, y: f32, scale: 
     let base_height = frame.h * PIXEL_SCALE;
     let draw_x = x - (width - base_width) / 2.0;
     let draw_y = y - (height - base_height);
-    draw_frame_to_size(sheet, frame, draw_x, draw_y, width, height);
+    draw_frame_to_size(sheet, frame, draw_x, draw_y, width, height, WHITE);
 }
 
-fn draw_frame_to_size(sheet: &Sheet, frame: &FrameRect, x: f32, y: f32, w: f32, h: f32) {
+fn draw_frame_to_size(sheet: &Sheet, frame: &FrameRect, x: f32, y: f32, w: f32, h: f32, color: Color) {
     draw_texture_ex(
         &sheet.texture,
         x,
         y,
-        WHITE,
+        color,
         DrawTextureParams {
             source: Some(Rect::new(frame.x, frame.y, frame.w, frame.h)),
             dest_size: Some(vec2(w, h)),

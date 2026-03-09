@@ -1098,14 +1098,14 @@ fn ai_octorok(
         let dx = player_x - enemy.x;
         let dy = player_y - enemy.y;
         let dist = vec2(dx, dy).length();
-        enemy.shoot_cooldown = 90 + rand::gen_range(0, 60);
+        enemy.shoot_cooldown = 150 + rand::gen_range(0, 90);
         enemy.move_timer = 30;
         if dist > 0.0 && dist < px(100.0) {
             return Some((
                 enemy.x + enemy.w / 2.0 - px(3.0),
                 enemy.y + enemy.h / 2.0 - px(3.0),
-                dx / dist * 0.9 * PIXEL_SCALE,
-                dy / dist * 0.9 * PIXEL_SCALE,
+                dx / dist * 0.4 * PIXEL_SCALE,
+                dy / dist * 0.4 * PIXEL_SCALE,
             ));
         }
     }
@@ -1166,11 +1166,11 @@ fn ai_boss(
             shots.push((
                 enemy.x + enemy.w / 2.0 - px(3.0),
                 enemy.y + enemy.h / 2.0 - px(3.0),
-                angle.cos() * 0.8 * PIXEL_SCALE,
-                angle.sin() * 0.8 * PIXEL_SCALE,
+                angle.cos() * 0.35 * PIXEL_SCALE,
+                angle.sin() * 0.35 * PIXEL_SCALE,
             ));
         }
-        enemy.shoot_cooldown = 70 + rand::gen_range(0, 40);
+        enemy.shoot_cooldown = 140 + rand::gen_range(0, 80);
     }
     if enemy.move_timer <= 0 {
         let dx = player_x - enemy.x + rand::gen_range(-30.0, 30.0);

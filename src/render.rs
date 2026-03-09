@@ -172,10 +172,10 @@ fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32) {
             let x = ox + col as f32 * TILE;
             let y = oy + row as f32 * TILE + HUD_H;
             let underlay = tile_base(*tile).unwrap_or(*tile);
-            if !sprites.draw_tile(underlay, x, y) {
+            if !sprites.draw_tile(underlay, x, y, WHITE) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(underlay));
             }
-            if !sprites.draw_tile(*tile, x, y) {
+            if !sprites.draw_tile(*tile, x, y, tile_tint(*tile)) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(*tile));
             }
         }
@@ -189,6 +189,15 @@ fn tile_base(tile: TileType) -> Option<TileType> {
         }
         TileType::Bridge => Some(TileType::Water),
         _ => None,
+    }
+}
+
+fn tile_tint(tile: TileType) -> Color {
+    match tile {
+        TileType::Tree => color_u8!(34, 102, 51, 255),
+        TileType::Rock => color_u8!(128, 128, 128, 255),
+        TileType::Cracked => color_u8!(140, 110, 80, 255),
+        _ => WHITE,
     }
 }
 
