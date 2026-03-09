@@ -197,12 +197,12 @@ fn tile_color(tile: TileType) -> Color {
         TileType::Grass => color_u8!(68, 170, 68, 255),
         TileType::Tree => color_u8!(34, 102, 51, 255),
         TileType::Water => color_u8!(34, 102, 204, 255),
-        TileType::Rock => color_u8!(102, 102, 85, 255),
+        TileType::Rock => color_u8!(128, 128, 128, 255),
         TileType::Sand => color_u8!(204, 170, 102, 255),
         TileType::Path => color_u8!(170, 136, 85, 255),
         TileType::Cave => color_u8!(34, 34, 34, 255),
         TileType::Dungeon => color_u8!(85, 51, 68, 255),
-        TileType::Cracked => color_u8!(119, 119, 102, 255),
+        TileType::Cracked => color_u8!(140, 110, 80, 255),
         TileType::Bush => color_u8!(51, 170, 68, 255),
         TileType::Bridge => color_u8!(136, 102, 51, 255),
         TileType::Wall => color_u8!(51, 51, 85, 255),
@@ -285,22 +285,24 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
     let blade = LIGHTGRAY;
     let hilt = color_u8!(196, 160, 74, 255);
     if sprite_mode {
+        // Account for centered frame offset (scale 3 offsets y by -16)
+        let y_offset = y - px(16.0);
         match dir {
             Dir::Up => {
-                draw_rectangle(x + px(13.0), y - px(12.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x + px(11.0), y + px(4.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x + px(13.0), y_offset - px(12.0), px(6.0), px(18.0), blade);
+                draw_rectangle(x + px(11.0), y_offset + px(4.0), px(10.0), px(3.0), hilt);
             }
             Dir::Down => {
-                draw_rectangle(x + px(13.0), y + px(26.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x + px(11.0), y + px(25.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x + px(13.0), y_offset + px(26.0), px(6.0), px(18.0), blade);
+                draw_rectangle(x + px(11.0), y_offset + px(25.0), px(10.0), px(3.0), hilt);
             }
             Dir::Left => {
-                draw_rectangle(x - px(12.0), y + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x + px(4.0), y + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x - px(12.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
+                draw_rectangle(x + px(4.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
             }
             Dir::Right => {
-                draw_rectangle(x + px(26.0), y + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x + px(25.0), y + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x + px(26.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
+                draw_rectangle(x + px(25.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
             }
         }
         return;
@@ -547,6 +549,7 @@ fn draw_projectiles(sprites: &Sprites, projectiles: &[Projectile]) {
 
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
+    draw_rectangle(0.0, HUD_H - px(2.0), GAME_W, px(2.0), color_u8!(100, 100, 100, 255));
     for i in 0..(player.max_hp / 2) {
         let x = GAME_W - px(20.0) - i as f32 * px(14.0);
         let state = if player.hp >= (i + 1) * 2 {
@@ -597,7 +600,7 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     }
     draw_text(
         location_name(world),
-        px(170.0),
+        px(50.0),
         px(20.0),
         px(20.0),
         LIGHTGRAY,
@@ -606,43 +609,22 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
 }
 
 fn draw_minimap(world: &WorldSnapshot) {
-    let cell_w = px(10.0);
-    let cell_h = px(7.0);
-    let base_x = GAME_W - px(132.0);
     if world.in_dungeon {
-        for (rx, ry, key) in [
-            (0, 1, "0,1"),
-            (1, 0, "1,0"),
-            (1, 1, "1,1"),
-            (1, 2, "1,2"),
-            (2, 1, "2,1"),
-        ] {
-            let x = base_x + rx as f32 * px(12.0);
-            let y = px(8.0) + ry as f32 * px(9.0);
-            let current = world.screen_x == key[0..1].parse::<i32>().unwrap()
-                && world.screen_y == key[2..3].parse::<i32>().unwrap();
-            let visited = world.visited.contains(key);
-            draw_rectangle(
-                x,
-                y,
-                cell_w,
-                cell_h,
-                if current {
-                    GREEN
-                } else if visited {
-                    color_u8!(68, 68, 102, 255)
-                } else {
-                    color_u8!(34, 34, 34, 255)
-                },
-            );
-        }
+        draw_dungeon_minimap(world);
         return;
     }
+    // Overworld minimap - scaled for 7x5, centered in HUD
+    let cell_w = px(7.0);
+    let cell_h = px(5.0);
+    let gap_x = px(8.0);
+    let gap_y = px(6.0);
+    let minimap_w = WORLD_W as f32 * gap_x;
+    let base_x = (GAME_W - minimap_w) / 2.0; // Center horizontally
     for sy in 0..WORLD_H {
         for sx in 0..WORLD_W {
             let key = format!("{sx},{sy}");
-            let x = base_x + sx as f32 * px(12.0);
-            let y = px(8.0) + sy as f32 * px(9.0);
+            let x = base_x + sx as f32 * gap_x;
+            let y = px(6.0) + sy as f32 * gap_y;
             let current = world.screen_x == sx && world.screen_y == sy;
             let visited = world.visited.contains(&key);
             draw_rectangle(
@@ -662,23 +644,114 @@ fn draw_minimap(world: &WorldSnapshot) {
     }
 }
 
+fn draw_dungeon_minimap(world: &WorldSnapshot) {
+    let cell_w = px(10.0);
+    let cell_h = px(7.0);
+    let gap_x = px(12.0);
+    let gap_y = px(9.0);
+    // Find bounds of dungeon rooms
+    let mut min_x: i32 = 99;
+    let mut max_x: i32 = 0;
+    let mut min_y: i32 = 99;
+    let mut max_y: i32 = 0;
+    for key in &world.dungeon_rooms {
+        if let Some((sx, sy)) = parse_key(key) {
+            min_x = min_x.min(sx);
+            max_x = max_x.max(sx);
+            min_y = min_y.min(sy);
+            max_y = max_y.max(sy);
+        }
+    }
+    let cols = (max_x - min_x + 1) as f32;
+    let minimap_w = cols * gap_x;
+    let base_x = (GAME_W - minimap_w) / 2.0; // Center horizontally
+    for key in &world.dungeon_rooms {
+        if let Some((sx, sy)) = parse_key(key) {
+            let rx = (sx - min_x) as f32;
+            let ry = (sy - min_y) as f32;
+            let x = base_x + rx * gap_x;
+            let y = px(6.0) + ry * gap_y;
+            let current = world.screen_x == sx && world.screen_y == sy;
+            let visit_key = format!("d{}:{key}", world.dungeon_id);
+            let visited = world.visited.contains(&visit_key);
+            draw_rectangle(
+                x,
+                y,
+                cell_w,
+                cell_h,
+                if current {
+                    GREEN
+                } else if visited {
+                    color_u8!(68, 68, 102, 255)
+                } else {
+                    color_u8!(34, 34, 34, 255)
+                },
+            );
+        }
+    }
+}
+
+fn parse_key(key: &str) -> Option<(i32, i32)> {
+    let parts: Vec<&str> = key.split(',').collect();
+    if parts.len() == 2 {
+        Some((parts[0].parse().ok()?, parts[1].parse().ok()?))
+    } else {
+        None
+    }
+}
+
 fn location_name(world: &WorldSnapshot) -> &'static str {
     if world.in_dungeon {
-        return "DUNGEON 1";
+        return match world.dungeon_id {
+            1 => "MTN. CAVE",
+            2 => "FOREST SHRINE",
+            3 => "PYRAMID",
+            4 => "CASTLE DEPTHS",
+            5 => "ANCIENT RUINS",
+            _ => "DUNGEON",
+        };
     }
     match format!("{},{}", world.screen_x, world.screen_y).as_str() {
+        // Row 0
         "0,0" => "MT. PEAK",
         "1,0" => "HIGHLANDS",
-        "2,0" => "N. FOREST",
-        "3,0" => "SACRED GROVE",
+        "2,0" => "MTN. PASS",
+        "3,0" => "CASTLE GATE",
+        "4,0" => "N. FOREST",
+        "5,0" => "DEEP FOREST",
+        "6,0" => "FOREST TOWN",
+        // Row 1
         "0,1" => "W. FOREST",
         "1,1" => "VILLAGE",
-        "2,1" => "E. FIELD",
-        "3,1" => "RIVERSIDE",
+        "2,1" => "LAKE SHORE",
+        "3,1" => "LAKE ISLAND",
+        "4,1" => "E. LAKE",
+        "5,1" => "EASTERN WOOD",
+        "6,1" => "E. SETTLEMENT",
+        // Row 2
         "0,2" => "DUNGEON GATE",
         "1,2" => "S. CROSSROAD",
-        "2,2" => "RUINS",
-        "3,2" => "WATERFALL",
+        "2,2" => "RIVER FORD",
+        "3,2" => "DESERT EDGE",
+        "4,2" => "DESERT PATH",
+        "5,2" => "OLD RUINS",
+        "6,2" => "RUIN DEPTHS",
+        // Row 3
+        "0,3" => "S. FOREST",
+        "1,3" => "S. PATH",
+        "2,3" => "SAND DRIFT",
+        "3,3" => "PYRAMID",
+        "4,3" => "DESERT EXPANSE",
+        "5,3" => "DESERT RUINS",
+        "6,3" => "WASTELAND",
+        // Row 4
+        "0,4" => "BEACH",
+        "1,4" => "COASTLINE",
+        "2,4" => "S. SHORE",
+        "3,4" => "CANYON",
+        "4,4" => "DEEP DESERT",
+        "5,4" => "BADLANDS",
+        "6,4" => "SECRET GROVE",
         _ => "UNKNOWN",
     }
 }

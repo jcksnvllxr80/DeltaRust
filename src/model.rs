@@ -242,9 +242,11 @@ pub struct WorldSnapshot {
     pub screen_x: i32,
     pub screen_y: i32,
     pub in_dungeon: bool,
+    pub dungeon_id: i32,
     pub tiles: TileGrid,
     pub visited: HashSet<String>,
     pub cleared_rooms: HashSet<String>,
     pub opened_chests: HashMap<String, Vec<(usize, usize)>>,
     pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
+    pub dungeon_rooms: HashSet<String>,
 }

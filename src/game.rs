@@ -1,7 +1,7 @@
 use crate::audio::{Audio, MusicTrack};
 use crate::constants::{
     ATTACK_DURATION, COLS, GAME_H, GAME_W, KNOCKBACK_FRAMES, KNOCKBACK_SPEED, PIXEL_SCALE,
-    PLAYER_SPEED, ROWS, TILE, TRANS_SPEED, WORLD_H, WORLD_W,
+    PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
 };
 use crate::model::{
     Bomb, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType, Player, PlayerState,
@@ -10,6 +10,7 @@ use crate::model::{
 use crate::render;
 use crate::sprites::Sprites;
 use crate::world::World;
+use crate::world_data;
 use macroquad::prelude::*;
 
 fn px(value: f32) -> f32 {
@@ -23,6 +24,7 @@ pub struct Game {
     pub message_text: String,
     pub dungeon_overworld_x: i32,
     pub dungeon_overworld_y: i32,
+    pub pending_dungeon: i32,
     pub player: Player,
     pub world: World,
     pub enemies: Vec<Enemy>,
@@ -42,6 +44,7 @@ impl Game {
             message_text: String::new(),
             dungeon_overworld_x: 0,
             dungeon_overworld_y: 2,
+            pending_dungeon: 0,
             player: Player::new(),
             world: World::new(),
             enemies: vec![],
@@ -187,10 +190,12 @@ impl Game {
     fn update_dungeon_enter(&mut self) {
         self.transition.progress += 4.0;
         if self.transition.progress >= 60.0 {
-            self.world.enter_dungeon();
+            self.world.enter_dungeon(self.pending_dungeon);
             self.player.x = 7.0 * TILE;
             self.player.y = 9.0 * TILE;
             self.player.dir = Dir::Up;
+            self.player.keys = 0;
+            self.player.has_boss_key = false;
             self.spawn_for_screen();
             self.reset_items();
             self.load_screen_items();
@@ -500,20 +505,8 @@ impl Game {
             Dir::Up => next_y -= 1,
             Dir::Down => next_y += 1,
         }
-        let max_x = if self.world.in_dungeon {
-            2
-        } else {
-            WORLD_W - 1
-        };
-        let max_y = if self.world.in_dungeon {
-            2
-        } else {
-            WORLD_H - 1
-        };
         if next_x < 0
             || next_y < 0
-            || next_x > max_x
-            || next_y > max_y
             || !self.world.screen_exists(next_x, next_y)
         {
             self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
@@ -535,6 +528,8 @@ impl Game {
     fn enter_dungeon(&mut self) {
         self.dungeon_overworld_x = self.world.screen_x;
         self.dungeon_overworld_y = self.world.screen_y;
+        self.pending_dungeon =
+            world_data::dungeon_at(self.world.screen_x, self.world.screen_y);
         self.transition.progress = 0.0;
         self.state = GameState::DungeonEnter;
     }
@@ -555,12 +550,63 @@ impl Game {
                 }
             }
             "0,0" => {
-                let key = "o:0,0".to_string();
+                let key = "cave:0,0".to_string();
                 if !self.world.opened_chests.contains_key(&key) {
                     self.world.opened_chests.insert(key, vec![(3, 4)]);
                     self.player.max_hp += 2;
                     self.player.hp = self.player.max_hp;
                     self.show_message("Heart Container!\nHP increased!");
+                } else {
+                    self.show_message("The cave is empty.");
+                }
+            }
+            "6,0" => {
+                let key = "cave:6,0".to_string();
+                if !self.world.opened_chests.contains_key(&key) {
+                    self.world.opened_chests.insert(key, vec![]);
+                    self.player.max_bombs = 16;
+                    self.player.bomb_count =
+                        (self.player.bomb_count + 8).min(self.player.max_bombs);
+                    self.show_message("Bomb bag upgrade!\nMax bombs increased!");
+                } else {
+                    self.show_message("The shop is closed.");
+                }
+            }
+            "3,1" => {
+                let key = "cave:3,1".to_string();
+                if !self.world.opened_chests.contains_key(&key) {
+                    self.world.opened_chests.insert(key, vec![]);
+                    self.player.max_hp += 2;
+                    self.player.hp = self.player.max_hp;
+                    self.show_message("Island shrine!\nHP increased!");
+                } else {
+                    self.show_message("The shrine is quiet.");
+                }
+            }
+            "6,1" => {
+                let key = "cave:6,1".to_string();
+                if !self.world.opened_chests.contains_key(&key) {
+                    self.world.opened_chests.insert(key, vec![]);
+                    self.player.max_hp += 2;
+                    self.player.hp = self.player.max_hp;
+                    self.show_message("Heart Container!\nHP increased!");
+                } else {
+                    self.show_message("The cave is empty.");
+                }
+            }
+            "2,4" => {
+                let key = "cave:2,4".to_string();
+                if !self.world.opened_chests.contains_key(&key) {
+                    self.world.opened_chests.insert(key, vec![]);
+                    if !self.player.has_bombs {
+                        self.player.has_bombs = true;
+                        self.player.bomb_count = 8;
+                        self.show_message("You found BOMBS!\nPress X to use.");
+                    } else {
+                        self.player.bomb_count =
+                            (self.player.bomb_count + 8).min(self.player.max_bombs);
+                        self.show_message("Found 8 bombs!");
+                    }
                 } else {
                     self.show_message("The cave is empty.");
                 }
@@ -794,12 +840,9 @@ impl Game {
                 .filter(|(i, enemy)| *i != index && enemy.active)
                 .count();
             if remaining == 0 {
-                self.world
-                    .cleared_rooms
-                    .insert(format!("d:{},{}", self.world.screen_x, self.world.screen_y));
-                if self.world.screen_x == 0 && self.world.screen_y == 1 {
-                    self.spawn_pickup(7.0 * TILE, 5.0 * TILE, PickupType::Key);
-                }
+                let cleared_key = self.world.cleared_room_key();
+                self.world.cleared_rooms.insert(cleared_key);
+                self.on_dungeon_room_cleared();
             }
         }
     }
@@ -878,12 +921,36 @@ impl Game {
     }
 
     fn load_screen_items(&mut self) {
-        if self.world.in_dungeon
-            && self.world.screen_x == 2
-            && self.world.screen_y == 1
-            && !self.player.has_boss_key
-        {
-            self.spawn_pickup(8.0 * TILE, 5.0 * TILE + px(4.0), PickupType::BossKey);
+        if self.world.in_dungeon && !self.player.has_boss_key {
+            // Each dungeon has a boss key in a specific room
+            let should_spawn = match self.world.dungeon_id {
+                1 => self.world.screen_x == 0 && self.world.screen_y == 1,
+                2 => self.world.screen_x == 2 && self.world.screen_y == 1,
+                3 => self.world.screen_x == 1 && self.world.screen_y == 0,
+                4 => self.world.screen_x == 1 && self.world.screen_y == 0,
+                _ => false,
+            };
+            if should_spawn {
+                self.spawn_pickup(8.0 * TILE, 5.0 * TILE + px(4.0), PickupType::BossKey);
+            }
+        }
+    }
+
+    /// Called when all enemies in a dungeon room are defeated.
+    fn on_dungeon_room_cleared(&mut self) {
+        let did = self.world.dungeon_id;
+        let sx = self.world.screen_x;
+        let sy = self.world.screen_y;
+        // Spawn a key in specific rooms when cleared
+        let should_spawn_key = match did {
+            1 => sx == 1 && sy == 1,
+            2 => sx == 0 && sy == 1,
+            3 => sx == 0 && sy == 1,
+            4 => sx == 2 && sy == 1,
+            _ => false,
+        };
+        if should_spawn_key {
+            self.spawn_pickup(7.0 * TILE, 5.0 * TILE, PickupType::Key);
         }
     }
 
