@@ -33,9 +33,16 @@ pub struct Audio {
 
 impl Audio {
     pub async fn load() -> Self {
-        let (stream, handle) = OutputStream::try_default()
-            .map(|(stream, handle)| (Some(stream), Some(handle)))
-            .unwrap_or((None, None));
+        let (stream, handle) = match OutputStream::try_default() {
+            Ok((stream, handle)) => {
+                eprintln!("[audio] output stream OK");
+                (Some(stream), Some(handle))
+            }
+            Err(e) => {
+                eprintln!("[audio] output stream FAILED: {e}");
+                (None, None)
+            }
+        };
 
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
         let mut music = HashMap::new();
@@ -78,21 +85,27 @@ impl Audio {
         }
         self.stop_music();
         let Some(handle) = &self.handle else {
+            eprintln!("[audio] play_music: no handle");
             return;
         };
         let Some(bytes) = self.music.get(&track) else {
+            eprintln!("[audio] play_music: track not loaded");
             return;
         };
+        eprintln!("[audio] play_music: decoding {} bytes...", bytes.len());
         let Ok(decoder) = Decoder::new(Cursor::new(bytes.clone())) else {
+            eprintln!("[audio] play_music: DECODE FAILED");
             return;
         };
         let Ok(sink) = Sink::try_new(handle) else {
+            eprintln!("[audio] play_music: sink creation failed");
             return;
         };
         sink.append(decoder.repeat_infinite());
         sink.set_volume(0.45);
         self.music_sink = Some(sink);
         self.current_music = Some(track);
+        eprintln!("[audio] play_music: playing!");
     }
 
     pub fn stop_music(&mut self) {
@@ -164,11 +177,17 @@ fn load_sound_slot(
 fn load_first_existing(base: &Path, folder: &str, stem: &str, exts: &[&str]) -> Option<Vec<u8>> {
     for ext in exts {
         let path = base.join(folder).join(format!("{stem}.{ext}"));
+        eprintln!("[audio] trying: {} (exists={})", path.display(), path.exists());
         if path.exists() {
-            if let Ok(bytes) = fs::read(&path) {
-                return Some(bytes);
+            match fs::read(&path) {
+                Ok(bytes) => {
+                    eprintln!("[audio] loaded {} ({} bytes)", path.display(), bytes.len());
+                    return Some(bytes);
+                }
+                Err(e) => eprintln!("[audio] read error: {e}"),
             }
         }
     }
+    eprintln!("[audio] MISSING: {folder}/{stem}");
     None
 }

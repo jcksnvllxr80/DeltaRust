@@ -40,3 +40,7 @@ Thumbs.db
 
 # IDE project files
 *.iml
+
+# claude
+.claude
+debug_output.txt

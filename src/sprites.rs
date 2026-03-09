@@ -310,17 +310,40 @@ fn draw_frame_to_size(sheet: &Sheet, frame: &FrameRect, x: f32, y: f32, w: f32, 
 
 fn load_layout() -> SpriteLayout {
     let path = sprite_asset_path("layout.toml");
-    fs::read_to_string(&path)
-        .ok()
-        .and_then(|text| toml::from_str(&text).ok())
-        .unwrap_or_else(default_layout)
+    eprintln!("[sprites] layout path: {}", path.display());
+    match fs::read_to_string(&path) {
+        Ok(text) => match toml::from_str(&text) {
+            Ok(layout) => {
+                eprintln!("[sprites] layout loaded OK");
+                layout
+            }
+            Err(e) => {
+                eprintln!("[sprites] layout PARSE ERROR: {e}");
+                default_layout()
+            }
+        },
+        Err(e) => {
+            eprintln!("[sprites] layout READ ERROR: {e}");
+            default_layout()
+        }
+    }
 }
 
 async fn load_sheet(name: &str) -> Option<Sheet> {
     let path = sprite_asset_path(name);
-    let texture = load_texture(path.to_string_lossy().as_ref()).await.ok()?;
-    texture.set_filter(FilterMode::Nearest);
-    Some(Sheet { texture })
+    let path_str = path.to_string_lossy();
+    eprintln!("[sprites] loading: {path_str}");
+    match load_texture(path_str.as_ref()).await {
+        Ok(texture) => {
+            eprintln!("[sprites] OK: {name}");
+            texture.set_filter(FilterMode::Nearest);
+            Some(Sheet { texture })
+        }
+        Err(e) => {
+            eprintln!("[sprites] FAILED {name}: {e}");
+            None
+        }
+    }
 }
 
 fn sprite_asset_path(name: &str) -> PathBuf {
