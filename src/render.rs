@@ -11,6 +11,8 @@ fn px(v: f32) -> f32 {
     v * PIXEL_SCALE
 }
 
+const PICKUP_RENDER_SCALE: f32 = 2.0;
+
 pub fn draw_game(
     sprites: &Sprites,
     world: &WorldSnapshot,
@@ -777,16 +779,19 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy) {
 
 fn draw_pickups(sprites: &Sprites, pickups: &[Pickup]) {
     for pickup in pickups {
-        let x = pickup.x.round();
-        let y = pickup.y.round() + HUD_H + (pickup.timer as f32 * 0.1).sin() * px(1.5);
-        if !sprites.draw_pickup(pickup.pickup_type, x, y, pickup.w, pickup.h) {
+        let draw_w = pickup.w * PICKUP_RENDER_SCALE;
+        let draw_h = pickup.h * PICKUP_RENDER_SCALE;
+        let x = pickup.x.round() - (draw_w - pickup.w) * 0.5;
+        let y = pickup.y.round() + HUD_H + (pickup.timer as f32 * 0.1).sin() * px(1.5)
+            - (draw_h - pickup.h) * 0.5;
+        if !sprites.draw_pickup(pickup.pickup_type, x, y, draw_w, draw_h) {
             let color = match pickup.pickup_type {
                 PickupType::Heart | PickupType::HeartContainer => RED,
                 PickupType::Key => YELLOW,
                 PickupType::BossKey => ORANGE,
                 PickupType::BombAmmo | PickupType::Bombs => DARKGRAY,
             };
-            draw_rectangle(x, y, pickup.w, pickup.h, color);
+            draw_rectangle(x, y, draw_w, draw_h, color);
         }
     }
 }
