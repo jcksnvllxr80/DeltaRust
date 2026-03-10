@@ -1,6 +1,51 @@
-use crate::constants::{COLS, ROWS, TILE};
+use crate::constants::{COLS, ROWS, TILE, WORLD_H, WORLD_W};
 use crate::model::{EnemySpawn, EnemyType, ItemDef, PickupType, TileGrid, TileType};
 use std::collections::HashMap;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OverworldBiome {
+    Plains,
+    Forest,
+    DeepForest,
+    Highlands,
+    Mountain,
+    Lake,
+    Desert,
+    Ruins,
+    Coast,
+    Snow,
+    Canyon,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OverworldLandmark {
+    None,
+    StartVillage,
+    SwordCave,
+    HeartCave,
+    IslandShrine,
+    EastSanctum,
+    BombCave,
+    Shop,
+    Dungeon(i32),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaveKind {
+    Sword,
+    Heart,
+    Shrine,
+    Sanctum,
+    Bombs,
+    Shop,
+}
+
+#[derive(Clone, Copy)]
+struct OverworldSpec {
+    biome: OverworldBiome,
+    landmark: OverworldLandmark,
+    name: &'static str,
+}
 
 pub fn screen_key(x: i32, y: i32) -> String {
     format!("{x},{y}")
@@ -53,108 +98,271 @@ pub fn parse(rows: &[&str]) -> TileGrid {
 }
 
 // ---------------------------------------------------------------------------
-// Overworld: 7 columns x 5 rows = 35 screens
+// Overworld: generated 14 columns x 15 rows = 210 screens
 // ---------------------------------------------------------------------------
 
+pub fn overworld_start() -> (i32, i32) {
+    (2, 6)
+}
+
+pub fn cave_kind(screen_x: i32, screen_y: i32) -> Option<CaveKind> {
+    match (screen_x, screen_y) {
+        (3, 5) => Some(CaveKind::Sword),
+        (1, 1) => Some(CaveKind::Heart),
+        (8, 8) => Some(CaveKind::Shrine),
+        (12, 6) => Some(CaveKind::Sanctum),
+        (1, 12) => Some(CaveKind::Bombs),
+        (10, 13) => Some(CaveKind::Shop),
+        _ => None,
+    }
+}
+
+pub fn location_name(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: i32) -> String {
+    if in_dungeon {
+        return match dungeon_id {
+            1 => "CLIFF CATACOMB",
+            2 => "STONE LABYRINTH",
+            3 => "FROST VAULT",
+            4 => "LAKE KEEP",
+            5 => "RUIN VAULT",
+            _ => "DUNGEON",
+        }
+        .to_string();
+    }
+    overworld_spec(screen_x, screen_y).name.to_string()
+}
+
 pub fn build_overworld() -> HashMap<String, TileGrid> {
-    let mut d = HashMap::new();
+    let mut data = HashMap::new();
+    for y in 0..WORLD_H {
+        for x in 0..WORLD_W {
+            data.insert(screen_key(x, y), build_overworld_screen(x, y));
+        }
+    }
+    normalize_overworld_connections(&mut data);
+    debug_assert!(validate_overworld_connections(&data).is_ok());
+    data
+}
 
-    // ===== ROW 0 (y=0) : Mountains / Highlands / Castle / Forest / Town =====
+fn build_overworld_screen(x: i32, y: i32) -> TileGrid {
+    let spec = overworld_spec(x, y);
+    let mut tiles = match spec.landmark {
+        OverworldLandmark::StartVillage => start_village_screen(),
+        OverworldLandmark::SwordCave => sword_cave_screen(),
+        OverworldLandmark::HeartCave => heart_cave_screen(),
+        OverworldLandmark::IslandShrine => island_shrine_screen(),
+        OverworldLandmark::EastSanctum => east_sanctum_screen(),
+        OverworldLandmark::BombCave => bomb_cave_screen(),
+        OverworldLandmark::Shop => secret_shop_screen(),
+        OverworldLandmark::Dungeon(id) => dungeon_gate_screen(id),
+        OverworldLandmark::None => biome_screen(spec.biome, x, y),
+    };
+    seal_world_edges(&mut tiles, x, y, spec.biome);
+    tiles
+}
 
-    // (0,0) MOUNTAIN PEAK - cave for Dungeon 1
-    d.insert(
-        "0,0".into(),
-        parse(&[
-            "^^^^^^^^^^^^^^^^",
-            "^^^...^^^^...^^^",
-            "^^.............^",
-            "^^..c..........^",
-            "^^..............",
-            "^^^.............",
-            "^^..............",
-            "^^^.........^^^^",
-            "^^^^.......^^^^^",
-            "^^^^^^^..^^^^^^^",
-            "^^^^^^^..^^^^^^^",
+fn overworld_spec(x: i32, y: i32) -> OverworldSpec {
+    let biome = biome_at(x, y);
+    match (x, y) {
+        (2, 6) => OverworldSpec {
+            biome: OverworldBiome::Plains,
+            landmark: OverworldLandmark::StartVillage,
+            name: "TRADING POST",
+        },
+        (3, 5) => OverworldSpec {
+            biome: OverworldBiome::Forest,
+            landmark: OverworldLandmark::SwordCave,
+            name: "ELDER WOODS",
+        },
+        (1, 1) => OverworldSpec {
+            biome: OverworldBiome::Mountain,
+            landmark: OverworldLandmark::HeartCave,
+            name: "CLIFF HOLLOW",
+        },
+        (8, 8) => OverworldSpec {
+            biome: OverworldBiome::Lake,
+            landmark: OverworldLandmark::IslandShrine,
+            name: "ISLAND SHRINE",
+        },
+        (12, 6) => OverworldSpec {
+            biome: OverworldBiome::Ruins,
+            landmark: OverworldLandmark::EastSanctum,
+            name: "SUNKEN SANCTUM",
+        },
+        (1, 12) => OverworldSpec {
+            biome: OverworldBiome::Coast,
+            landmark: OverworldLandmark::BombCave,
+            name: "SALT CAVERN",
+        },
+        (10, 13) => OverworldSpec {
+            biome: OverworldBiome::Canyon,
+            landmark: OverworldLandmark::Shop,
+            name: "SECRET SHOP",
+        },
+        (1, 0) => OverworldSpec {
+            biome: OverworldBiome::Mountain,
+            landmark: OverworldLandmark::Dungeon(1),
+            name: "LEVEL 1 GATE",
+        },
+        (6, 10) => OverworldSpec {
+            biome: OverworldBiome::Mountain,
+            landmark: OverworldLandmark::Dungeon(2),
+            name: "LEVEL 2 GATE",
+        },
+        (11, 1) => OverworldSpec {
+            biome: OverworldBiome::Snow,
+            landmark: OverworldLandmark::Dungeon(3),
+            name: "LEVEL 3 GATE",
+        },
+        (6, 6) => OverworldSpec {
+            biome: OverworldBiome::Lake,
+            landmark: OverworldLandmark::Dungeon(4),
+            name: "LEVEL 4 GATE",
+        },
+        (10, 4) => OverworldSpec {
+            biome: OverworldBiome::Ruins,
+            landmark: OverworldLandmark::Dungeon(5),
+            name: "LEVEL 5 GATE",
+        },
+        _ => OverworldSpec {
+            biome,
+            landmark: OverworldLandmark::None,
+            name: biome_name(biome),
+        },
+    }
+}
+
+fn biome_at(x: i32, y: i32) -> OverworldBiome {
+    const BIOME_MAP: [&str; 15] = [
+        "MMHHHFFHMMMSSS",
+        "MMHFFFFHMMSSSS",
+        "MFFFHFHMMRSSSS",
+        "FFFPGGFHMRRREE",
+        "FFFGWWGFMRREEE",
+        "FGGGWWWGGRREEE",
+        "FGGWWWWGGREEEE",
+        "GGRWWWWGGRNEEE",
+        "GGRRGWGGGNNNEE",
+        "GGGGMMGGGNNNEE",
+        "GGGMMMMGGNNEEE",
+        "CGGMMMMMMNNCEE",
+        "CCGMMMMMMNNCCE",
+        "CCCGMMMSNNNCCW",
+        "CCCCEEEENNCCWW",
+    ];
+    match BIOME_MAP[y as usize].as_bytes()[x as usize] as char {
+        'P' | 'G' => OverworldBiome::Plains,
+        'F' => OverworldBiome::Forest,
+        'H' => OverworldBiome::Highlands,
+        'M' => OverworldBiome::Mountain,
+        'W' => OverworldBiome::Lake,
+        'E' => OverworldBiome::Desert,
+        'R' => OverworldBiome::Ruins,
+        'C' => OverworldBiome::Coast,
+        'S' => OverworldBiome::Snow,
+        'N' => OverworldBiome::Canyon,
+        _ => OverworldBiome::DeepForest,
+    }
+}
+
+fn biome_name(biome: OverworldBiome) -> &'static str {
+    match biome {
+        OverworldBiome::Plains => "PLAINS",
+        OverworldBiome::Forest => "FOREST",
+        OverworldBiome::DeepForest => "DEEP WOODS",
+        OverworldBiome::Highlands => "RIDGELINE",
+        OverworldBiome::Mountain => "BADLANDS",
+        OverworldBiome::Lake => "LAKE COUNTRY",
+        OverworldBiome::Desert => "DUST SEA",
+        OverworldBiome::Ruins => "OLD RUINS",
+        OverworldBiome::Coast => "SOUTH COAST",
+        OverworldBiome::Snow => "FROST PEAKS",
+        OverworldBiome::Canyon => "CANYONS",
+    }
+}
+
+fn biome_screen(biome: OverworldBiome, x: i32, y: i32) -> TileGrid {
+    let variant = ((x * 17 + y * 31).unsigned_abs() % 2) as i32;
+    match biome {
+        OverworldBiome::Plains => plains_screen(variant),
+        OverworldBiome::Forest => forest_screen(variant),
+        OverworldBiome::DeepForest => deep_forest_screen(variant),
+        OverworldBiome::Highlands => highlands_screen(variant),
+        OverworldBiome::Mountain => mountain_screen(variant),
+        OverworldBiome::Lake => lake_screen(variant),
+        OverworldBiome::Desert => desert_screen(variant),
+        OverworldBiome::Ruins => ruins_screen(variant),
+        OverworldBiome::Coast => coast_screen(variant),
+        OverworldBiome::Snow => snow_screen(variant),
+        OverworldBiome::Canyon => canyon_screen(variant),
+    }
+}
+
+fn plains_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..............T",
+            "T...b......b...T",
+            "T..............T",
+            "................",
+            "....==....==....",
+            "................",
+            "T..............T",
+            "T...b......b...T",
+            "TTTTTTT..TTTTTTT",
+            "TTTTTTT..TTTTTTT",
         ]),
-    );
-
-    // (1,0) HIGHLANDS
-    d.insert(
-        "1,0".into(),
-        parse(&[
-            "^^^^^^^^^^^^^^^^",
-            "^..............^",
-            "^..............^",
-            "^..............^",
+        _ => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..............T",
+            "T..TT......TT..T",
+            "T..............T",
             "................",
             "......====......",
             "................",
-            "^..............^",
-            "^.....^..^.....^",
-            "^^^^^^^..^^^^^^^",
-            "^^^^^^^..^^^^^^^",
+            "T..............T",
+            "T..TT......TT..T",
+            "TTTTTTT..TTTTTTT",
+            "TTTTTTT..TTTTTTT",
         ]),
-    );
+    }
+}
 
-    // (2,0) MOUNTAIN PASS
-    d.insert(
-        "2,0".into(),
-        parse(&[
-            "^^^^^^^^^^^^^^^^",
-            "^^.............^",
-            "^...^^....^^...^",
-            "^..............^",
-            "................",
-            "......==..==....",
-            "................",
-            "^..............^",
-            "^...^^....^^...^",
-            "^^^^^^^..^^^^^^^",
-            "^^^^^^^..^^^^^^^",
-        ]),
-    );
-
-    // (3,0) CASTLE GATE - Dungeon 4 entrance
-    d.insert(
-        "3,0".into(),
-        parse(&[
-            "^^^^^^^^^^^^^^^^",
-            "^..............^",
-            "^..^^.####.^^..^",
-            "^..^..#..#..^..^",
-            "....=.#dd#.=....",
-            "....=.#..#.=....",
-            "....=.####.=....",
-            "^..^........^..^",
-            "^..............^",
-            "^^^^^^^..^^^^^^^",
-            "^^^^^^^..^^^^^^^",
-        ]),
-    );
-
-    // (4,0) NORTH FOREST
-    d.insert(
-        "4,0".into(),
-        parse(&[
+fn forest_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
             "TTTTTTTTTTTTTTTT",
             "T..............T",
-            "T..TT.....TT..T",
+            "T..TT.....TT...T",
             "T..............T",
             "................",
             "..T...TT...T....",
             "................",
             "T..............T",
-            "T..TT.....TT..T",
+            "T..TT.....TT...T",
             "TTTTTTT..TTTTTTT",
             "TTTTTTT..TTTTTTT",
         ]),
-    );
+        _ => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "TT.............T",
+            "T..T..T........T",
+            "T.....T...TT...T",
+            "T..T............",
+            "T...............",
+            "T..T............",
+            "T...TTT...T....T",
+            "T..T..T........T",
+            "TTTTTTT..TTTTTTT",
+            "TTTTTTT..TTTTTTT",
+        ]),
+    }
+}
 
-    // (5,0) DEEP FOREST
-    d.insert(
-        "5,0".into(),
-        parse(&[
+fn deep_forest_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
             "TTTTTTTTTTTTTTTT",
             "T.T..T....T..T.T",
             "T....TTT...TT..T",
@@ -167,470 +375,69 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
             "TTTTTTT..TTTTTTT",
             "TTTTTTT..TTTTTTT",
         ]),
-    );
-
-    // (6,0) FOREST TOWN - cave (shop)
-    d.insert(
-        "6,0".into(),
-        parse(&[
+        _ => parse(&[
             "TTTTTTTTTTTTTTTT",
-            "T..............T",
-            "T..===....===..T",
-            "T..=bb....bb=..T",
-            "...=...c....=..T",
-            "...=........=..T",
-            "...=........=..T",
-            "T..=bb....bb=..T",
-            "T..===....===..T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // ===== ROW 1 (y=1) : Forest / Village / Lake / Settlement =====
-
-    // (0,1) WESTERN FOREST
-    d.insert(
-        "0,1".into(),
-        parse(&[
-            "^^^^^^^..^^^^^^^",
             "TT.............T",
-            "T..T..T........T",
-            "T.....T...TT...T",
-            "T..T............",
-            "T...............",
-            "T..T............",
-            "T...TTT...T....T",
-            "T..T..T........T",
+            "T..TT.TTTT.TT..T",
+            "T..............T",
+            "..T..........T..",
+            "..T....TT....T..",
+            "..T..........T..",
+            "T..............T",
+            "T..TT.TTTT.TT..T",
             "TTTTTTT..TTTTTTT",
             "TTTTTTT..TTTTTTT",
         ]),
-    );
+    }
+}
 
-    // (1,1) VILLAGE - sword cave
-    d.insert(
-        "1,1".into(),
-        parse(&[
+fn highlands_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^^.............^",
+            "^...^^....^^...^",
+            "^..............^",
+            "................",
+            "......==..==....",
+            "................",
+            "^..............^",
+            "^...^^....^^...^",
             "^^^^^^^..^^^^^^^",
-            "T..............T",
-            "T..bbb....bb...T",
-            "T..bcb....bb...T",
+            "^^^^^^^..^^^^^^^",
+        ]),
+        _ => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^..............^",
+            "^..............^",
             "................",
             "......====......",
             "................",
-            "T..bb.....bb...T",
-            "T..bb.....bb...T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (2,1) LAKE WEST SHORE
-    d.insert(
-        "2,1".into(),
-        parse(&[
+            "^..............^",
+            "^.....^..^.....^",
             "^^^^^^^..^^^^^^^",
-            "T..............T",
-            "T.........~~~~~T",
-            "T........~~~~~~T",
-            ".........~~~~~..",
-            "........~~~~~~..",
-            ".........~~~~~..",
-            "T........~~~~~~T",
-            "T.........~~~~~T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (3,1) LAKE ISLAND - water with bridge to island
-    d.insert(
-        "3,1".into(),
-        parse(&[
             "^^^^^^^..^^^^^^^",
-            "T~~~~~~~~~~~~~.T",
-            "T~~~..........~T",
-            "T~~...........~T",
-            "_~.............~",
-            "~~......c.....~~",
-            "_~.............~",
-            "T~~...........~T",
-            "T~~~..........~T",
-            "T~~~~~..~~~~~~~T",
-            "TTTTTTT..TTTTTTT",
         ]),
-    );
+    }
+}
 
-    // (4,1) LAKE EAST SHORE
-    d.insert(
-        "4,1".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T~~~~~.........T",
-            "T~~~~~~........T",
-            "~~~~~~..........",
-            "~~~~~...........",
-            "~~~~~~..........",
-            "T~~~~~~........T",
-            "T~~~~~.........T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
+fn mountain_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^^^...^^^^...^^^",
+            "^^.............^",
+            "^^.............^",
+            "^^..............",
+            "^^^.............",
+            "^^..............",
+            "^^^.........^^^^",
+            "^^^^.......^^^^^",
+            "^^^^^^^..^^^^^^^",
+            "^^^^^^^..^^^^^^^",
         ]),
-    );
-
-    // (5,1) EASTERN WOOD
-    d.insert(
-        "5,1".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T...b......b...T",
-            "T..............T",
-            "................",
-            "....b....b......",
-            "................",
-            "T..............T",
-            "T...b......b...T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (6,1) EASTERN SETTLEMENT
-    d.insert(
-        "6,1".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..==......==..T",
-            "T..=........=..T",
-            "...=..c.....=..T",
-            "...=........=..T",
-            "...=........=..T",
-            "T..=........=..T",
-            "T..==......==..T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // ===== ROW 2 (y=2) : Dungeon Gate / Crossroads / River / Desert Edge / Ruins =====
-
-    // (0,2) DUNGEON GATE - Dungeon 2 entrance
-    d.insert(
-        "0,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "TT.............T",
-            "T..............T",
-            "T..............T",
-            "T.....d.........",
-            "T...............",
-            "T...............",
-            "T..............T",
-            "T..............T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (1,2) SOUTH CROSSROAD
-    d.insert(
-        "1,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..............T",
-            "T..............T",
-            "................",
-            "......====......",
-            "................",
-            "T..............T",
-            "T..............T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (2,2) RIVER FORD
-    d.insert(
-        "2,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..........~~..T",
-            "T.........~~~..T",
-            "T.........~~...T",
-            "..........~~....",
-            "....______~~....",
-            "..........~~....",
-            "T.........~~~..T",
-            "T..........~~..T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (3,2) DESERT EDGE
-    d.insert(
-        "3,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T...............",
-            "T.........,,,...",
-            "T........,,,,...",
-            ".........,,,,...",
-            ".........,,,,...",
-            ".........,,,,...",
-            "T........,,,,...",
-            "T.........,,,...",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (4,2) DESERT PATH
-    d.insert(
-        "4,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            ",..............,",
-            ",...^^....^^...,",
-            ",..............,",
-            ",...............,",
-            ",....====......,",
-            ",...............,",
-            ",..............,",
-            ",...^^....^^...,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (5,2) OLD RUINS - cracked walls
-    d.insert(
-        "5,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            ",...............,",
-            ",...^^..x.^^...,",
-            ",..............,",
-            ",...............,",
-            ",....x....x....,",
-            ",...............,",
-            ",..............,",
-            ",...^^....^^...,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (6,2) RUIN DEPTHS
-    d.insert(
-        "6,2".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            ",..............T",
-            ",...^^....^^...T",
-            ",..............T",
-            "...............T",
-            "...x....x......T",
-            "...............T",
-            ",..............T",
-            ",...^^....^^...T",
-            ",,,,,,,...TTTTTT",
-            ",,,,,,,...TTTTTT",
-        ]),
-    );
-
-    // ===== ROW 3 (y=3) : Southern Forest / Desert / Pyramid =====
-
-    // (0,3) SOUTHERN FOREST
-    d.insert(
-        "0,3".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..TT......TT..T",
-            "T..............T",
-            "T...............",
-            "T...............",
-            "T...............",
-            "T..TT......TT..T",
-            "T..............T",
-            "TTTTTTT..TTTTTTT",
-            "TTTTTTT..TTTTTTT",
-        ]),
-    );
-
-    // (1,3) SOUTHERN PATH
-    d.insert(
-        "1,3".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..............T",
-            "T..............T",
-            "................",
-            "......====......",
-            "................",
-            "T..............T",
-            "T..............T",
-            ",,,,,,,..TTTTTTT",
-            ",,,,,,,..TTTTTTT",
-        ]),
-    );
-
-    // (2,3) SAND DRIFT
-    d.insert(
-        "2,3".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",...^^....^^...,",
-            ",..............,",
-            ",...............,",
-            ",...............,",
-            ",...............,",
-            ",..............,",
-            ",..............,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (3,3) PYRAMID - Dungeon 3 entrance
-    d.insert(
-        "3,3".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",..^^.^^^^.^^..,",
-            ",...^......^...,",
-            ",...^..dd..^...,",
-            ",...^......^...,",
-            ",...^^^^^^^^...,",
-            ",..............,",
-            ",..............,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (4,3) DESERT EXPANSE
-    d.insert(
-        "4,3".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",..............,",
-            ",....^....^....,",
-            ",...............,",
-            ",..............,",
-            ",...............,",
-            ",....^....^....,",
-            ",..............,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (5,3) DESERT RUINS
-    d.insert(
-        "5,3".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",...x......x...,",
-            ",..............,",
-            ",...............,",
-            ",....^^..^^....,",
-            ",...............,",
-            ",..............,",
-            ",...x......x...,",
-            ",,,,,,,...,,,,,,",
-            ",,,,,,,...,,,,,,",
-        ]),
-    );
-
-    // (6,3) WASTELAND
-    d.insert(
-        "6,3".into(),
-        parse(&[
-            ",,,,,,,...TTTTTT",
-            ",...............T",
-            ",...^^....^^...T",
-            ",.............T",
-            "..............T",
-            "..............T",
-            "..............T",
-            ",.............T",
-            ",...^^....^^...T",
-            ",,,,,,,..TTTTTTT",
-            ",,,,,,,..TTTTTTT",
-        ]),
-    );
-
-    // ===== ROW 4 (y=4) : Beach / Coast / Canyon / Secret =====
-
-    // (0,4) BEACH
-    d.insert(
-        "0,4".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..,,......,,..T",
-            "T..,,......,,..T",
-            "T..,,...........",
-            "T..,,...........",
-            "T..,,...........",
-            "T..,,......,,..T",
-            "T~~,,......,,~~T",
-            "T~~~~~,,,,~~~~~T",
-            "~~~~~~~~~~~~~~~~",
-        ]),
-    );
-
-    // (1,4) COASTLINE
-    d.insert(
-        "1,4".into(),
-        parse(&[
-            "TTTTTTT..TTTTTTT",
-            "T..............T",
-            "T..............T",
-            "T..............T",
-            "................",
-            "......,,,,......",
-            "................",
-            "T..............T",
-            "T..,,......,,..T",
-            "T~~~~,,,,,,~~~~T",
-            "~~~~~~~~~~~~~~~~",
-        ]),
-    );
-
-    // (2,4) SOUTH SHORE
-    d.insert(
-        "2,4".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",..............,",
-            ",..............,",
-            ",...............,",
-            ",..c............,",
-            ",...............,",
-            ",..............,",
-            ",,.............,,",
-            ",,~~,,,,,,,~~,,,",
-            "~~~~~~~~~~~~~~~~",
-        ]),
-    );
-
-    // (3,4) CANYON
-    d.insert(
-        "3,4".into(),
-        parse(&[
+        _ => parse(&[
             ",,,,,,,...,,,,,,",
             ",..............,",
             ",..^^......^^..,",
@@ -643,48 +450,349 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
             ",,,,,,,,,,,,,,,,",
             ",,,,,,,,,,,,,,,,",
         ]),
-    );
+    }
+}
 
-    // (4,4) DEEP DESERT
-    d.insert(
-        "4,4".into(),
-        parse(&[
-            ",,,,,,,...,,,,,,",
-            ",..............,",
-            ",..............,",
-            ",....^....^....,",
-            ",...............,",
-            ",..............,",
-            ",...............,",
-            ",....^....^....,",
-            ",..............,",
-            ",,,,,,,,,,,,,,,,",
-            ",,,,,,,,,,,,,,,,",
+fn lake_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..............T",
+            "T.........~~~~~T",
+            "T........~~~~~~T",
+            ".........~~~~~..",
+            "........~~~~~~..",
+            ".........~~~~~..",
+            "T........~~~~~~T",
+            "T.........~~~~~T",
+            "TTTTTTT..TTTTTTT",
+            "TTTTTTT..TTTTTTT",
         ]),
-    );
+        _ => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..........~~..T",
+            "T.........~~~..T",
+            "T.........~~...T",
+            "..........~~....",
+            "....______~~....",
+            "..........~~....",
+            "T.........~~~..T",
+            "T..........~~..T",
+            "TTTTTTT..TTTTTTT",
+            "TTTTTTT..TTTTTTT",
+        ]),
+    }
+}
 
-    // (5,4) BADLANDS
-    d.insert(
-        "5,4".into(),
-        parse(&[
+fn desert_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
             ",,,,,,,...,,,,,,",
+            ",..............,",
+            ",...^^....^^...,",
+            ",..............,",
+            ",....====......,",
             ",...............,",
-            ",..^^..x.^^...,",
+            ",..............,",
+            ",...^^....^^...,",
+            ",,,,,,,...,,,,,,",
+            ",,,,,,,...,,,,,,",
+        ]),
+        _ => parse(&[
+            ",,,,,,,...,,,,,,",
+            ",..............,",
+            ",..............,",
+            ",....^....^....,",
+            ",...............,",
             ",..............,",
             ",...............,",
+            ",....^....^....,",
+            ",..............,",
+            ",,,,,,,...,,,,,,",
+            ",,,,,,,...,,,,,,",
+        ]),
+    }
+}
+
+fn ruins_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            ",,,,,,,...,,,,,,",
+            ",...............,",
+            ",...^^..x.^^...,",
+            ",..............,",
+            ",...............,",
+            ",....x....x....,",
+            ",...............,",
+            ",..............,",
+            ",...^^....^^...,",
+            ",,,,,,,...,,,,,,",
+            ",,,,,,,...,,,,,,",
+        ]),
+        _ => parse(&[
+            ",,,,,,,...,,,,,,",
+            ",..............,",
             ",...x......x...,",
+            ",..............,",
+            ",...............,",
+            ",....^^..^^....,",
             ",...............,",
             ",..............,",
-            ",..^^....^^...,",
+            ",...x......x...,",
+            ",,,,,,,...,,,,,,",
+            ",,,,,,,...,,,,,,",
+        ]),
+    }
+}
+
+fn coast_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..............T",
+            "T..,,......,,..T",
+            "T..,,......,,..T",
+            "T..,,...........",
+            "T..,,...........",
+            "T..,,...........",
+            "T..,,......,,..T",
+            "T~~,,......,,~~T",
+            "T~~~~~,,,,~~~~~T",
+            "~~~~~~~~~~~~~~~~",
+        ]),
+        _ => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T..............T",
+            "T..............T",
+            "T..............T",
+            "................",
+            "......,,,,......",
+            "................",
+            "T..............T",
+            "T..,,......,,..T",
+            "T~~~~,,,,,,~~~~T",
+            "~~~~~~~~~~~~~~~~",
+        ]),
+    }
+}
+
+fn snow_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^^....^^^^....^^",
+            "^^..^^....^^..^^",
+            "^..............^",
+            "^..............^",
+            "....==....==....",
+            "^..............^",
+            "^...^^....^^...^",
+            "^^....^^^^....^^",
+            "^^^^^^^..^^^^^^^",
+            "^^^^^^^..^^^^^^^",
+        ]),
+        _ => highlands_screen(variant),
+    }
+}
+
+fn canyon_screen(variant: i32) -> TileGrid {
+    match variant {
+        0 => parse(&[
+            ",,,,,,,...,,,,,,",
+            ",..^^......^^..,",
+            ",..^^......^^..,",
+            ",...^......^...,",
+            ",...............,",
+            ",.....^^^^.....,",
+            ",...............,",
+            ",...^......^...,",
+            ",..^^......^^..,",
             ",,,,,,,,,,,,,,,,",
             ",,,,,,,,,,,,,,,,",
         ]),
-    );
+        _ => parse(&[
+            ",,,,,,,..TTTTTTT",
+            "T..............T",
+            "T..TT.xxxx.TT..T",
+            "T..T..x..x..T..T",
+            "T..T..x..x..T..T",
+            "T..T..x..x..T..T",
+            "T..T..x..x..T..T",
+            "T..T..xxxx..T..T",
+            "T..TT......TT..T",
+            "TTTTTTTTTTTTTTTT",
+            "TTTTTTTTTTTTTTTT",
+        ]),
+    }
+}
 
-    // (6,4) SECRET GROVE - Secret Dungeon 5 entrance
-    d.insert(
-        "6,4".into(),
-        parse(&[
+fn start_village_screen() -> TileGrid {
+    parse(&[
+        "TTTTTTT..TTTTTTT",
+        "T..............T",
+        "T..===....===..T",
+        "T..=bb....bb=..T",
+        "...=........=...",
+        "====....==....==",
+        "...=........=...",
+        "T..=bb....bb=..T",
+        "T..===....===..T",
+        "TTTTTTT..TTTTTTT",
+        "TTTTTTT..TTTTTTT",
+    ])
+}
+
+fn sword_cave_screen() -> TileGrid {
+    parse(&[
+        "TTTTTTTTTTTTTTTT",
+        "T..............T",
+        "T..bbb....bb...T",
+        "T..bcb....bb...T",
+        "................",
+        "......====......",
+        "................",
+        "T..bb.....bb...T",
+        "T..bb.....bb...T",
+        "TTTTTTT..TTTTTTT",
+        "TTTTTTT..TTTTTTT",
+    ])
+}
+
+fn heart_cave_screen() -> TileGrid {
+    parse(&[
+        "^^^^^^^^^^^^^^^^",
+        "^^^...^^^^...^^^",
+        "^^.............^",
+        "^^..c..........^",
+        "^^..............",
+        "^^^.............",
+        "^^..............",
+        "^^^.........^^^^",
+        "^^^^.......^^^^^",
+        "^^^^^^^..^^^^^^^",
+        "^^^^^^^..^^^^^^^",
+    ])
+}
+
+fn island_shrine_screen() -> TileGrid {
+    parse(&[
+        "TTTTTTT..TTTTTTT",
+        "T~~~~~~~~~~~~~.T",
+        "T~~~..........~T",
+        "T~~...........~T",
+        "_~.............~",
+        "~~......c.....~~",
+        "_~.............~",
+        "T~~...........~T",
+        "T~~~..........~T",
+        "T~~~~~..~~~~~~~T",
+        "TTTTTTT..TTTTTTT",
+    ])
+}
+
+fn east_sanctum_screen() -> TileGrid {
+    parse(&[
+        ",,,,,,,...,,,,,,",
+        ",..............,",
+        ",..==......==..,",
+        ",..=........=..,",
+        "...=..c.....=...",
+        "...=........=...",
+        "...=........=...",
+        ",..=........=..,",
+        ",..==......==..,",
+        ",,,,,,,...,,,,,,",
+        ",,,,,,,...,,,,,,",
+    ])
+}
+
+fn bomb_cave_screen() -> TileGrid {
+    parse(&[
+        ",,,,,,,...,,,,,,",
+        ",..............,",
+        ",..............,",
+        ",..............,",
+        ",...............,",
+        ",..c............,",
+        ",...............,",
+        ",..............,",
+        ",,.............,,",
+        ",,~~,,,,,,,~~,,,",
+        "~~~~~~~~~~~~~~~~",
+    ])
+}
+
+fn secret_shop_screen() -> TileGrid {
+    parse(&[
+        ",,,,,,,...TTTTTT",
+        "T..............T",
+        "T..TT......TT..T",
+        "T..T........T..T",
+        "T..T..c..c..T..T",
+        "T..T........T..T",
+        "T..T........T..T",
+        "T..T..bbbb..T..T",
+        "T..TT......TT..T",
+        "TTTTTTTTTTTTTTTT",
+        "TTTTTTTTTTTTTTTT",
+    ])
+}
+
+fn dungeon_gate_screen(id: i32) -> TileGrid {
+    match id {
+        1 => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^^^...^^^^...^^^",
+            "^^.............^",
+            "^^.............^",
+            "^^....dd........",
+            "^^^.............",
+            "^^..............",
+            "^^^.........^^^^",
+            "^^^^.......^^^^^",
+            "^^^^^^^..^^^^^^^",
+            "^^^^^^^..^^^^^^^",
+        ]),
+        2 => parse(&[
+            ",,,,,,,...,,,,,,",
+            ",..............,",
+            ",..^^.^^^^.^^..,",
+            ",...^......^...,",
+            ",...^..dd..^...,",
+            ",...^......^...,",
+            ",...^^^^^^^^...,",
+            ",..............,",
+            ",..............,",
+            ",,,,,,,...,,,,,,",
+            ",,,,,,,...,,,,,,",
+        ]),
+        3 => parse(&[
+            "^^^^^^^^^^^^^^^^",
+            "^^....^^^^....^^",
+            "^^..^^....^^..^^",
+            "^..............^",
+            "^......dd......^",
+            "....==....==....",
+            "^..............^",
+            "^...^^....^^...^",
+            "^^....^^^^....^^",
+            "^^^^^^^..^^^^^^^",
+            "^^^^^^^..^^^^^^^",
+        ]),
+        4 => parse(&[
+            "TTTTTTT..TTTTTTT",
+            "T~~~~~~~~~~~~~.T",
+            "T~~~..........~T",
+            "T~~...........~T",
+            "_~.............~",
+            "~~......d.....~~",
+            "_~.............~",
+            "T~~...........~T",
+            "T~~~..........~T",
+            "T~~~~~..~~~~~~~T",
+            "TTTTTTT..TTTTTTT",
+        ]),
+        _ => parse(&[
             ",,,,,,,..TTTTTTT",
             "T..............T",
             "T..TT.xxxx.TT..T",
@@ -697,9 +805,194 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
             "TTTTTTTTTTTTTTTT",
             "TTTTTTTTTTTTTTTT",
         ]),
-    );
+    }
+}
 
-    d
+fn seal_world_edges(tiles: &mut TileGrid, x: i32, y: i32, biome: OverworldBiome) {
+    let wall = match biome {
+        OverworldBiome::Forest | OverworldBiome::DeepForest => TileType::Tree,
+        OverworldBiome::Lake | OverworldBiome::Coast => TileType::Water,
+        _ => TileType::Rock,
+    };
+    if x == 0 {
+        for row in tiles.iter_mut() {
+            row[0] = wall;
+        }
+    }
+    if x == WORLD_W - 1 {
+        for row in tiles.iter_mut() {
+            row[COLS - 1] = wall;
+        }
+    }
+    if y == 0 {
+        for col in 0..COLS {
+            tiles[0][col] = wall;
+        }
+    }
+    if y == WORLD_H - 1 {
+        for col in 0..COLS {
+            tiles[ROWS - 1][col] = wall;
+        }
+    }
+}
+
+fn normalize_overworld_connections(data: &mut HashMap<String, TileGrid>) {
+    for y in 0..WORLD_H {
+        for x in 0..WORLD_W {
+            if x + 1 < WORLD_W {
+                let left_key = screen_key(x, y);
+                let right_key = screen_key(x + 1, y);
+                let mut left = data
+                    .remove(&left_key)
+                    .expect("left overworld screen missing during normalization");
+                let mut right = data
+                    .remove(&right_key)
+                    .expect("right overworld screen missing during normalization");
+                carve_horizontal_connection(
+                    &mut left,
+                    &mut right,
+                    connector_tile(overworld_spec(x, y)),
+                    connector_tile(overworld_spec(x + 1, y)),
+                );
+                data.insert(left_key, left);
+                data.insert(right_key, right);
+            }
+
+            if y + 1 < WORLD_H {
+                let top_key = screen_key(x, y);
+                let bottom_key = screen_key(x, y + 1);
+                let mut top = data
+                    .remove(&top_key)
+                    .expect("top overworld screen missing during normalization");
+                let mut bottom = data
+                    .remove(&bottom_key)
+                    .expect("bottom overworld screen missing during normalization");
+                carve_vertical_connection(
+                    &mut top,
+                    &mut bottom,
+                    connector_tile(overworld_spec(x, y)),
+                    connector_tile(overworld_spec(x, y + 1)),
+                );
+                data.insert(top_key, top);
+                data.insert(bottom_key, bottom);
+            }
+        }
+    }
+}
+
+fn carve_horizontal_connection(
+    left: &mut TileGrid,
+    right: &mut TileGrid,
+    left_tile: TileType,
+    right_tile: TileType,
+) {
+    for row in 4..=6 {
+        left[row][COLS - 2] = left_tile;
+        left[row][COLS - 1] = left_tile;
+        right[row][0] = right_tile;
+        right[row][1] = right_tile;
+    }
+}
+
+fn carve_vertical_connection(
+    top: &mut TileGrid,
+    bottom: &mut TileGrid,
+    top_tile: TileType,
+    bottom_tile: TileType,
+) {
+    for col in 6..=9 {
+        top[ROWS - 2][col] = top_tile;
+        top[ROWS - 1][col] = top_tile;
+        bottom[0][col] = bottom_tile;
+        bottom[1][col] = bottom_tile;
+    }
+}
+
+fn connector_tile(spec: OverworldSpec) -> TileType {
+    match spec.landmark {
+        OverworldLandmark::StartVillage | OverworldLandmark::Shop => TileType::Path,
+        OverworldLandmark::Dungeon(_) => TileType::Path,
+        OverworldLandmark::IslandShrine => TileType::Bridge,
+        _ => match spec.biome {
+            OverworldBiome::Lake | OverworldBiome::Coast => TileType::Bridge,
+            OverworldBiome::Desert | OverworldBiome::Ruins | OverworldBiome::Canyon => {
+                TileType::Sand
+            }
+            _ => TileType::Grass,
+        },
+    }
+}
+
+fn validate_overworld_connections(data: &HashMap<String, TileGrid>) -> Result<(), String> {
+    for y in 0..WORLD_H {
+        for x in 0..WORLD_W {
+            if x + 1 < WORLD_W {
+                let left_key = screen_key(x, y);
+                let right_key = screen_key(x + 1, y);
+                let left = data
+                    .get(&left_key)
+                    .ok_or_else(|| format!("missing screen {left_key}"))?;
+                let right = data
+                    .get(&right_key)
+                    .ok_or_else(|| format!("missing screen {right_key}"))?;
+                if !(0..ROWS).any(|row| {
+                    is_walkable(left[row][COLS - 1]) && is_walkable(right[row][0])
+                }) {
+                    return Err(format!(
+                        "horizontal mismatch between {left_key} and {right_key}"
+                    ));
+                }
+            }
+
+            if y + 1 < WORLD_H {
+                let top_key = screen_key(x, y);
+                let bottom_key = screen_key(x, y + 1);
+                let top = data
+                    .get(&top_key)
+                    .ok_or_else(|| format!("missing screen {top_key}"))?;
+                let bottom = data
+                    .get(&bottom_key)
+                    .ok_or_else(|| format!("missing screen {bottom_key}"))?;
+                if !(0..COLS).any(|col| {
+                    is_walkable(top[ROWS - 1][col]) && is_walkable(bottom[0][col])
+                }) {
+                    return Err(format!(
+                        "vertical mismatch between {top_key} and {bottom_key}"
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_walkable(tile: TileType) -> bool {
+    !matches!(
+        tile,
+        TileType::Tree
+            | TileType::Water
+            | TileType::Rock
+            | TileType::Cracked
+            | TileType::Wall
+            | TileType::DoorLocked
+            | TileType::BossDoor
+            | TileType::Chest
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn overworld_connections_are_bidirectional() {
+        let world = build_overworld();
+        assert_eq!(world.len(), (WORLD_W * WORLD_H) as usize);
+        assert!(
+            validate_overworld_connections(&world).is_ok(),
+            "generated overworld has mismatched borders"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -709,7 +1002,7 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
 pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
     let mut all = HashMap::new();
 
-    // ===== DUNGEON 1: Mountain Cave (entrance at overworld 0,0) =====
+    // ===== DUNGEON 1: Mountain Cave (entrance at overworld 1,0) =====
     // Layout:      [1,0] boss
     //               |
     //        [0,1]-[1,1]
@@ -784,7 +1077,7 @@ pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
         all.insert(1, d);
     }
 
-    // ===== DUNGEON 2: Forest Shrine (entrance at overworld 0,2) =====
+    // ===== DUNGEON 2: Forest Shrine (entrance at overworld 6,10) =====
     // Layout:      [1,0] boss
     //               |
     //        [0,1]-[1,1]-[2,1]
@@ -875,7 +1168,7 @@ pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
         all.insert(2, d);
     }
 
-    // ===== DUNGEON 3: Desert Pyramid (entrance at overworld 3,3) =====
+    // ===== DUNGEON 3: Desert Pyramid (entrance at overworld 11,1) =====
     // Layout: [0,0] boss-[1,0]
     //           |
     //         [0,1]-[1,1]
@@ -982,7 +1275,7 @@ pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
         all.insert(3, d);
     }
 
-    // ===== DUNGEON 4: Castle Depths (entrance at overworld 3,0) =====
+    // ===== DUNGEON 4: Castle Depths (entrance at overworld 6,6) =====
     // Layout: [0,0] boss-[1,0]-[2,0]
     //                       |
     //                [1,1]-[2,1]
@@ -1089,7 +1382,7 @@ pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
         all.insert(4, d);
     }
 
-    // ===== DUNGEON 5: Secret Ancient Ruins (entrance at overworld 6,4) =====
+    // ===== DUNGEON 5: Secret Ancient Ruins (entrance at overworld 10,4) =====
     // Layout: [0,0] secret boss + Goal
     //           |
     //         [0,1]
@@ -1166,11 +1459,11 @@ pub fn dungeon_entry(id: i32) -> (i32, i32) {
 /// Map overworld position to dungeon ID (0 = no dungeon here).
 pub fn dungeon_at(screen_x: i32, screen_y: i32) -> i32 {
     match (screen_x, screen_y) {
-        (0, 0) => 1,
-        (0, 2) => 2,
-        (3, 3) => 3,
-        (3, 0) => 4,
-        (6, 4) => 5,
+        (1, 0) => 1,
+        (6, 10) => 2,
+        (11, 1) => 3,
+        (6, 6) => 4,
+        (10, 4) => 5,
         _ => 0,
     }
 }
@@ -1196,112 +1489,73 @@ pub fn enemy_spawns(
 }
 
 fn overworld_enemy_spawns(sx: i32, sy: i32) -> Vec<EnemySpawn> {
-    match screen_key(sx, sy).as_str() {
-        // Row 0
-        "1,0" => vec![
-            es(EnemyType::Slime, 4.0, 3.0),
-            es(EnemyType::Slime, 11.0, 7.0),
-        ],
-        "2,0" => vec![
-            es(EnemyType::Octorok, 5.0, 4.0),
-            es(EnemyType::Octorok, 10.0, 6.0),
-        ],
-        "4,0" => vec![
-            es(EnemyType::Slime, 5.0, 3.0),
-            es(EnemyType::Slime, 10.0, 7.0),
-        ],
-        "5,0" => vec![
-            es(EnemyType::Bat, 6.0, 4.0),
-            es(EnemyType::Slime, 10.0, 6.0),
-            es(EnemyType::Bat, 4.0, 7.0),
-        ],
-        // Row 1
-        "0,1" => vec![
-            es(EnemyType::Slime, 6.0, 3.0),
-            es(EnemyType::Bat, 10.0, 5.0),
-        ],
-        "2,1" => vec![es(EnemyType::Octorok, 4.0, 5.0)],
-        "4,1" => vec![
-            es(EnemyType::Octorok, 10.0, 4.0),
-            es(EnemyType::Bat, 12.0, 6.0),
-        ],
-        "5,1" => vec![
-            es(EnemyType::Slime, 5.0, 4.0),
-            es(EnemyType::Slime, 10.0, 7.0),
-            es(EnemyType::Octorok, 8.0, 5.0),
-        ],
-        // Row 2
-        "1,2" => vec![
-            es(EnemyType::Slime, 5.0, 5.0),
-            es(EnemyType::Slime, 11.0, 5.0),
-        ],
-        "2,2" => vec![es(EnemyType::Octorok, 4.0, 4.0)],
-        "3,2" => vec![
-            es(EnemyType::Octorok, 10.0, 4.0),
-            es(EnemyType::Slime, 12.0, 6.0),
-        ],
-        "4,2" => vec![
-            es(EnemyType::Octorok, 7.0, 4.0),
-            es(EnemyType::Darknut, 10.0, 6.0),
-        ],
-        "5,2" => vec![
-            es(EnemyType::Darknut, 5.0, 4.0),
-            es(EnemyType::Octorok, 10.0, 7.0),
-        ],
-        "6,2" => vec![
-            es(EnemyType::Darknut, 6.0, 5.0),
-            es(EnemyType::Darknut, 10.0, 5.0),
-        ],
-        // Row 3
-        "0,3" => vec![
-            es(EnemyType::Slime, 8.0, 4.0),
-            es(EnemyType::Bat, 10.0, 6.0),
-        ],
-        "1,3" => vec![
-            es(EnemyType::Octorok, 5.0, 5.0),
-            es(EnemyType::Slime, 11.0, 5.0),
-        ],
-        "2,3" => vec![
-            es(EnemyType::Octorok, 7.0, 4.0),
-            es(EnemyType::Octorok, 10.0, 7.0),
-        ],
-        "4,3" => vec![
-            es(EnemyType::Darknut, 5.0, 4.0),
-            es(EnemyType::Octorok, 10.0, 6.0),
-        ],
-        "5,3" => vec![
-            es(EnemyType::Darknut, 6.0, 4.0),
-            es(EnemyType::Darknut, 10.0, 6.0),
-            es(EnemyType::Octorok, 8.0, 8.0),
-        ],
-        "6,3" => vec![
-            es(EnemyType::Darknut, 5.0, 5.0),
-            es(EnemyType::Bat, 10.0, 3.0),
-            es(EnemyType::Darknut, 8.0, 7.0),
-        ],
-        // Row 4
-        "0,4" => vec![es(EnemyType::Slime, 8.0, 4.0)],
-        "1,4" => vec![
-            es(EnemyType::Octorok, 5.0, 4.0),
-            es(EnemyType::Slime, 10.0, 6.0),
-        ],
-        "2,4" => vec![es(EnemyType::Octorok, 8.0, 3.0)],
-        "3,4" => vec![
-            es(EnemyType::Darknut, 5.0, 4.0),
-            es(EnemyType::Darknut, 10.0, 6.0),
-        ],
-        "4,4" => vec![
-            es(EnemyType::Darknut, 7.0, 4.0),
-            es(EnemyType::Octorok, 10.0, 7.0),
-            es(EnemyType::Bat, 5.0, 6.0),
-        ],
-        "5,4" => vec![
-            es(EnemyType::Darknut, 6.0, 4.0),
-            es(EnemyType::Darknut, 10.0, 6.0),
-            es(EnemyType::Bat, 4.0, 7.0),
-            es(EnemyType::Bat, 12.0, 3.0),
-        ],
-        _ => vec![],
+    let spec = overworld_spec(sx, sy);
+    if matches!(
+        spec.landmark,
+        OverworldLandmark::StartVillage
+            | OverworldLandmark::SwordCave
+            | OverworldLandmark::HeartCave
+            | OverworldLandmark::IslandShrine
+            | OverworldLandmark::EastSanctum
+            | OverworldLandmark::BombCave
+            | OverworldLandmark::Shop
+    ) {
+        return vec![];
+    }
+
+    let difficulty = ((sx + sy) / 4).clamp(0, 3);
+    let base_count = match spec.biome {
+        OverworldBiome::Plains | OverworldBiome::Highlands | OverworldBiome::Coast => 2,
+        OverworldBiome::Lake => 2,
+        _ => 3,
+    };
+    let count = (base_count + difficulty as usize / 2).min(4);
+    let positions = [(4.0, 3.0), (11.0, 4.0), (5.0, 7.0), (10.0, 7.0)];
+    let seed = ((sx * 13 + sy * 29).unsigned_abs() % positions.len() as u32) as usize;
+
+    (0..count)
+        .map(|index| {
+            let pos = positions[(seed + index) % positions.len()];
+            es(
+                overworld_enemy_type(spec.biome, difficulty, seed + index),
+                pos.0,
+                pos.1,
+            )
+        })
+        .collect()
+}
+
+fn overworld_enemy_type(biome: OverworldBiome, difficulty: i32, seed: usize) -> EnemyType {
+    let roll = seed % 4;
+    match biome {
+        OverworldBiome::Forest | OverworldBiome::DeepForest => match difficulty {
+            0 => if roll == 0 { EnemyType::Bat } else { EnemyType::Slime },
+            1 => if roll >= 2 { EnemyType::Bat } else { EnemyType::Octorok },
+            2 => if roll == 0 { EnemyType::Darknut } else { EnemyType::Octorok },
+            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Bat },
+        },
+        OverworldBiome::Lake | OverworldBiome::Coast => match difficulty {
+            0 => EnemyType::Octorok,
+            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Octorok },
+            2 => if roll >= 2 { EnemyType::Darknut } else { EnemyType::Octorok },
+            _ => if roll == 0 { EnemyType::Bat } else { EnemyType::Darknut },
+        },
+        OverworldBiome::Desert
+        | OverworldBiome::Ruins
+        | OverworldBiome::Mountain
+        | OverworldBiome::Snow
+        | OverworldBiome::Canyon => match difficulty {
+            0 => EnemyType::Octorok,
+            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Octorok },
+            2 => if roll >= 2 { EnemyType::Darknut } else { EnemyType::Octorok },
+            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Bat },
+        },
+        OverworldBiome::Plains | OverworldBiome::Highlands => match difficulty {
+            0 => EnemyType::Slime,
+            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Slime },
+            2 => if roll >= 2 { EnemyType::Octorok } else { EnemyType::Bat },
+            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Octorok },
+        },
     }
 }
 
@@ -1421,14 +1675,7 @@ pub fn screen_items(
     if in_dungeon {
         return dungeon_screen_items(dungeon_id, screen_x, screen_y);
     }
-    match screen_key(screen_x, screen_y).as_str() {
-        "0,0" => vec![ItemDef {
-            pickup_type: PickupType::HeartContainer,
-            tile_x: 4,
-            tile_y: 3,
-        }],
-        _ => vec![],
-    }
+    vec![]
 }
 
 fn dungeon_screen_items(dungeon_id: i32, sx: i32, sy: i32) -> Vec<ItemDef> {

@@ -12,7 +12,9 @@ use crate::game::Game;
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut game = Game::new().await;
+    let args: Vec<String> = std::env::args().collect();
+    let dev_mode = args.iter().any(|a| a == "--dev-mode" || a == "--dev");
+    let mut game = Game::new(dev_mode).await;
     loop {
         game.update();
         game.draw();

@@ -4,6 +4,7 @@ use crate::model::{
     Projectile, TileGrid, TileType, Transition, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
+use crate::world_data;
 use macroquad::prelude::*;
 
 fn px(v: f32) -> f32 {
@@ -33,6 +34,72 @@ pub fn draw_game(
     draw_death_animations(death_animations);
     draw_player(sprites, player);
     draw_hud(sprites, player, world);
+}
+
+pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player) {
+    clear_background(color_u8!(13, 16, 24, 255));
+
+    let outer_x = px(16.0);
+    let outer_y = px(14.0);
+    let outer_w = GAME_W - px(32.0);
+    let outer_h = GAME_H + HUD_H - px(28.0);
+    let side_w = px(140.0);
+    let map_x = outer_x + side_w + px(18.0);
+    let map_y = outer_y + px(42.0);
+    let map_w = outer_w - side_w - px(34.0);
+    let map_h = outer_h - px(58.0);
+
+    draw_rectangle(outer_x, outer_y, outer_w, outer_h, color_u8!(24, 28, 39, 255));
+    draw_rectangle_lines(outer_x, outer_y, outer_w, outer_h, px(2.0), color_u8!(197, 170, 119, 255));
+    draw_rectangle(
+        outer_x + px(8.0),
+        outer_y + px(36.0),
+        side_w,
+        outer_h - px(44.0),
+        color_u8!(31, 38, 51, 255),
+    );
+    draw_rectangle(
+        map_x,
+        map_y,
+        map_w,
+        map_h,
+        color_u8!(18, 22, 30, 255),
+    );
+    draw_rectangle_lines(map_x, map_y, map_w, map_h, px(1.0), color_u8!(90, 103, 124, 255));
+
+    draw_text("INVENTORY", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
+    draw_text(
+        "I / TAB / ESC to close",
+        outer_x + outer_w - px(150.0),
+        outer_y + px(22.0),
+        px(12.0),
+        LIGHTGRAY,
+    );
+
+    let location = world_data::location_name(
+        world.screen_x,
+        world.screen_y,
+        world.in_dungeon,
+        world.dungeon_id,
+    );
+    draw_text(&location, outer_x + px(14.0), outer_y + px(58.0), px(14.0), color_u8!(214, 214, 214, 255));
+    draw_text("GEAR", outer_x + px(14.0), outer_y + px(88.0), px(14.0), color_u8!(197, 170, 119, 255));
+
+    let mut line_y = outer_y + px(112.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Sword", player.has_sword, None);
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Bombs", player.has_bombs, Some(player.bomb_count));
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Keys", player.keys > 0, Some(player.keys));
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Boss Key", player.has_boss_key, None);
+
+    draw_text("MAP", map_x + px(10.0), map_y - px(10.0), px(14.0), color_u8!(197, 170, 119, 255));
+    if world.in_dungeon {
+        draw_dungeon_map_panel(world, map_x + px(16.0), map_y + px(20.0), map_w - px(32.0), map_h - px(36.0));
+    } else {
+        draw_overworld_map_panel(world, map_x + px(16.0), map_y + px(20.0), map_w - px(32.0), map_h - px(36.0));
+    }
 }
 
 pub fn draw_transition(
@@ -643,33 +710,29 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         draw_text("BOSS", px(104.0), px(40.0), px(16.0), boss_key_color);
     }
     // location label should be smaller and further from bomb counter
-    draw_text(
-        location_name(world),
-        px(60.0),
-        px(20.0),
-        px(14.0),
-        LIGHTGRAY,
+    let location = world_data::location_name(
+        world.screen_x,
+        world.screen_y,
+        world.in_dungeon,
+        world.dungeon_id,
     );
-    draw_minimap(world);
+    draw_text(&location, px(60.0), px(20.0), px(14.0), LIGHTGRAY);
 }
 
-fn draw_minimap(world: &WorldSnapshot) {
-    if world.in_dungeon {
-        draw_dungeon_minimap(world);
-        return;
-    }
-    // Overworld minimap - scaled for 7x5, centered in HUD
-    let cell_w = px(7.0);
-    let cell_h = px(5.0);
-    let gap_x = px(8.0);
-    let gap_y = px(6.0);
-    let minimap_w = WORLD_W as f32 * gap_x;
-    let base_x = (GAME_W - minimap_w) / 2.0; // Center horizontally
+fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, area_w: f32, area_h: f32) {
+    let gap_x = px(2.0);
+    let gap_y = px(2.0);
+    let cell_w = ((area_w - gap_x * (WORLD_W as f32 - 1.0)) / WORLD_W as f32).max(px(3.0));
+    let cell_h = ((area_h - gap_y * (WORLD_H as f32 - 1.0)) / WORLD_H as f32).max(px(3.0));
+    let minimap_w = WORLD_W as f32 * cell_w + (WORLD_W as f32 - 1.0) * gap_x;
+    let minimap_h = WORLD_H as f32 * cell_h + (WORLD_H as f32 - 1.0) * gap_y;
+    let base_x = area_x + (area_w - minimap_w) / 2.0;
+    let base_y = area_y + (area_h - minimap_h) / 2.0;
     for sy in 0..WORLD_H {
         for sx in 0..WORLD_W {
             let key = format!("{sx},{sy}");
-            let x = base_x + sx as f32 * gap_x;
-            let y = px(6.0) + sy as f32 * gap_y;
+            let x = base_x + sx as f32 * (cell_w + gap_x);
+            let y = base_y + sy as f32 * (cell_h + gap_y);
             let current = world.screen_x == sx && world.screen_y == sy;
             let visited = world.visited.contains(&key);
             draw_rectangle(
@@ -678,23 +741,43 @@ fn draw_minimap(world: &WorldSnapshot) {
                 cell_w,
                 cell_h,
                 if current {
-                    GREEN
+                    color_u8!(120, 212, 120, 255)
                 } else if visited {
-                    color_u8!(68, 68, 102, 255)
+                    biome_color(world_data::location_name(sx, sy, false, 0).as_str())
                 } else {
                     color_u8!(34, 34, 34, 255)
                 },
             );
+            // mark caves and dungeon entrances when running in dev mode
+            if world.dev_mode {
+                if let Some(kind) = world_data::cave_kind(sx, sy) {
+                    let cx = x + cell_w / 2.0;
+                    let cy = y + cell_h / 2.0;
+                    draw_circle(cx, cy, cell_w * 0.3, BLACK);
+                    let label = match kind {
+                        world_data::CaveKind::Sword => "S",
+                        world_data::CaveKind::Heart => "H",
+                        world_data::CaveKind::Shrine => "I",
+                        world_data::CaveKind::Sanctum => "E",
+                        world_data::CaveKind::Bombs => "B",
+                        world_data::CaveKind::Shop => "$",
+                    };
+                    draw_text(label, cx - px(4.0), cy + px(4.0), px(10.0), WHITE);
+                }
+                let did = world_data::dungeon_at(sx, sy);
+                if did != 0 {
+                    let cx = x + cell_w - px(4.0);
+                    let cy = y + px(4.0);
+                    draw_rectangle(cx - px(3.0), cy - px(3.0), px(6.0), px(6.0), RED);
+                }
+            }
         }
     }
 }
 
-fn draw_dungeon_minimap(world: &WorldSnapshot) {
-    let cell_w = px(10.0);
-    let cell_h = px(7.0);
-    let gap_x = px(12.0);
-    let gap_y = px(9.0);
-    // Find bounds of dungeon rooms
+fn draw_dungeon_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, area_w: f32, area_h: f32) {
+    let gap_x = px(10.0);
+    let gap_y = px(8.0);
     let mut min_x: i32 = 99;
     let mut max_x: i32 = 0;
     let mut min_y: i32 = 99;
@@ -707,15 +790,20 @@ fn draw_dungeon_minimap(world: &WorldSnapshot) {
             max_y = max_y.max(sy);
         }
     }
-    let cols = (max_x - min_x + 1) as f32;
-    let minimap_w = cols * gap_x;
-    let base_x = (GAME_W - minimap_w) / 2.0; // Center horizontally
+    let cols = (max_x - min_x + 1).max(1) as f32;
+    let rows = (max_y - min_y + 1).max(1) as f32;
+    let cell_w = ((area_w - gap_x * (cols - 1.0)) / cols).max(px(18.0));
+    let cell_h = ((area_h - gap_y * (rows - 1.0)) / rows).max(px(14.0));
+    let minimap_w = cols * cell_w + (cols - 1.0) * gap_x;
+    let minimap_h = rows * cell_h + (rows - 1.0) * gap_y;
+    let base_x = area_x + (area_w - minimap_w) / 2.0;
+    let base_y = area_y + (area_h - minimap_h) / 2.0;
     for key in &world.dungeon_rooms {
         if let Some((sx, sy)) = parse_key(key) {
             let rx = (sx - min_x) as f32;
             let ry = (sy - min_y) as f32;
-            let x = base_x + rx * gap_x;
-            let y = px(6.0) + ry * gap_y;
+            let x = base_x + rx * (cell_w + gap_x);
+            let y = base_y + ry * (cell_h + gap_y);
             let current = world.screen_x == sx && world.screen_y == sy;
             let visit_key = format!("d{}:{key}", world.dungeon_id);
             let visited = world.visited.contains(&visit_key);
@@ -725,14 +813,65 @@ fn draw_dungeon_minimap(world: &WorldSnapshot) {
                 cell_w,
                 cell_h,
                 if current {
-                    GREEN
+                    color_u8!(120, 212, 120, 255)
                 } else if visited {
                     color_u8!(68, 68, 102, 255)
                 } else {
                     color_u8!(34, 34, 34, 255)
                 },
             );
+            draw_rectangle_lines(x, y, cell_w, cell_h, px(1.0), color_u8!(123, 132, 147, 255));
         }
+    }
+}
+
+fn draw_inventory_stat(
+    sprites: &Sprites,
+    player: &Player,
+    x: f32,
+    y: f32,
+    label: &str,
+    active: bool,
+    count: Option<i32>,
+) {
+    let color = if active { WHITE } else { GRAY };
+    match label {
+        "Bombs" if player.has_bombs => {
+            let _ = sprites.draw_hud_bomb(x, y - px(10.0), px(22.0));
+        }
+        "Keys" if player.keys > 0 => {
+            let _ = sprites.draw_hud_key(x + px(2.0), y - px(8.0), px(18.0));
+        }
+        "Boss Key" if player.has_boss_key => {
+            let _ = sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
+        }
+        _ => {}
+    }
+    draw_text(label, x + px(28.0), y, px(14.0), color);
+    let value = match count {
+        Some(amount) => format!("x{amount}"),
+        None => {
+            if active { "YES".to_string() } else { "NO".to_string() }
+        }
+    };
+    draw_text(&value, x + px(88.0), y, px(14.0), color);
+}
+
+fn biome_color(name: &str) -> Color {
+    if name.contains("FROST") {
+        color_u8!(170, 190, 210, 255)
+    } else if name.contains("COAST") || name.contains("LAKE") || name.contains("ISLAND") {
+        color_u8!(66, 110, 172, 255)
+    } else if name.contains("RUIN") || name.contains("CANYON") {
+        color_u8!(129, 95, 78, 255)
+    } else if name.contains("DUST") || name.contains("SALT") {
+        color_u8!(194, 166, 101, 255)
+    } else if name.contains("WOOD") || name.contains("FOREST") {
+        color_u8!(58, 122, 70, 255)
+    } else if name.contains("BADLAND") || name.contains("RIDGE") || name.contains("CLIFF") {
+        color_u8!(112, 112, 112, 255)
+    } else {
+        color_u8!(88, 150, 80, 255)
     }
 }
 
@@ -745,58 +884,3 @@ fn parse_key(key: &str) -> Option<(i32, i32)> {
     }
 }
 
-fn location_name(world: &WorldSnapshot) -> &'static str {
-    if world.in_dungeon {
-        return match world.dungeon_id {
-            1 => "MTN. CAVE",
-            2 => "FOREST SHRINE",
-            3 => "PYRAMID",
-            4 => "CASTLE DEPTHS",
-            5 => "ANCIENT RUINS",
-            _ => "DUNGEON",
-        };
-    }
-    match format!("{},{}", world.screen_x, world.screen_y).as_str() {
-        // Row 0
-        "0,0" => "MT. PEAK",
-        "1,0" => "HIGHLANDS",
-        "2,0" => "MTN. PASS",
-        "3,0" => "CASTLE GATE",
-        "4,0" => "N. FOREST",
-        "5,0" => "DEEP FOREST",
-        "6,0" => "FOREST TOWN",
-        // Row 1
-        "0,1" => "W. FOREST",
-        "1,1" => "VILLAGE",
-        "2,1" => "LAKE SHORE",
-        "3,1" => "LAKE ISLAND",
-        "4,1" => "E. LAKE",
-        "5,1" => "EASTERN WOOD",
-        "6,1" => "E. SETTLEMENT",
-        // Row 2
-        "0,2" => "DUNGEON GATE",
-        "1,2" => "S. CROSSROAD",
-        "2,2" => "RIVER FORD",
-        "3,2" => "DESERT EDGE",
-        "4,2" => "DESERT PATH",
-        "5,2" => "OLD RUINS",
-        "6,2" => "RUIN DEPTHS",
-        // Row 3
-        "0,3" => "S. FOREST",
-        "1,3" => "S. PATH",
-        "2,3" => "SAND DRIFT",
-        "3,3" => "PYRAMID",
-        "4,3" => "DESERT EXPANSE",
-        "5,3" => "DESERT RUINS",
-        "6,3" => "WASTELAND",
-        // Row 4
-        "0,4" => "BEACH",
-        "1,4" => "COASTLINE",
-        "2,4" => "S. SHORE",
-        "3,4" => "CANYON",
-        "4,4" => "DEEP DESERT",
-        "5,4" => "BADLANDS",
-        "6,4" => "SECRET GROVE",
-        _ => "UNKNOWN",
-    }
-}

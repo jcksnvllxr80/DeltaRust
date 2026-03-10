@@ -37,7 +37,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub async fn new() -> Self {
+    pub async fn new(dev_mode: bool) -> Self {
         let mut game = Self {
             state: GameState::Title,
             frame: 0,
@@ -47,7 +47,7 @@ impl Game {
             dungeon_overworld_y: 2,
             pending_dungeon: 0,
             player: Player::new(),
-            world: World::new(),
+            world: World::new(dev_mode),
             enemies: vec![],
             pickups: vec![],
             bombs: vec![],
@@ -70,6 +70,7 @@ impl Game {
                 }
             }
             GameState::Playing => self.update_playing(),
+            GameState::Inventory => self.update_inventory(),
             GameState::Transition => self.update_transition(),
             GameState::DungeonEnter => self.update_dungeon_enter(),
             GameState::DungeonExit => self.update_dungeon_exit(),
@@ -91,6 +92,9 @@ impl Game {
         match self.state {
             GameState::Title => render::draw_title(self.frame),
             GameState::Playing => self.draw_game(),
+            GameState::Inventory => {
+                render::draw_inventory(&self.sprites, &self.world.snapshot(), &self.player)
+            }
             GameState::Transition => render::draw_transition(
                 &self.sprites,
                 &self.world.snapshot(),
@@ -126,7 +130,9 @@ impl Game {
     }
 
     fn start_new_game(&mut self) {
-        self.world = World::new();
+        // preserve dev_mode flag when resetting world
+        let dev = self.world.dev_mode;
+        self.world = World::new(dev);
         self.player = Player::new();
         self.spawn_for_screen();
         self.reset_items();
@@ -137,6 +143,10 @@ impl Game {
     }
 
     fn update_playing(&mut self) {
+        if inventory_pressed() {
+            self.state = GameState::Inventory;
+            return;
+        }
         if let Some((dir, nx, ny)) = self.update_player() {
             self.start_transition(dir, nx, ny);
             return;
@@ -169,6 +179,12 @@ impl Game {
         if self.player.hp <= 0 {
             self.state = GameState::GameOver;
             self.frame = 0;
+        }
+    }
+
+    fn update_inventory(&mut self) {
+        if inventory_pressed() || is_key_pressed(KeyCode::Escape) || start_pressed() {
+            self.state = GameState::Playing;
         }
     }
 
@@ -544,8 +560,12 @@ impl Game {
     }
 
     fn handle_cave(&mut self) {
-        match format!("{},{}", self.world.screen_x, self.world.screen_y).as_str() {
-            "1,1" => {
+        let cave_key = format!(
+            "cave:{}",
+            world_data::screen_key(self.world.screen_x, self.world.screen_y)
+        );
+        match world_data::cave_kind(self.world.screen_x, self.world.screen_y) {
+            Some(world_data::CaveKind::Sword) => {
                 if !self.player.has_sword {
                     self.player.has_sword = true;
                     self.show_message("You found a sword!\nUse it to fight enemies.");
@@ -553,10 +573,9 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            "0,0" => {
-                let key = "cave:0,0".to_string();
-                if !self.world.opened_chests.contains_key(&key) {
-                    self.world.opened_chests.insert(key, vec![(3, 4)]);
+            Some(world_data::CaveKind::Heart) => {
+                if !self.world.opened_chests.contains_key(&cave_key) {
+                    self.world.opened_chests.insert(cave_key, vec![(3, 4)]);
                     self.player.max_hp += 2;
                     self.player.hp = self.player.max_hp;
                     self.show_message("Heart Container!\nHP increased!");
@@ -564,10 +583,9 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            "6,0" => {
-                let key = "cave:6,0".to_string();
-                if !self.world.opened_chests.contains_key(&key) {
-                    self.world.opened_chests.insert(key, vec![]);
+            Some(world_data::CaveKind::Shop) => {
+                if !self.world.opened_chests.contains_key(&cave_key) {
+                    self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_bombs = 16;
                     self.player.bomb_count =
                         (self.player.bomb_count + 8).min(self.player.max_bombs);
@@ -576,10 +594,9 @@ impl Game {
                     self.show_message("The shop is closed.");
                 }
             }
-            "3,1" => {
-                let key = "cave:3,1".to_string();
-                if !self.world.opened_chests.contains_key(&key) {
-                    self.world.opened_chests.insert(key, vec![]);
+            Some(world_data::CaveKind::Shrine) => {
+                if !self.world.opened_chests.contains_key(&cave_key) {
+                    self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_hp += 2;
                     self.player.hp = self.player.max_hp;
                     self.show_message("Island shrine!\nHP increased!");
@@ -587,10 +604,9 @@ impl Game {
                     self.show_message("The shrine is quiet.");
                 }
             }
-            "6,1" => {
-                let key = "cave:6,1".to_string();
-                if !self.world.opened_chests.contains_key(&key) {
-                    self.world.opened_chests.insert(key, vec![]);
+            Some(world_data::CaveKind::Sanctum) => {
+                if !self.world.opened_chests.contains_key(&cave_key) {
+                    self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_hp += 2;
                     self.player.hp = self.player.max_hp;
                     self.show_message("Heart Container!\nHP increased!");
@@ -598,10 +614,9 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            "2,4" => {
-                let key = "cave:2,4".to_string();
-                if !self.world.opened_chests.contains_key(&key) {
-                    self.world.opened_chests.insert(key, vec![]);
+            Some(world_data::CaveKind::Bombs) => {
+                if !self.world.opened_chests.contains_key(&cave_key) {
+                    self.world.opened_chests.insert(cave_key, vec![]);
                     if !self.player.has_bombs {
                         self.player.has_bombs = true;
                         self.player.bomb_count = 8;
@@ -615,7 +630,7 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            _ => self.show_message("A mysterious\ncave..."),
+            None => self.show_message("A mysterious\ncave..."),
         }
     }
 
@@ -1206,4 +1221,8 @@ fn ai_boss(
 
 fn start_pressed() -> bool {
     is_key_pressed(KeyCode::Enter) || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space)
+}
+
+fn inventory_pressed() -> bool {
+    is_key_pressed(KeyCode::I) || is_key_pressed(KeyCode::Tab)
 }

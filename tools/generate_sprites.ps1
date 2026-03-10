@@ -52,174 +52,171 @@ function Paint-Sprite {
 
 $heroPalette = @{
     "." = [System.Drawing.Color]::FromArgb(0, 0, 0, 0)
-    "o" = [System.Drawing.Color]::FromArgb(255, 52, 76, 112)
-    "h" = [System.Drawing.Color]::FromArgb(255, 160, 98, 56)
-    "s" = [System.Drawing.Color]::FromArgb(255, 255, 222, 196)
-    "g" = [System.Drawing.Color]::FromArgb(255, 72, 196, 92)
-    "d" = [System.Drawing.Color]::FromArgb(255, 38, 136, 66)
-    "b" = [System.Drawing.Color]::FromArgb(255, 176, 104, 64)
-    "e" = [System.Drawing.Color]::FromArgb(255, 250, 250, 255)
-    "y" = [System.Drawing.Color]::FromArgb(255, 242, 226, 122)
+    "o" = [System.Drawing.Color]::FromArgb(255, 30, 44, 58)
+    "h" = [System.Drawing.Color]::FromArgb(255, 110, 67, 34)
+    "m" = [System.Drawing.Color]::FromArgb(255, 182, 122, 58)
+    "s" = [System.Drawing.Color]::FromArgb(255, 246, 214, 180)
+    "w" = [System.Drawing.Color]::FromArgb(255, 250, 248, 238)
+    "g" = [System.Drawing.Color]::FromArgb(255, 78, 170, 84)
+    "d" = [System.Drawing.Color]::FromArgb(255, 42, 112, 58)
+    "c" = [System.Drawing.Color]::FromArgb(255, 56, 96, 148)
+    "y" = [System.Drawing.Color]::FromArgb(255, 222, 190, 92)
+    "r" = [System.Drawing.Color]::FromArgb(255, 154, 56, 48)
+    "b" = [System.Drawing.Color]::FromArgb(255, 122, 78, 46)
 }
 
 $heroDown1 = @(
     "................",
     ".....ohhhho.....",
-    "....ohssssho....",
-    "....hssssssh....",
-    "...ohsseessho...",
-    "...osssssssso...",
-    "...ooggggggoo...",
-    "..oogggyygggoo..",
-    "..oggggyyggggo..",
-    "..oggggggggggo..",
-    "..ogdggggggdgo..",
+    "....ohmmmmho....",
+    "....hmssssmh....",
+    "...ohsswwssho...",
+    "...ohssssssho...",
+    "...ogggyygggo...",
+    "..ogggyyyygggo..",
+    "..ogddggggddgo..",
+    "..ogddrrrrddgo..",
+    "...odggggggdo...",
     "...oddddddddo...",
-    "...osd....dso...",
+    "...osdb..bdso...",
     "...osd....dso...",
     "....bb....bb....",
-    "...obb....bbo...",
-    "................"
+    "...bb......bb..."
 )
 
 $heroDown2 = @(
     "................",
     ".....ohhhho.....",
-    "....ohssssho....",
-    "....hssssssh....",
-    "...ohsseessho...",
-    "...osssssssso...",
-    "...ooggggggoo...",
-    "..oogggyygggoo..",
-    "..oggggyyggggo..",
-    "..oggggggggggo..",
-    "..ogdggggggdgo..",
+    "....ohmmmmho....",
+    "....hmssssmh....",
+    "...ohsswwssho...",
+    "...ohssssssho...",
+    "...ogggyygggo...",
+    "..ogggyyyygggo..",
+    "..ogddggggddgo..",
+    "..ogddrrrrddgo..",
+    "...odggggggdo...",
     "...oddddddddo...",
+    "...osdb..bdso...",
     "...osd....dso...",
-    "...osd....dso...",
-    "....bb....bb....",
-    "...bbo....obb...",
-    "................"
+    ".....bb..bb.....",
+    "....bb....bb...."
 )
 
 $heroUp1 = @(
     "................",
     ".....ohhhho.....",
-    "....ohhhhhoo....",
-    "....hhoooohh....",
-    "...ohssssssho...",
-    "...osssssssso...",
-    "...ooggggggoo...",
-    "..oogggyygggoo..",
-    "..oggggyyggggo..",
-    "..oggggggggggo..",
-    "..ogdggggggdgo..",
+    "....ohyyyyho....",
+    "....ohhhhhho....",
+    "...ohhccccsho...",
+    "...ogggccccgo...",
+    "...ogggyygggo...",
+    "..ogggyyyygggo..",
+    "..ogddggggddgo..",
+    "..ogddrrrrddgo..",
+    "...odggggggdo...",
+    "...odggccggdo...",
     "...oddddddddo...",
-    "...osd....dso...",
+    "...osdb..bdso...",
     "...osd....dso...",
     "....bb....bb....",
-    "...obb....bbo...",
-    "................"
+    "...bb......bb..."
 )
 
 $heroUp2 = @(
     "................",
     ".....ohhhho.....",
-    "....ohhhhhoo....",
-    "....hhoooohh....",
-    "...ohssssssho...",
-    "...osssssssso...",
-    "...ooggggggoo...",
-    "..oogggyygggoo..",
-    "..oggggyyggggo..",
-    "..oggggggggggo..",
-    "..ogdggggggdgo..",
+    "....ohyyyyho....",
+    "....ohhhhhho....",
+    "...ohhccccsho...",
+    "...ogggccccgo...",
+    "...ogggyygggo...",
+    "..ogggyyyygggo..",
+    "..ogddggggddgo..",
+    "..ogddrrrrddgo..",
+    "...odggggggdo...",
+    "...odggccggdo...",
     "...oddddddddo...",
+    "...osdb..bdso...",
     "...osd....dso...",
-    "...osd....dso...",
-    "....bb....bb....",
-    "...bbo....obb...",
-    "................"
+    ".....bb..bb.....",
+    "....bb....bb...."
 )
 
 $heroLeft1 = @(
     "................",
-    "................",
-    "....ohhhho......",
-    "...ohssssso.....",
-    "...hssseeso.....",
-    "..ohssssssso....",
-    "..oogggggggo....",
-    "..ogggyyggdo....",
-    ".oogggyyggddo...",
-    ".ogggggggggdo...",
+    ".....ohhhho.....",
+    "....ohmmmmho....",
+    "....hsssssso....",
+    "...ohsswwssho...",
+    "...ohssssssdo...",
+    "..oggggyyygdo...",
+    "..ogggyyyyddo...",
+    ".ogddggggggdo...",
+    ".ogddrrrrggdo...",
     ".ogdggggggddo...",
-    "..oddddddddo....",
-    "..osd...ddso....",
-    "...sd...ddso....",
-    "...bb....bb.....",
-    "..obb....bbo....",
-    "................"
+    "..odggccdddo....",
+    "..osdb.ddso.....",
+    "...sdd..dso.....",
+    "...bb...bb......",
+    "..bb.....bb....."
 )
 
 $heroLeft2 = @(
     "................",
-    "................",
-    "....ohhhho......",
-    "...ohssssso.....",
-    "...hssseeso.....",
-    "..ohssssssso....",
-    "..oogggggggo....",
-    "..ogggyyggdo....",
-    ".oogggyyggddo...",
-    ".ogggggggggdo...",
+    ".....ohhhho.....",
+    "....ohmmmmho....",
+    "....hsssssso....",
+    "...ohsswwssho...",
+    "...ohssssssdo...",
+    "..oggggyyygdo...",
+    "..ogggyyyyddo...",
+    ".ogddggggggdo...",
+    ".ogddrrrrggdo...",
     ".ogdggggggddo...",
-    "..oddddddddo....",
-    "..osdd...dso....",
-    "...sdd...dso....",
-    "...bb....bb.....",
-    "..bbo....obb....",
-    "................"
+    "..odggccdddo....",
+    "..osdd.bdso.....",
+    "...sd..ddso.....",
+    "....bb..bb......",
+    "...bb....bb....."
 )
 
 $heroRight1 = @(
     "................",
-    "................",
-    "......ohhhho....",
-    ".....osssssho...",
-    "....ohseesssh...",
-    "...ossssssssho..",
-    "....ooggggggoo..",
-    "....odggyygggo..",
-    "...oddggyygggoo.",
-    "...odgggggggggo.",
+    ".....ohhhho.....",
+    "....ohmmmmho....",
+    "....ossssssh....",
+    "...ohsswwssho...",
+    "...odssssssho...",
+    "...odgyyyggggo..",
+    "...oddyyyyggggo.",
+    "...odggggggddgo.",
+    "...odggrrrrddgo.",
     "...oddggggggdgo.",
-    "....oddddddddo..",
-    "....osdd...dso..",
-    "....osdd...ds...",
-    ".....bb....bb...",
-    "....obb....bbo..",
-    "................"
+    "....odddccggdo..",
+    ".....osdd.bdso..",
+    ".....osd..dds...",
+    "......bb...bb...",
+    ".....bb.....bb.."
 )
 
 $heroRight2 = @(
     "................",
-    "................",
-    "......ohhhho....",
-    ".....osssssho...",
-    "....ohseesssh...",
-    "...ossssssssho..",
-    "....ooggggggoo..",
-    "....odggyygggo..",
-    "...oddggyygggoo.",
-    "...odgggggggggo.",
+    ".....ohhhho.....",
+    "....ohmmmmho....",
+    "....ossssssh....",
+    "...ohsswwssho...",
+    "...odssssssho...",
+    "...odgyyyggggo..",
+    "...oddyyyyggggo.",
+    "...odggggggddgo.",
+    "...odggrrrrddgo.",
     "...oddggggggdgo.",
-    "....oddddddddo..",
-    "....osd...ddso..",
-    ".....sd...dds...",
-    ".....bb....bb...",
-    "....bbo....obb..",
-    "................"
+    "....odddccggdo..",
+    ".....osdb.ddso..",
+    ".....osdd..ds...",
+    "......bb..bb....",
+    ".....bb....bb..."
 )
 
 $heroSheet = New-Sheet -Width 32 -Height 64

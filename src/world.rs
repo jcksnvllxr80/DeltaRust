@@ -1,8 +1,8 @@
 use crate::constants::{COLS, ROWS, TILE};
 use crate::model::{EnemySpawn, ItemDef, TileGrid, TileType, WorldSnapshot};
 use crate::world_data::{
-    build_dungeons, build_overworld, dungeon_entry, empty_tiles, enemy_spawns, screen_items,
-    screen_key,
+    build_dungeons, build_overworld, dungeon_entry, empty_tiles, enemy_spawns, overworld_start,
+    screen_items, screen_key,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -16,15 +16,17 @@ pub struct World {
     pub cleared_rooms: HashSet<String>,
     pub opened_chests: HashMap<String, Vec<(usize, usize)>>,
     pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
+    pub dev_mode: bool,
     overworld_data: HashMap<String, TileGrid>,
     dungeon_data: HashMap<i32, HashMap<String, TileGrid>>,
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn new(dev_mode: bool) -> Self {
+        let (start_x, start_y) = overworld_start();
         let mut world = Self {
-            screen_x: 1,
-            screen_y: 1,
+            screen_x: start_x,
+            screen_y: start_y,
             in_dungeon: false,
             dungeon_id: 0,
             tiles: empty_tiles(),
@@ -32,10 +34,11 @@ impl World {
             cleared_rooms: HashSet::new(),
             opened_chests: HashMap::new(),
             destroyed_tiles: HashMap::new(),
+            dev_mode,
             overworld_data: build_overworld(),
             dungeon_data: build_dungeons(),
         };
-        world.load_screen(1, 1);
+        world.load_screen(start_x, start_y);
         world
     }
 
@@ -51,6 +54,7 @@ impl World {
             opened_chests: self.opened_chests.clone(),
             destroyed_tiles: self.destroyed_tiles.clone(),
             dungeon_rooms: self.dungeon_rooms(),
+            dev_mode: self.dev_mode,
         }
     }
 

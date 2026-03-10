@@ -16,6 +16,7 @@ pub enum Dir {
 pub enum GameState {
     Title,
     Playing,
+    Inventory,
     Transition,
     DungeonEnter,
     DungeonExit,
@@ -256,4 +257,5 @@ pub struct WorldSnapshot {
     pub opened_chests: HashMap<String, Vec<(usize, usize)>>,
     pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
     pub dungeon_rooms: HashSet<String>,
+    pub dev_mode: bool,
 }
