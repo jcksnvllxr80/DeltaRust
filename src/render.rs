@@ -102,6 +102,152 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
     }
 }
 
+fn draw_dragon(x: f32, y: f32, scale: f32) {
+    let s = scale * PIXEL_SCALE;
+    let outline = color_u8!(37, 22, 18, 255);
+    let body = color_u8!(170, 63, 46, 255);
+    let body_shadow = color_u8!(118, 36, 34, 255);
+    let wing = color_u8!(127, 34, 38, 255);
+    let wing_membrane = color_u8!(214, 109, 62, 255);
+    let horn = color_u8!(231, 214, 158, 255);
+    let flame_core = color_u8!(255, 241, 154, 255);
+    let flame_mid = color_u8!(255, 166, 54, 255);
+    let flame_outer = color_u8!(220, 69, 29, 255);
+
+    // rear wing
+    draw_triangle(
+        vec2(x + s * 12.0, y + s * 14.0),
+        vec2(x - s * 3.0, y - s * 4.0),
+        vec2(x + s * 22.0, y + s * 2.0),
+        wing,
+    );
+    draw_triangle(
+        vec2(x + s * 11.0, y + s * 13.0),
+        vec2(x + s * 2.0, y + s * 1.0),
+        vec2(x + s * 20.0, y + s * 4.0),
+        wing_membrane,
+    );
+
+    // tail
+    draw_triangle(
+        vec2(x + s * 4.0, y + s * 24.0),
+        vec2(x - s * 15.0, y + s * 20.0),
+        vec2(x - s * 6.0, y + s * 11.0),
+        body_shadow,
+    );
+    draw_triangle(
+        vec2(x - s * 16.0, y + s * 20.0),
+        vec2(x - s * 25.0, y + s * 16.0),
+        vec2(x - s * 18.0, y + s * 12.0),
+        outline,
+    );
+
+    // body and neck
+    draw_circle(x + s * 14.0, y + s * 23.0, s * 10.0, outline);
+    draw_circle(x + s * 15.0, y + s * 22.0, s * 8.5, body);
+    draw_triangle(
+        vec2(x + s * 18.0, y + s * 18.0),
+        vec2(x + s * 31.0, y + s * 11.0),
+        vec2(x + s * 23.0, y + s * 27.0),
+        outline,
+    );
+    draw_triangle(
+        vec2(x + s * 19.0, y + s * 18.5),
+        vec2(x + s * 29.0, y + s * 12.5),
+        vec2(x + s * 23.0, y + s * 25.5),
+        body,
+    );
+    draw_circle(x + s * 17.0, y + s * 25.0, s * 5.5, body_shadow);
+
+    // front wing
+    draw_triangle(
+        vec2(x + s * 18.0, y + s * 14.0),
+        vec2(x + s * 12.0, y - s * 10.0),
+        vec2(x + s * 40.0, y + s * 5.0),
+        outline,
+    );
+    draw_triangle(
+        vec2(x + s * 18.0, y + s * 14.0),
+        vec2(x + s * 15.0, y - s * 5.0),
+        vec2(x + s * 36.0, y + s * 6.0),
+        wing,
+    );
+    draw_triangle(
+        vec2(x + s * 19.0, y + s * 13.0),
+        vec2(x + s * 18.0, y - s * 1.0),
+        vec2(x + s * 33.0, y + s * 7.0),
+        wing_membrane,
+    );
+
+    // legs
+    draw_triangle(
+        vec2(x + s * 12.0, y + s * 30.0),
+        vec2(x + s * 8.0, y + s * 39.0),
+        vec2(x + s * 16.0, y + s * 31.0),
+        outline,
+    );
+    draw_triangle(
+        vec2(x + s * 22.0, y + s * 29.0),
+        vec2(x + s * 19.0, y + s * 38.0),
+        vec2(x + s * 28.0, y + s * 31.0),
+        outline,
+    );
+
+    // head
+    draw_triangle(
+        vec2(x + s * 27.0, y + s * 10.0),
+        vec2(x + s * 43.0, y + s * 10.0),
+        vec2(x + s * 34.0, y + s * 22.0),
+        outline,
+    );
+    draw_triangle(
+        vec2(x + s * 28.0, y + s * 11.0),
+        vec2(x + s * 41.0, y + s * 11.0),
+        vec2(x + s * 34.0, y + s * 20.0),
+        body,
+    );
+    draw_triangle(
+        vec2(x + s * 30.0, y + s * 10.0),
+        vec2(x + s * 32.0, y + s * 3.0),
+        vec2(x + s * 35.0, y + s * 10.0),
+        horn,
+    );
+    draw_triangle(
+        vec2(x + s * 34.0, y + s * 10.0),
+        vec2(x + s * 38.0, y + s * 4.0),
+        vec2(x + s * 39.0, y + s * 11.0),
+        horn,
+    );
+    draw_circle(x + s * 36.5, y + s * 13.0, s * 1.2, WHITE);
+    draw_circle(x + s * 36.8, y + s * 13.1, s * 0.6, outline);
+
+    // jaw and fire
+    draw_triangle(
+        vec2(x + s * 35.0, y + s * 16.0),
+        vec2(x + s * 44.0, y + s * 17.0),
+        vec2(x + s * 35.0, y + s * 21.0),
+        body_shadow,
+    );
+    draw_triangle(
+        vec2(x + s * 43.0, y + s * 16.5),
+        vec2(x + s * 58.0, y + s * 13.0),
+        vec2(x + s * 58.0, y + s * 22.0),
+        flame_outer,
+    );
+    draw_triangle(
+        vec2(x + s * 44.0, y + s * 17.0),
+        vec2(x + s * 54.0, y + s * 15.0),
+        vec2(x + s * 54.0, y + s * 20.0),
+        flame_mid,
+    );
+    draw_triangle(
+        vec2(x + s * 45.0, y + s * 17.2),
+        vec2(x + s * 50.0, y + s * 16.2),
+        vec2(x + s * 50.0, y + s * 19.2),
+        flame_core,
+    );
+}
+
 pub fn draw_transition(
     sprites: &Sprites,
     world: &WorldSnapshot,
@@ -140,21 +286,29 @@ pub fn draw_fade_overlay(alpha: f32) {
     draw_rectangle(0.0, HUD_H, GAME_W, GAME_H, Color::new(0.0, 0.0, 0.0, alpha));
 }
 
-pub fn draw_title(frame: i32) {
+pub fn draw_title(sprites: &Sprites, frame: i32) {
     clear_background(color_u8!(17, 17, 17, 255));
     let cx = GAME_W / 2.0;
-    let cy = px(70.0);
-    draw_triangle(
-        vec2(cx, cy - px(30.0)),
-        vec2(cx + px(35.0), cy + px(25.0)),
-        vec2(cx - px(35.0), cy + px(25.0)),
-        YELLOW,
-    );
-    draw_text("DELTA", cx - px(52.0), cy + px(48.0), px(36.0), YELLOW);
+    // enlarge banner by another 50% (now 225% of original)
+    let dragon_w = px(128.0) * 2.25;
+    let dragon_h = px(96.0) * 2.25;
+    let dragon_x = cx - dragon_w / 2.0;
+    // ensure dragon doesn't start above window
+    let mut dragon_y = px(6.0) - (dragon_h - px(96.0)) / 2.0;
+    if dragon_y < 0.0 { dragon_y = 0.0; }
+    if !sprites.draw_title_dragon(dragon_x, dragon_y, dragon_w, dragon_h) {
+        draw_dragon(cx - px(36.0), px(12.0), 1.55);
+    }
+
+    // compute baseline based on dragon bottom, reducing gap
+    let cy = dragon_y + dragon_h + px(4.0);
+    let title_width = px(170.0);
+    let start_x = cx - title_width / 2.0;
+    draw_text("DELTA", start_x + px(38.0), cy + px(8.0), px(36.0), YELLOW);
     draw_text(
         "A World of Secrets",
-        cx - px(88.0),
-        cy + px(68.0),
+        start_x + px(4.0),
+        cy + px(28.0),
         px(20.0),
         GRAY,
     );
@@ -162,9 +316,28 @@ pub fn draw_title(frame: i32) {
         draw_text(
             "Press ENTER",
             cx - px(64.0),
-            cy + px(104.0),
+            cy + px(60.0),
             px(24.0),
             WHITE,
+        );
+    }
+
+    // control notes – formatted clearly
+    let notes = [
+        "SPACE : interact",
+        "WASD : move around",
+        "TAB  : map",
+        "X    : use item",
+    ];
+    // calculate left edge relative to start_x so text is centered under title
+    let notes_x = start_x + px(0.0);
+    for (i, &note) in notes.iter().enumerate() {
+        draw_text(
+            note,
+            notes_x,
+            cy + px(80.0) + i as f32 * px(20.0),
+            px(14.0),
+            LIGHTGRAY,
         );
     }
 }

@@ -90,7 +90,7 @@ impl Game {
 
     pub fn draw(&self) {
         match self.state {
-            GameState::Title => render::draw_title(self.frame),
+            GameState::Title => render::draw_title(&self.sprites, self.frame),
             GameState::Playing => self.draw_game(),
             GameState::Inventory => {
                 render::draw_inventory(&self.sprites, &self.world.snapshot(), &self.player)

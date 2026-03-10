@@ -10,6 +10,7 @@ pub struct Sprites {
     enemies: Option<Sheet>,
     tiles: Option<Sheet>,
     items: Option<Sheet>,
+    title_dragon: Option<Texture2D>,
     layout: SpriteLayout,
 }
 
@@ -20,11 +21,13 @@ impl Sprites {
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
         let items = load_sheet(&layout.items.sheet).await;
+        let title_dragon = load_image_texture(&concept_asset_path("dragon.png")).await;
         Self {
             hero,
             enemies,
             tiles,
             items,
+            title_dragon,
             layout,
         }
     }
@@ -183,6 +186,32 @@ impl Sprites {
         draw_frame_to_size(sheet, &self.layout.items.hud_boss_key, x, y, size, size, color);
         true
     }
+
+    pub fn draw_title_dragon(&self, x: f32, y: f32, max_w: f32, max_h: f32) -> bool {
+        let Some(texture) = &self.title_dragon else {
+            return false;
+        };
+        let source_w = texture.width();
+        let source_h = texture.height();
+        if source_w <= 0.0 || source_h <= 0.0 {
+            return false;
+        }
+
+        let scale = (max_w / source_w).min(max_h / source_h);
+        let draw_w = source_w * scale;
+        let draw_h = source_h * scale;
+        draw_texture_ex(
+            texture,
+            x,
+            y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(draw_w, draw_h)),
+                ..Default::default()
+            },
+        );
+        true
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -323,10 +352,23 @@ async fn load_sheet(name: &str) -> Option<Sheet> {
     Some(Sheet { texture })
 }
 
+async fn load_image_texture(path: &Path) -> Option<Texture2D> {
+    let texture = load_texture(path.to_string_lossy().as_ref()).await.ok()?;
+    texture.set_filter(FilterMode::Nearest);
+    Some(texture)
+}
+
 fn sprite_asset_path(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("assets")
         .join("sprites")
+        .join(name)
+}
+
+fn concept_asset_path(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("concept")
+        .join("art")
         .join(name)
 }
 

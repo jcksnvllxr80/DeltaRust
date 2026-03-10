@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dragon Puzzle — Level Design Matrix</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #f0d080;
+    --gold-dim: #7a6030;
+    --ember: #e05c20;
+    --ember-dark: #7a2500;
+    --deep: #0d0a06;
+    --dark: #1a1208;
+    --panel: #110e07;
+    --ash: #3a3020;
+    --smoke: #8a7a5a;
+    --parchment: #d4c49a;
+    --ink: #1a1410;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--deep);
+    color: var(--parchment);
+    font-family: 'Crimson Pro', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: auto;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,168,76,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(224,92,32,0.08) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  header {
+    text-align: center;
+    padding: 3rem 2rem 1.5rem;
+    position: relative;
+  }
+
+  .flame-line {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ember), var(--gold), var(--ember), transparent);
+    margin: 0.75rem auto;
+    max-width: 700px;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 900;
+    color: var(--gold-light);
+    text-shadow: 0 0 30px rgba(201,168,76,0.5), 0 0 80px rgba(224,92,32,0.2);
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1rem;
+    color: var(--smoke);
+    font-style: italic;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+  }
+
+  .dragon-icon {
+    font-size: 3rem;
+    filter: drop-shadow(0 0 20px rgba(224,92,32,0.7));
+    animation: breathe 3s ease-in-out infinite;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  @keyframes breathe {
+    0%, 100% { filter: drop-shadow(0 0 15px rgba(224,92,32,0.5)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 35px rgba(201,168,76,0.9)); transform: scale(1.05); }
+  }
+
+  .matrix-wrapper {
+    max-width: 1400px;
+    margin: 2rem auto 4rem;
+    padding: 0 1.5rem;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 900px;
+  }
+
+  thead th {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 1rem 1.2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--gold-dim);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+
+  thead th:nth-child(1) { color: var(--smoke); background: rgba(13,10,6,0.95); text-align: left; width: 8%; }
+  thead th:nth-child(2) { color: #7ab8e8; background: rgba(13,10,6,0.95); width: 14%; }
+  thead th:nth-child(3) { color: #a87ad4; background: rgba(13,10,6,0.95); width: 14%; }
+  thead th:nth-child(4) { color: var(--ember); background: rgba(13,10,6,0.95); width: 14%; }
+  thead th:nth-child(5) { color: #7ad48a; background: rgba(13,10,6,0.95); width: 14%; }
+  thead th:nth-child(6) { color: var(--gold); background: rgba(13,10,6,0.95); width: 14%; }
+  thead th:nth-child(7) { color: #e87ab8; background: rgba(13,10,6,0.95); width: 13%; }
+  thead th:nth-child(8) { color: var(--gold-light); background: rgba(13,10,6,0.95); width: 9%; }
+
+  tbody tr {
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  tbody tr:hover td {
+    background: rgba(201,168,76,0.06);
+  }
+
+  td {
+    padding: 1.2rem 1.2rem;
+    border-bottom: 1px solid rgba(122,96,48,0.25);
+    vertical-align: top;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    transition: background 0.2s;
+  }
+
+  /* Level number cell */
+  td:first-child {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .level-badge {
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .level-num {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .level-name {
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    opacity: 0.7;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  /* Row color theming */
+  tr:nth-child(1) td:first-child .level-num { color: #c8e8a0; text-shadow: 0 0 12px rgba(200,232,160,0.5); }
+  tr:nth-child(2) td:first-child .level-num { color: #7ab8e8; text-shadow: 0 0 12px rgba(122,184,232,0.5); }
+  tr:nth-child(3) td:first-child .level-num { color: #e8c870; text-shadow: 0 0 12px rgba(232,200,112,0.5); }
+  tr:nth-child(4) td:first-child .level-num { color: #e87060; text-shadow: 0 0 12px rgba(232,112,96,0.5); }
+  tr:nth-child(5) td:first-child .level-num { color: #a87ad4; text-shadow: 0 0 12px rgba(168,122,212,0.5); }
+  tr:nth-child(6) td:first-child .level-num { color: #7ad4c8; text-shadow: 0 0 12px rgba(122,212,200,0.5); }
+  tr:nth-child(7) td:first-child .level-num { color: #e8a060; text-shadow: 0 0 12px rgba(232,160,96,0.5); }
+  tr:nth-child(8) td:first-child .level-num { color: var(--gold-light); text-shadow: 0 0 20px rgba(240,208,128,0.8); }
+
+  tr:nth-child(1) { background: rgba(200,232,160,0.03); }
+  tr:nth-child(2) { background: rgba(122,184,232,0.03); }
+  tr:nth-child(3) { background: rgba(232,200,112,0.03); }
+  tr:nth-child(4) { background: rgba(232,112,96,0.03); }
+  tr:nth-child(5) { background: rgba(168,122,212,0.03); }
+  tr:nth-child(6) { background: rgba(122,212,200,0.03); }
+  tr:nth-child(7) { background: rgba(232,160,96,0.03); }
+  tr:nth-child(8) { background: rgba(240,208,128,0.05); }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-family: 'Crimson Pro', serif;
+    font-weight: 600;
+    margin: 0.15rem 0.1rem 0.15rem 0;
+    letter-spacing: 0.03em;
+    line-height: 1.4;
+  }
+
+  .tag-tool { background: rgba(224,92,32,0.2); color: #f0a060; border-left: 2px solid var(--ember); }
+  .tag-puzzle { background: rgba(201,168,76,0.15); color: var(--gold-light); border-left: 2px solid var(--gold); }
+  .tag-dungeon { background: rgba(168,122,212,0.15); color: #c8a0f0; border-left: 2px solid #a87ad4; }
+  .tag-world { background: rgba(122,212,160,0.12); color: #80e0a0; border-left: 2px solid #60c080; }
+  .tag-boss { background: rgba(232,80,60,0.2); color: #f08070; border-left: 2px solid #e04030; }
+  .tag-reward { background: rgba(122,184,232,0.15); color: #a0d0f0; border-left: 2px solid #7ab8e8; }
+
+  .cell-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--smoke);
+    display: block;
+    margin-bottom: 0.4rem;
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+  }
+
+  .icon { margin-right: 0.3rem; }
+
+  .dungeon-badge {
+    display: inline-block;
+    background: rgba(168,122,212,0.12);
+    border: 1px solid rgba(168,122,212,0.3);
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+
+  .dungeon-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.6rem;
+    color: #c8a0f0;
+    letter-spacing: 0.06em;
+    display: block;
+  }
+
+  .puzzle-piece-visual {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    width: 100%;
+    margin-bottom: 0.3rem;
+  }
+
+  .piece-icon { font-size: 1.1rem; }
+
+  .piece-desc {
+    font-size: 0.8rem;
+    color: var(--gold-light);
+    line-height: 1.3;
+  }
+
+  .piece-part {
+    font-size: 0.65rem;
+    color: var(--smoke);
+    font-style: italic;
+  }
+
+  .earned-tool {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(224,92,32,0.12);
+    border: 1px solid rgba(224,92,32,0.3);
+    border-radius: 3px;
+    padding: 0.5rem 0.6rem;
+    margin-top: 0.3rem;
+  }
+
+  .tool-icon { font-size: 1.3rem; }
+
+  .tool-text { font-size: 0.8rem; color: #f0a060; line-height: 1.3; }
+  .tool-name { font-weight: 600; display: block; }
+  .tool-use { font-size: 0.7rem; color: var(--smoke); font-style: italic; }
+
+  .no-tool { color: var(--ash); font-style: italic; font-size: 0.8rem; }
+
+  /* Final level special treatment */
+  tr:last-child td {
+    border-bottom: none;
+    background: rgba(240,208,128,0.04);
+  }
+
+  tr:last-child td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--ember), var(--gold));
+  }
+
+  .legend {
+    max-width: 1400px;
+    margin: 0 auto 3rem;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .legend-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.6rem;
+    color: var(--smoke);
+    letter-spacing: 0.12em;
+    margin-right: 0.5rem;
+  }
+
+  .divider-row td {
+    padding: 0;
+    height: 0;
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+  }
+
+  /* Note about world items */
+  .world-items { color: #80e0a0; font-size: 0.82rem; line-height: 1.6; }
+  .world-items li { list-style: none; padding-left: 0; margin-bottom: 0.2rem; }
+  .world-items li::before { content: '◆ '; font-size: 0.6rem; opacity: 0.7; }
+
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ash);
+    font-size: 0.78rem;
+    font-style: italic;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="dragon-icon">🐉</span>
+  <h1>The Dragon Seal</h1>
+  <div class="flame-line"></div>
+  <p class="subtitle">Level Design Matrix &nbsp;·&nbsp; 8 Stages of the Ancient Trial</p>
+</header>
+
+<div class="legend">
+  <span class="legend-title">Legend :</span>
+  <span class="tag tag-dungeon">Dungeon</span>
+  <span class="tag tag-world">World Item</span>
+  <span class="tag tag-tool">Tool Earned</span>
+  <span class="tag tag-puzzle">Puzzle Piece</span>
+  <span class="tag tag-boss">Boss</span>
+  <span class="tag tag-reward">Extra Reward</span>
+</div>
+
+<div class="matrix-wrapper">
+<table>
+  <thead>
+    <tr>
+      <th>Level</th>
+      <th>🔑 Required to Enter</th>
+      <th>🌍 World — What You Find Outside</th>
+      <th>🏰 Dungeon Name & Type</th>
+      <th>⚔️ Challenge / Boss</th>
+      <th>🧩 Puzzle Piece Unlocked</th>
+      <th>🔧 Tool Earned Here</th>
+      <th>📦 Other Rewards</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- LEVEL 1 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">I</span>
+          <span class="level-name">The Verdant Gate</span>
+        </div>
+      </td>
+      <td style="color:#c8e8a0">
+        <span class="cell-label">Nothing — Tutorial</span>
+        No tools required. The first gate stands open by ancient law.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🗡️ Rusty Sword (combat)</li>
+          <li>🧪 Healing Herb (restorative)</li>
+          <li>🕯️ Torch (light source)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🌿 Mosshaven Cave</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Forest cavern, puzzle gates, pressure plates
+      </td>
+      <td>
+        <span class="tag tag-boss">Mini-Boss</span><br>
+        <strong>Thornback Golem</strong> — slow, destroyable with heavy strikes. Teaches basic combat timing.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Tail Tip</span><br>
+            <span class="piece-part">Piece 1 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="no-tool">— No tool this level —</span>
+      </td>
+      <td><span class="tag tag-reward">Map Fragment A</span><br><span class="tag tag-reward">50 Gold</span></td>
+    </tr>
+
+    <!-- LEVEL 2 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">II</span>
+          <span class="level-name">The Crumbled Heights</span>
+        </div>
+      </td>
+      <td style="color:#7ab8e8">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">🪜 Ladder</span><br>
+        Earned in Level 1 dungeon. Needed to scale the broken cliff walls leading into the ruins.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🔩 Iron Bolt (crafting)</li>
+          <li>📜 Lore Scroll (hint text)</li>
+          <li>🛡️ Cracked Shield (defense)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🏚️ Ruins of Ashenfall</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Crumbling stone ruin, collapsing floors, vertical navigation
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>The Warden of Ash</strong> — armored sentinel that patrols on a fixed route; must be caught off-guard.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Tail Body</span><br>
+            <span class="piece-part">Piece 2 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="earned-tool">
+          <span class="tool-icon">🪜</span>
+          <div class="tool-text">
+            <span class="tool-name">Ladder</span>
+            <span class="tool-use">Scale high walls & cliffs; reach elevated ledges</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="tag tag-reward">Armor Upgrade Shard</span></td>
+    </tr>
+
+    <!-- LEVEL 3 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">III</span>
+          <span class="level-name">The Sealed Vault</span>
+        </div>
+      </td>
+      <td style="color:#e8c870">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">🔨 Hammer</span>
+        <span class="tag tag-world">🗝️ Ancient Key</span><br>
+        Hammer earned in Level 2. Key found in world (hidden in a merchant's locked chest).
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🗝️ Ancient Key (hidden in merchant's locked chest)</li>
+          <li>🧲 Iron Magnet (puzzle aid)</li>
+          <li>🍖 Dried Ration (stamina)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">⚙️ The Ironclad Vault</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Mechanical traps, sealed doors, breakable walls
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>Ironjaw the Lockkeeper</strong> — mechanical beast; use Hammer to shatter its armor plating mid-fight.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Left Hind Leg</span><br>
+            <span class="piece-part">Piece 3 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="earned-tool">
+          <span class="tool-icon">🔨</span>
+          <div class="tool-text">
+            <span class="tool-name">Hammer</span>
+            <span class="tool-use">Smash cracked walls, trigger sealed mechanisms, break enemy armor</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="tag tag-reward">Blueprint Fragment</span><br><span class="tag tag-reward">150 Gold</span></td>
+    </tr>
+
+    <!-- LEVEL 4 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">IV</span>
+          <span class="level-name">The Drowned Shore</span>
+        </div>
+      </td>
+      <td style="color:#e87060">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">🛶 Raft</span>
+        <span class="tag tag-world">🌊 Tide Chart</span><br>
+        Raft earned in Level 3. Tide Chart found in world at the lighthouse ruins — needed to navigate safe passage.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🌊 Tide Chart (at lighthouse ruins — mandatory)</li>
+          <li>🐚 Resonance Shell (unlocks hidden door)</li>
+          <li>🧴 Waterproofing Oil (protects gear)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🌊 The Sunken Citadel</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Flooded fortress, water puzzles, rising tide mechanics
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>Thalvorn, Tide Serpent</strong> — water elemental; use Resonance Shell to stun before striking.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Right Hind Leg</span><br>
+            <span class="piece-part">Piece 4 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="earned-tool">
+          <span class="tool-icon">🛶</span>
+          <div class="tool-text">
+            <span class="tool-name">Raft</span>
+            <span class="tool-use">Cross rivers, flooded chambers, and open water passages</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="tag tag-reward">Depth Map</span><br><span class="tag tag-reward">Sea Jade Gem</span></td>
+    </tr>
+
+    <!-- LEVEL 5 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">V</span>
+          <span class="level-name">The Cursed Forge</span>
+        </div>
+      </td>
+      <td style="color:#a87ad4">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">💪 Strong Arm Glove</span>
+        <span class="tag tag-world">🔥 Ember Crystal</span><br>
+        Glove earned in Level 4. Ember Crystal mined in world (volcanic outcrop south of the forge entrance).
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🔥 Ember Crystal (volcanic outcrop — mandatory fuel)</li>
+          <li>⚒️ Hardened Coal (forge fuel)</li>
+          <li>🧤 Reinforced Wrappings (upgrade Glove durability)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🔥 Grimforge Depths</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Lava chambers, heavy boulder puzzles, forging challenges
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>Moltenfist, the Forgemaster</strong> — colossal smith; use Strong Arm Glove to hurl his own anvils back at him.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Left Wing</span><br>
+            <span class="piece-part">Piece 5 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="earned-tool">
+          <span class="tool-icon">💪</span>
+          <div class="tool-text">
+            <span class="tool-name">Strong Arm Glove</span>
+            <span class="tool-use">Lift & throw heavy objects; pull chains; overpower strength gates</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="tag tag-reward">Forge Token</span><br><span class="tag tag-reward">Weapon Temper</span></td>
+    </tr>
+
+    <!-- LEVEL 6 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">VI</span>
+          <span class="level-name">The Shattered Expanse</span>
+        </div>
+      </td>
+      <td style="color:#7ad4c8">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">🪜 Ladder</span>
+        <span class="tag tag-tool">🔨 Hammer</span>
+        <span class="tag tag-world">🧭 Void Compass</span><br>
+        Both tools previously earned. Void Compass found in world — dropped by a wandering shade enemy in the wastes.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>🧭 Void Compass (dropped by wandering Shade — mandatory)</li>
+          <li>🌑 Shadow Dust (reveals hidden paths)</li>
+          <li>📿 Ward Bead (protection from curses)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🌑 The Fractured Sanctum</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Reality-warping halls, broken platforms, mirror traps
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>Duplexis, the Mirror Lich</strong> — creates false copies; Void Compass identifies the real one.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Right Wing</span><br>
+            <span class="piece-part">Piece 6 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="no-tool">— No new tool —</span><br>
+        <span style="font-size:0.75rem;color:var(--smoke);font-style:italic">Mastery of existing tools tested here</span>
+      </td>
+      <td><span class="tag tag-reward">Void Shard</span><br><span class="tag tag-reward">250 Gold</span></td>
+    </tr>
+
+    <!-- LEVEL 7 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">VII</span>
+          <span class="level-name">The Celestial Spire</span>
+        </div>
+      </td>
+      <td style="color:#e8a060">
+        <span class="cell-label">Required</span>
+        <span class="tag tag-tool">🌀 Portal Tool</span>
+        <span class="tag tag-world">⭐ Star Sigil</span>
+        <span class="tag tag-world">🛶 Raft</span><br>
+        Portal Tool earned in Level 6. Star Sigil purchased from the Celestial Merchant (appears only at night). Raft crosses the Sky Moat.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>⭐ Star Sigil (Celestial Merchant, night only — mandatory)</li>
+          <li>🌙 Moon Essence (amplifies portal range)</li>
+          <li>🔭 Astrolabe (navigation puzzle aid)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">✨ The Aetherian Spire</span>
+        </div>
+        <span class="tag tag-dungeon">Dungeon</span> Floating platforms, time-delayed portal puzzles, gravity inversion
+      </td>
+      <td>
+        <span class="tag tag-boss">Boss</span><br>
+        <strong>Aurelion the Undying</strong> — teleports constantly; use Portal Tool to intercept and cut off his escape routes.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Head & Horns</span><br>
+            <span class="piece-part">Piece 7 of 8</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="earned-tool">
+          <span class="tool-icon">🌀</span>
+          <div class="tool-text">
+            <span class="tool-name">Portal / Warp Tool</span>
+            <span class="tool-use">Open linked portals between two points; bypass locked regions; reposition mid-combat</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="tag tag-reward">Celestial Lens</span><br><span class="tag tag-reward">Star Map</span></td>
+    </tr>
+
+    <!-- LEVEL 8 -->
+    <tr>
+      <td>
+        <div class="level-badge">
+          <span class="level-num">VIII</span>
+          <span class="level-name">The Dragon's Throne</span>
+        </div>
+      </td>
+      <td style="color:var(--gold-light)">
+        <span class="cell-label">All Tools + All 7 Pieces</span>
+        <span class="tag tag-tool">🪜 Ladder</span>
+        <span class="tag tag-tool">🔨 Hammer</span>
+        <span class="tag tag-tool">💪 Glove</span>
+        <span class="tag tag-tool">🛶 Raft</span>
+        <span class="tag tag-tool">🌀 Portal</span>
+        <span class="tag tag-puzzle">Pieces 1–7</span>
+        <span class="tag tag-world">📖 Dragon Codex</span><br>
+        Codex found in world — scattered pages collected across all 7 prior overworld areas.
+      </td>
+      <td>
+        <ul class="world-items">
+          <li>📖 Dragon Codex — 7 pages, one per prior overworld (mandatory to unlock seal)</li>
+          <li>🔮 Crystal of Seeing (reveals final room layout)</li>
+          <li>💊 Elixir of Endurance (full health on entry)</li>
+        </ul>
+      </td>
+      <td>
+        <div class="dungeon-badge">
+          <span class="dungeon-name">🐉 The Dragon's Eternal Throne</span>
+        </div>
+        <span class="tag tag-dungeon">Final Dungeon</span> All tool mechanics combined; gauntlet of all prior puzzle types; the Seal Chamber
+      </td>
+      <td>
+        <span class="tag tag-boss">FINAL BOSS</span><br>
+        <strong>Dravenix, the Sealed Dragon</strong> — multi-phase. Each phase demands a different tool. Placing all 7 pieces mid-fight weakens him; placing Piece 8 (found in throne room) completes the seal & ends the battle.
+      </td>
+      <td>
+        <div class="puzzle-piece-visual">
+          <span class="piece-icon">🧩</span>
+          <div>
+            <span class="piece-desc">Dragon's Heart — The Seal Stone</span><br>
+            <span class="piece-part">Piece 8 of 8 · Found within the Throne Room itself</span>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;padding:0.5rem 0.7rem;background:rgba(240,208,128,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:3px;font-size:0.8rem;color:var(--gold-light)">
+          ✨ Place all 8 pieces → <strong>Dragon Seal Restored</strong> → Victory
+        </div>
+      </td>
+      <td>
+        <span class="no-tool">— No new tool —</span><br>
+        <span style="font-size:0.75rem;color:var(--smoke);font-style:italic">All tools used to their full potential</span>
+      </td>
+      <td><span class="tag tag-reward">True Ending Cutscene</span><br><span class="tag tag-reward">Dragon's Blessing</span><br><span class="tag tag-reward">NG+ Unlocked</span></td>
+    </tr>
+
+  </tbody>
+</table>
+</div>
+
+<footer>
+  The Dragon Seal &nbsp;·&nbsp; Game Design Document &nbsp;·&nbsp; Level Matrix v1.0
+</footer>
+
+</body>
+</html>
