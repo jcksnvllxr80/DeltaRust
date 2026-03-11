@@ -17,47 +17,53 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: TAIL TIP** — narrow, tapered upward. The room layout
+narrows from a wider base toward the boss at the tip. Mostly 1–2 rooms wide.
+
 ```
-                                        ┌───────────┐
-                                        │    R09    │
-                                        │   BOSS    │
-                                        │  [GOLEM]  │
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                             ┌──────────┤    R07    ├──────────┐
-                             │          │  Pressure │          │
-                             │    ◄═════╡  Puzzle   ╞═════►    │
-                             │  [SECRET]│  Chamber  │[SECRET]  │
-                             │          └─────┬─────┘          │
-                        ┌────┴────┐           │           ┌────┴────┐
-                        │  R08a   │      ┌────┴────┐      │  R08b   │
-                        │ SECRET  │      │   R06   │      │ SECRET  │
-                        │  NOOK   │      │ Flooded │      │  CACHE  │
-                        └─────────┘      │  Grotto │      └─────────┘
-                                         └────┬────┘
-                                              │
-                              ┌───────────────┼───────────────┐
-                              │               │               │
-                         ┌────┴────┐     ┌────┴────┐     ┌────┴────┐
-                         │   R03   │     │   R04   │     │   R05   │
-                         │ Mossy   │     │  Root   │     │ Fungal  │
-                         │ Alcove  │     │ Warren  │     │  Hall   │
-                         └────┬────┘     └────┬────┘     └─────────┘
-                              │               │
-                              └───────┬───────┘
-                                      │
-                                 ┌────┴────┐
-                                 │   R02   │
-                                 │ Combat  │
-                                 │ Chamber │
-                                 └────┬────┘
-                                      │
-                                 ┌────┴────┐
-                                 │   R01   │
-                                 │  ENTRY  │
-                                 │ (Start) │
-                                 └─────────┘
+                         ┌─────────┐              ╲
+                         │   R09   │               ╲  ← tip
+                         │  BOSS   │               ╱
+                         │ [GOLEM] │              ╱
+                         └────┬────┘
+                              │ [BOSS DOOR]
+                    ┌─────────┴─────────┐
+         ┌──────────┤       R07         ├──────────┐
+         │    ◄═════╡  Pressure Puzzle  ╞═════►    │
+         │  [SECRET]│     Chamber       │[SECRET]  │
+         │          └────────┬──────────┘          │
+    ┌────┴────┐              │                ┌────┴────┐
+    │  R08a   │              │                │  R08b   │
+    │ SECRET  │              │                │ SECRET  │
+    │  NOOK   │              │                │  CACHE  │
+    └─────────┘              │                └─────────┘
+                        ┌────┴────┐
+                        │   R06   │
+                        │ Flooded │
+                        │  Grotto │
+                        └────┬────┘
+                             │
+                   ┌─────────┴─────────┐
+                   │                   │
+              ┌────┴────┐         ┌────┴────┐
+              │   R04   │         │   R05   │
+              │  Root   │         │ Fungal  │
+              │ Warren  │         │  Hall   │
+              └────┬────┘         └─────────┘
+                   │
+         ┌─────────┴─────────┐
+         │                   │
+    ┌────┴────┐         ┌────┴────┐
+    │   R02   │         │   R03   │
+    │ Combat  │         │  Mossy  │
+    │ Chamber │         │ Alcove  │
+    └────┬────┘         └─────────┘
+         │
+    ┌────┴────┐
+    │   R01   │                                      ╲
+    │  ENTRY  │                                       ╲  ← base
+    │ (Start) │                                       ╱
+    └─────────┘                                      ╱
 ```
 
 ```
@@ -101,7 +107,7 @@ LEGEND
 ### R02 — COMBAT CHAMBER
 **Shape:** Square, slightly cramped. Designed to funnel the player into their first fight.
 **Size:** Medium
-**Connections:** South → R01 | Northwest → R03 (open) | Northeast → R05 (open) | North → R04 *(LOCKED — Small Key A required)*
+**Connections:** South → R01 | East → R03 (open) | North → R04 *(LOCKED — Small Key A required)*
 
 **Contents:**
 - ⚔️ **2× Mosscrawler** — slow, melee only. Telegraphed attacks. Die in 3 hits each. Tutorial enemies.
@@ -118,7 +124,7 @@ LEGEND
 ### R03 — MOSSY ALCOVE
 **Shape:** Tall vertical rectangle. Narrow entry opens into a wider back section.
 **Size:** Medium-Small
-**Connections:** Southeast → R02 (open) | North → R06 *(LOCKED — Small Key B required)*
+**Connections:** West → R02 (open) | Dead end — no other exits. Key B enables an alternate route to R06 from R04.
 
 **Contents:**
 - [★] **🧭 COMPASS** — resting on a vine-wrapped pedestal. Glows softly. Tracks player position on the dungeon map.
@@ -136,7 +142,7 @@ LEGEND
 ### R04 — ROOT WARREN
 **Shape:** Irregular, organic. Feels like it was carved by the roots themselves rather than built. Winding with a few alcoves.
 **Size:** Medium-Large
-**Connections:** South → R02 (locked entry, key used) | North → R06 (open) | West alcove dead-end | East alcove dead-end
+**Connections:** South → R02 (locked entry, key used) | North → R06 (open) | East → R05 (open) | West alcove dead-end | East alcove dead-end
 
 **Contents:**
 - ⚔️ **3× Mosscrawler** — slightly more aggressive than R02 batch. One drops a **Gold Pouch (25 coins)**.
@@ -154,7 +160,7 @@ LEGEND
 ### R05 — FUNGAL HALL
 **Shape:** Long horizontal rectangle. A corridor-room — wide enough to fight in but clearly a passageway.
 **Size:** Medium
-**Connections:** West → R02 (open) | North → R06 (open)
+**Connections:** West → R04 (open) | Dead end — optional branch.
 
 **Contents:**
 - ⚔️ **1× Thornback Sprout** — spiny, slightly faster than Mosscrawlers. Rolls into a ball and charges. Introduces a new enemy type.
@@ -171,7 +177,7 @@ LEGEND
 ### R06 — FLOODED GROTTO
 **Shape:** Wide irregular oval. The ceiling vaults high. A central raised stone island sits above ankle-deep water covering the rest of the floor.
 **Size:** Large
-**Connections:** South → R03 (locked from R03 side, Key B used) | South → R04 (open) | South → R05 (open) | North → R07 (open)
+**Connections:** South → R04 (open) | North → R07 (open)
 
 **Contents:**
 - ~~~ **Flooded floor** — walking through it is slow (wade mechanic introduced). The raised central island is dry.
@@ -267,19 +273,16 @@ LEGEND
 ## DUNGEON FLOW SUMMARY
 
 ```
-CRITICAL PATH:
+CRITICAL PATH (follows the narrow spine of the tail):
 R01 (get map) → R02 (fight, get Key A) → R04 (fight, explore) → R06 (fight)
 → R07 (pressure puzzle, get Boss Key) → R09 (boss, get Piece 1 + Ladder)
 
-NOTE: To reach R06 from R03 side, Key B is needed.
-Key B is in R03. R03 is accessed from R02 (northwest, open).
-Player must explore R03 to unlock the R03→R06 northern path.
-Alternatively: R04→R06 and R05→R06 are both open — player can bypass R03
-but will miss the Compass and Key B (Key B only matters for R03→R06 shortcut).
+NOTE: The layout narrows as the player ascends — evoking the taper of
+the Dragon's Tail Tip. Side branches widen the dungeon at two points.
 
 OPTIONAL PATHS:
-R02 → R03 (Compass + Key B + healing)
-R02 → R05 (Fungal Hall shortcut to R06, skips R03 and R04)
+R02 → R03 (east branch — Compass + Key B + healing, dead end)
+R04 → R05 (east branch — Fungal Hall, dead end with gold + enemy)
 R07 → R08a (west secret wall — Lore Scroll + healing)
 R07 → R08b (east secret wall — gold cache + journal)
 

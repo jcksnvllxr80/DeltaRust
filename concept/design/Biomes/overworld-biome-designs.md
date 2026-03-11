@@ -84,7 +84,7 @@ The forest has been here longer than any of the kingdoms that border it. Local s
 
 | Enemy | Location | Behaviour |
 |-------|----------|-----------|
-| 🐺 **Bogwolf** | The Fen, Deep Wood | Patrols in loose packs of 2–3. Alerts others when it spots the player. Flees if health drops below 30%. |
+| 🐺 **Bogwolf** | The Fen, Deep Wood | Patrols in loose packs of 2–3. Alerts others when it spots the player. Bite inflicts brief poison (3 ticks of minor damage over 6 seconds). Flees if health drops below 30%. |
 | 🌿 **Thornvine Crawler** | Deep Wood, canopy trail | Stationary until approached within 2 tiles — then lunges. Camouflaged against mossy surfaces. |
 | 🍄 **Spore Puffer** | Fungal Ring area | Releases a cloud of spores when struck — brief vision impairment. Does not actively chase. |
 | 🦎 **Fen Lurker** | The Fen exclusively | Submerged in shallow water, invisible until the player steps within 1 tile. Territorial — does not leave the Fen. |
@@ -192,7 +192,7 @@ The city of Ashenfall was large once. Now it is a series of broken walls, collap
 **🔦 Maren, the Salvager** *(Salvager's Camp, south edge)*
 A practical, unsentimental woman who has been picking through Ashenfall for three years. She sells salvaged goods and buys anything interesting pulled from the ruins.
 - Buys: Ashenfall Salvage Token (80 coins), any Gold Pouch contents at 90% value, Stone Tablet Fragments (20 coins each — she is collecting them, doesn't know why)
-- Sells: Torch ×10 bundle (35 coins), Hammer (if player somehow arrived without one — 120 coins), Rope (40 coins — no mechanical use yet, but Barnett will pay 60 for it)
+- Sells: Torch ×10 bundle (35 coins), Hammer (if player somehow arrived without one — 120 coins), Rope (40 coins — trade item; Barnett in Biome 1 will pay 60 for it)
 - Dialogue hint: *"The dungeon in the east quarter? I've been past the door twice. Both times something looked back at me from the dark. I decided salvaging paid better than heroism."*
 
 **📚 Oswin, the Historian** *(Belltower Remains, at the base)*
@@ -766,22 +766,23 @@ An elderly woman who has lived in the Last Camp for forty years. She provides su
 ## OVERWORLD BIOME MAP — CONNECTION SUMMARY
 
 ```
-                          [ 7: Celestial Plateau ]
-                                  │ west staircase
-                          [ 8: Dragon's Approach ] ← FINAL
-                                  │
-                          [ 6: Void Wastes ]
-                         ╱                   ╲
-              [ 4: Sunken Coast ]    [ 5: Grimforge Approaches ]
-                         ╲                   ╱
-                          [ 2: Ashenfall Reaches ]
-                         ╱                   ╲
-              [ 1: Mosshaven Wilds ]  [ 3: Iron Highlands ]
+                    [ 8: Dragon's Approach ] ← FINAL
+                            │ staircase
+                    [ 7: Celestial Plateau ]
+                            │
+                    [ 6: Void Wastes ]
+                   ╱                   ╲
+        [ 4: Sunken Coast ]    [ 5: Grimforge Approaches ]
+                   │                    │
+        [ 2: Ashenfall Reaches ]  [ 3: Iron Highlands ]
+                   ╲                   ╱
+                    [ 1: Mosshaven Wilds ] ← START
 ```
 
 **Travel notes:**
-- Biome 1 is the start. Every path eventually leads north and inward.
-- Biomes 3 and 4 are reachable from Biome 1 by different routes — parallel early paths that converge at Biome 6.
+- Biome 1 is the start. Two routes branch from it and converge later.
+- **Path A:** Biome 1 → Biome 2 (east) → Biome 4 (north) → Biome 6 (west).
+- **Path B:** Biome 1 → Biome 3 (north) → Biome 5 (east) → Biome 6 (west).
 - Biome 6 (Void Wastes) is the central convergence point before the final stretch.
 - Biomes 7 and 8 are the endgame approach — the Celestial Plateau and the Dragon's Approach are sequential and linear.
 - The Dragon's Approach has no branches. The game's final geography is a straight line.

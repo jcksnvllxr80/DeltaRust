@@ -570,24 +570,25 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
     let blade = LIGHTGRAY;
     let hilt = color_u8!(196, 160, 74, 255);
     if sprite_mode {
-        // Account for centered frame offset (scale 3 offsets y by -16)
-        let y_offset = y - px(16.0);
+        // Account for the enlarged hero sheet being centered on the original 16x16 footprint.
+        let x_offset = x - px(4.0);
+        let y_offset = y - px(8.0);
         match dir {
             Dir::Up => {
-                draw_rectangle(x + px(13.0), y_offset - px(12.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x + px(11.0), y_offset + px(4.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x_offset + px(13.0), y_offset - px(12.0), px(6.0), px(18.0), blade);
+                draw_rectangle(x_offset + px(11.0), y_offset + px(4.0), px(10.0), px(3.0), hilt);
             }
             Dir::Down => {
-                draw_rectangle(x + px(13.0), y_offset + px(26.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x + px(11.0), y_offset + px(25.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x_offset + px(13.0), y_offset + px(26.0), px(6.0), px(18.0), blade);
+                draw_rectangle(x_offset + px(11.0), y_offset + px(25.0), px(10.0), px(3.0), hilt);
             }
             Dir::Left => {
-                draw_rectangle(x - px(18.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x - px(6.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x_offset - px(18.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
+                draw_rectangle(x_offset - px(6.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
             }
             Dir::Right => {
-                draw_rectangle(x + px(26.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x + px(25.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x_offset + px(26.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
+                draw_rectangle(x_offset + px(25.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
             }
         }
         return;
@@ -1061,4 +1062,3 @@ fn parse_key(key: &str) -> Option<(i32, i32)> {
         None
     }
 }
-

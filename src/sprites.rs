@@ -6,7 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub struct Sprites {
-    hero: Option<Sheet>,
+    hero_idle: Option<Sheet>,
+    hero_walk: Option<Sheet>,
+    hero_idle_sword: Option<Sheet>,
+    hero_walk_sword: Option<Sheet>,
     enemies: Option<Sheet>,
     tiles: Option<Sheet>,
     items: Option<Sheet>,
@@ -17,13 +20,19 @@ pub struct Sprites {
 impl Sprites {
     pub async fn load() -> Self {
         let layout = load_layout();
-        let hero = load_sheet(&layout.hero.sheet).await;
+        let hero_idle = load_sheet(&layout.hero.idle_sheet).await;
+        let hero_walk = load_sheet(&layout.hero.walk_sheet).await;
+        let hero_idle_sword = load_optional_sheet(layout.hero.idle_sword_sheet.as_deref()).await;
+        let hero_walk_sword = load_optional_sheet(layout.hero.walk_sword_sheet.as_deref()).await;
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
         let items = load_sheet(&layout.items.sheet).await;
         let title_dragon = load_image_texture(&concept_asset_path("dragon.png")).await;
         Self {
-            hero,
+            hero_idle,
+            hero_walk,
+            hero_idle_sword,
+            hero_walk_sword,
             enemies,
             tiles,
             items,
@@ -33,16 +42,34 @@ impl Sprites {
     }
 
     pub fn draw_player(&self, player: &Player, x: f32, y: f32) -> bool {
-        let Some(sheet) = &self.hero else {
+        let (sheet, frames) = match player.state {
+            PlayerState::Walking => {
+                let sheet = if player.has_sword {
+                    self.hero_walk_sword.as_ref().or(self.hero_walk.as_ref())
+                } else {
+                    self.hero_walk.as_ref()
+                };
+                let Some(sheet) = sheet else {
+                    return false;
+                };
+                (sheet, self.hero_frames(player.dir))
+            }
+            _ => {
+                let sheet = if player.has_sword {
+                    self.hero_idle_sword.as_ref().or(self.hero_idle.as_ref())
+                } else {
+                    self.hero_idle.as_ref()
+                };
+                let Some(sheet) = sheet else {
+                    return false;
+                };
+                (sheet, self.hero_frames(player.dir))
+            }
+        };
+        if frames.is_empty() {
             return false;
-        };
-        let frames = match player.dir {
-            Dir::Down => &self.layout.hero.down,
-            Dir::Up => &self.layout.hero.up,
-            Dir::Left => &self.layout.hero.left,
-            Dir::Right => &self.layout.hero.right,
-        };
-        let frame_index = if player.state == PlayerState::Walking && frames.len() > 1 {
+        }
+        let frame_index = if player.state == PlayerState::Walking {
             (player.walk_frame as usize) % frames.len()
         } else {
             0
@@ -53,8 +80,19 @@ impl Sprites {
             x,
             y,
             self.layout.hero.dest_scale.unwrap_or(PIXEL_SCALE),
+            self.layout.hero.base_w.unwrap_or(frames[frame_index].w),
+            self.layout.hero.base_h.unwrap_or(frames[frame_index].h),
         );
         true
+    }
+
+    fn hero_frames(&self, dir: Dir) -> &[FrameRect] {
+        match dir {
+            Dir::Down => &self.layout.hero.down,
+            Dir::Up => &self.layout.hero.up,
+            Dir::Left => &self.layout.hero.left,
+            Dir::Right => &self.layout.hero.right,
+        }
     }
 
     pub fn draw_enemy(&self, enemy: &Enemy, x: f32, y: f32) -> bool {
@@ -79,6 +117,8 @@ impl Sprites {
             x,
             y,
             anim.dest_scale.unwrap_or(PIXEL_SCALE),
+            anim.frames[frame_index].w,
+            anim.frames[frame_index].h,
         );
         true
     }
@@ -235,8 +275,13 @@ struct SpriteLayout {
 
 #[derive(Clone, Deserialize)]
 struct HeroLayout {
-    sheet: String,
+    idle_sheet: String,
+    walk_sheet: String,
+    idle_sword_sheet: Option<String>,
+    walk_sword_sheet: Option<String>,
     dest_scale: Option<f32>,
+    base_w: Option<f32>,
+    base_h: Option<f32>,
     down: Vec<FrameRect>,
     up: Vec<FrameRect>,
     left: Vec<FrameRect>,
@@ -313,11 +358,19 @@ struct FrameRect {
     h: f32,
 }
 
-fn draw_centered_frame(sheet: &Sheet, frame: &FrameRect, x: f32, y: f32, scale: f32) {
+fn draw_centered_frame(
+    sheet: &Sheet,
+    frame: &FrameRect,
+    x: f32,
+    y: f32,
+    scale: f32,
+    base_frame_w: f32,
+    base_frame_h: f32,
+) {
     let width = frame.w * scale;
     let height = frame.h * scale;
-    let base_width = frame.w * PIXEL_SCALE;
-    let base_height = frame.h * PIXEL_SCALE;
+    let base_width = base_frame_w * PIXEL_SCALE;
+    let base_height = base_frame_h * PIXEL_SCALE;
     let draw_x = x - (width - base_width) / 2.0;
     let draw_y = y - (height - base_height);
     draw_frame_to_size(sheet, frame, draw_x, draw_y, width, height, WHITE);
@@ -352,6 +405,11 @@ async fn load_sheet(name: &str) -> Option<Sheet> {
     Some(Sheet { texture })
 }
 
+async fn load_optional_sheet(name: Option<&str>) -> Option<Sheet> {
+    let name = name?;
+    load_sheet(name).await
+}
+
 async fn load_image_texture(path: &Path) -> Option<Texture2D> {
     let texture = load_texture(path.to_string_lossy().as_ref()).await.ok()?;
     texture.set_filter(FilterMode::Nearest);
@@ -379,12 +437,37 @@ fn frame(x: f32, y: f32, w: f32, h: f32) -> FrameRect {
 fn default_layout() -> SpriteLayout {
     SpriteLayout {
         hero: HeroLayout {
-            sheet: "hero.png".to_string(),
-            dest_scale: Some(3.0),
-            down: vec![frame(0.0, 0.0, 16.0, 16.0), frame(16.0, 0.0, 16.0, 16.0)],
-            up: vec![frame(0.0, 16.0, 16.0, 16.0), frame(16.0, 16.0, 16.0, 16.0)],
-            left: vec![frame(0.0, 32.0, 16.0, 16.0), frame(16.0, 32.0, 16.0, 16.0)],
-            right: vec![frame(0.0, 48.0, 16.0, 16.0), frame(16.0, 48.0, 16.0, 16.0)],
+            idle_sheet: "hero/hero_idle_48px.png".to_string(),
+            walk_sheet: "hero/hero_walk_48px.png".to_string(),
+            idle_sword_sheet: Some("hero/hero_idle_sword_48px.png".to_string()),
+            walk_sword_sheet: Some("hero/hero_walk_sword_48px.png".to_string()),
+            dest_scale: Some(0.5),
+            base_w: Some(16.0),
+            base_h: Some(16.0),
+            down: vec![
+                frame(48.0, 0.0, 96.0, 192.0),
+                frame(240.0, 0.0, 96.0, 192.0),
+                frame(432.0, 0.0, 96.0, 192.0),
+                frame(624.0, 0.0, 96.0, 192.0),
+            ],
+            left: vec![
+                frame(48.0, 192.0, 96.0, 192.0),
+                frame(240.0, 192.0, 96.0, 192.0),
+                frame(432.0, 192.0, 96.0, 192.0),
+                frame(624.0, 192.0, 96.0, 192.0),
+            ],
+            right: vec![
+                frame(48.0, 384.0, 96.0, 192.0),
+                frame(240.0, 384.0, 96.0, 192.0),
+                frame(432.0, 384.0, 96.0, 192.0),
+                frame(624.0, 384.0, 96.0, 192.0),
+            ],
+            up: vec![
+                frame(48.0, 576.0, 96.0, 192.0),
+                frame(240.0, 576.0, 96.0, 192.0),
+                frame(432.0, 576.0, 96.0, 192.0),
+                frame(624.0, 576.0, 96.0, 192.0),
+            ],
         },
         enemies: EnemyLayout {
             sheet: "enemies.png".to_string(),

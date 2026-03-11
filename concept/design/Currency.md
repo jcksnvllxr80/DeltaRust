@@ -112,16 +112,16 @@ All shop prices from the item progression document, converted to gem denominatio
 **Economy feel:** At the tight 1/5/25 scale, finding a single Hearthshard feels significant. A boss fight rewarding 3 Hearthshards (75 value) is a meaningful chunk toward a 200-coin purchase. The player will spend time in dungeons accumulating currency — nothing is trivially affordable, nothing is impossibly expensive.
 
 **Approximate per-dungeon gem income** (full clear including secrets):
-- Level I: ~80–100 value
-- Level II: ~120–150 value
-- Level III: ~180–220 value
-- Level IV: ~200–250 value
-- Level V: ~250–300 value
-- Level VI: ~300–380 value
-- Level VII: ~380–450 value
-- Level VIII: ~450–550 value
+- Level I: ~120–150 value
+- Level II: ~170–210 value
+- Level III: ~240–290 value
+- Level IV: ~280–340 value
+- Level V: ~340–400 value
+- Level VI: ~400–480 value
+- Level VII: ~480–560 value
+- Level VIII: ~560–680 value
 
-A player who clears all eight dungeons thoroughly will have accumulated roughly 2,000–2,400 total value — enough to buy most shop items encountered along the way, with meaningful choices about what to prioritise.
+A player who clears all eight dungeons thoroughly will have accumulated roughly 2,600–3,100 total value — enough to buy all essential shop items encountered along the way, with meaningful choices remaining about optional and backup purchases. Overworld gem scatter adds approximately 300–400 additional value across all biomes.
 
 ---
 

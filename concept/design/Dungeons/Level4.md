@@ -18,60 +18,82 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: RIGHT HIND LEG** — reversed-L shape. A vertical column
+(the "thigh") rising from entry to the knee, then rooms extend rightward as the
+"shin and foot." Mirrors Level 3's left-leaning L.
+
 ```
-                                        ┌───────────┐
-                                        │    R15    │
-                                        │   BOSS    │
-                                        │[THALVORN] │
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                              ◄══════════    R12     ══════════►
-                           [SECRET]     │  The Tide  │   [SECRET]
-                                        │  Altar     │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R09   │    │   R10   │    │   R11   │
-                          │ Flooded │    │ Current │    │ Upper   │
-                          │Barracks │    │ Channel │    │Ramparts │
-                          └────┬────┘    └────┬────┘    └─────────┘
-                               │              │
-                          ┌────┴────┐    ┌────┴────┐
-                          │  R09b   │    │  R10b   │
-                          │SUB-CHMBR│    │SUBMERGED│
-                          │(sunken) │    │ TUNNEL  │
-                          └─────────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R06   │    │   R07   │    │   R08   │
-                          │ Tidal   │    │ Great   │    │ Sunken  │
-                          │ Gate    │    │ Hall    │    │ Armory  │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R03   │    │   R04   │    │   R05   │
-                          │ Docking │    │ Flooded │    │ Salt    │
-                          │  Cave   │    │  Court  │    │ Cellar  │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R02    │
-                                        │  Tidal    │
-                                        │  Antechamber│
-                                        └─────┬─────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R01    │
-                                        │   ENTRY   │
-                                        │  (Start)  │
-                                        └───────────┘
+                                                                ┌───────────┐
+                                                                │    R15    │
+                                                                │   BOSS    │
+                                                                │[THALVORN] │
+                                                                └─────┬─────┘
+                                                                      │ [BOSS DOOR]
+                                                                ┌─────┴─────┐
+                                                      ◄══════════    R12     ══════════►
+                                                   [SECRET]     │  The Tide  │   [SECRET]
+                                                                │  Altar     │
+                                                                └════┬═══┬══┘
+                                                                     │   │
+                                                                ┌────┴┐ ┌┴───────┐
+                                                                │ R11 │ │  R10   │
+                                                                │Upper│ │Current │
+                                                                │Ramp.│ │Channel │
+                                                                └─────┘ └────┬───┘
+                                                                             │
+                                                                        ┌────┴────┐
+                                                                        │  R10b   │
+                                                                        │SUBMERGED│
+                                                                        │ TUNNEL  │
+                                                                        └─────────┘
+                                                          ┌─────────────────┘
+                                                          │
+                                            ┌─────────────┴────────────┐
+                                            │                          │
+                                       ┌────┴────┐               ┌────┴────┐
+                                       │   R08   │               │   R09   │
+                                       │ Sunken  │               │ Flooded │
+                                       │ Armory  │               │Barracks │
+                                       └─────────┘               └────┬────┘
+                                                                      │
+                                                                 ┌────┴────┐
+                                                                 │  R09b   │
+                                                                 │SUB-CHMBR│
+                                                                 │(sunken) │
+                                                                 └─────────┘
+               ┌────────────────────────────────────────┘
+               │
+          ┌────┴────┐
+          │   R07   │
+          │ Great   │
+          │ Hall    │
+          └────┬────┘
+               │
+     ┌─────────┼──────────────┐
+     │         │              │
+┌────┴────┐┌───┴─────┐  ┌────┴────┐
+│   R03   ││   R04   │  │   R05   │
+│ Docking ││ Flooded │  │  Salt   │
+│  Cave   ││  Court  │  │ Cellar  │
+└─────────┘└────┬────┘  └─────────┘
+                │
+          ┌─────┴─────┐
+          │    R02    │
+          │  Tidal    │
+          │ Antechamber│
+          └─────┬─────┘
+                │
+          ┌─────┴────┐
+          │    R06   │
+          │  Tidal   │
+          │  Gate    │
+          └─────┬────┘
+                │
+          ┌─────┴─────┐
+          │    R01    │
+          │   ENTRY   │
+          │  (Start)  │
+          └───────────┘
 
 
 SECRET ROOMS (not on dungeon map):
@@ -259,7 +281,7 @@ LEGEND
 - ⚔️ **2× Tide Crawler** — upper armory level. One guards the north door.
 - [★] **Small Key D** — on a weapon rack on the north wall, upper level. Behind the north-door-guarding Tide Crawler.
 - [★] **Gold Pouch (30 coins)** — on the upper armory shelf, east side.
-- [★] **Chainmail Scrap** — armor upgrade material on a weapon rack.
+- [★] **Gold Pouch (25 coins)** — on a weapon rack.
 - [🔨] **Iron grating in floor** — Hammer breaks it open. Drops access to the submerged lower rack section.
 - ~~~ **Submerged lower section** — visible through the grating before breaking it. Knee-deep water (not deep water — no Raft needed). Contains: **Healing Herb ×2** on a submerged shelf and a **sealed iron box** (Hammer to open) holding **Gold Pouch (25 coins)**.
 - [?] **Lore Tablet** (upper armory, east wall): *"Armory inventory was last audited seventeen years before the flood. No audit has been conducted since. We know what we have. We have less of it every year."*
@@ -449,10 +471,14 @@ LEGEND
 ## DUNGEON FLOW SUMMARY
 
 ```
-CRITICAL PATH:
+CRITICAL PATH (ascends the thigh, then extends right along the leg):
 R01 (get map, deploy Raft) → R02 (fight, time tidal gate) → R04 (fight, get Key B, get Stone Urn)
 → R07 (fight, ferry Stone Urn to dais — opens bridge to R08) → R08 (fight, get Key D)
 → R11 (fight, get Key E) → R12 (altar puzzle, get Boss Key) → R15 (boss, get Piece 4 + Glove)
+
+NOTE: The layout forms a reversed-L — the vertical entry column bends right
+at the mid-point, mirroring Level 3's left-leaning leg. The boss sits at
+the "foot" end of the reversed-L.
 
 KEY LOCATIONS:
   Small Key A — R02 (high shelf, wall brackets to climb)

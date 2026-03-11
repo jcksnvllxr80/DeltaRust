@@ -17,59 +17,68 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: TAIL BODY** — elongated serpentine S-curve. The path
+winds back and forth, 1–2 rooms wide, evoking a sinuous tail segment.
+
 ```
-                                   ┌───────────┐
-                                   │    R13    │
-                                   │   BOSS    │
-                                   │ [WARDEN]  │
-                                   └─────┬─────┘
-                                         │ [BOSS DOOR]
-                                   ┌─────┴─────┐
-                                   │    R10    │
-                         ◄═════════╡  The Ash  ╞═════════►
-                       [SECRET]    │  Belltower│   [SECRET]
-                                   └─────┬─────┘
-                                         │
-                        ┌────────────────┼────────────────┐
-                        │                │                │
-                   ┌────┴────┐      ┌────┴────┐      ┌────┴────┐
-                   │   R07   │      │   R08   │      │   R09   │
-                   │ Warden  │      │Collapsed│      │ Chain   │
-                   │ Barracks│      │  Hall   │      │  Hall   │
-                   └────┬────┘      └────┬────┘      └─────────┘
-                        │                │
-                        │           ┌────┴────┐
-                        │           │  R08b   │
-                        │           │SUB-LEVEL│
-                        │           │ (lower) │
-                        │           └─────────┘
+                                        ┌───────────┐
+                                        │    R13    │
+                                        │   BOSS    │
+                                        │ [WARDEN]  │
+                                        └─────┬─────┘
+                                              │ [BOSS DOOR]
+                                        ┌─────┴─────┐
+                              ◄══════════    R10     ══════════►
+                           [SECRET]     │  The Ash   │   [SECRET]
+                                        │  Belltower │
+                                        └──┬─────┬──┘
+                                  ┌────────┘     └────────┐
+                             ┌────┴────┐             ┌────┴────┐
+                             │   R08   │             │   R09   │
+                             │Collapsed│             │  Chain  │
+                             │  Hall   │             │  Hall   │
+                             └────┬────┘             └─────────┘
+                                  │
+                             ┌────┴────┐
+                             │  R08b   │
+                             │SUB-LEVEL│
+                             │ (lower) │
+                             └─────────┘
+                        ┌─────────┘
                         │
                    ┌────┴────┐
-                   │   R06   │
-                   │  Guard  │
-                   │  Post   │
+                   │   R07   │
+                   │ Warden  │
+                   │ Barracks│
                    └────┬────┘
                         │
-          ┌─────────────┼─────────────┐
-          │             │             │
-     ┌────┴────┐   ┌────┴────┐   ┌────┴────┐
-     │   R03   │   │   R04   │   │   R05   │
-     │  Fallen │   │  Ash    │   │  Dark   │
-     │  Nave   │   │  Court  │   │  Armory │
-     └────┬────┘   └─────────┘   └─────────┘
-          │
-     ┌────┴────┐
-     │   R02   │
-     │ Gatehouse│
-     │ Entry   │
-     └────┬────┘
-          │
-     ┌────┴────┐
-     │   R01   │
-     │  ENTRY  │
-     │ (Start) │
-     └─────────┘
-
+              ┌─────────┴─────────┐
+              │                   │
+         ┌────┴────┐         ┌────┴────┐
+         │   R05   │         │   R06   │
+         │  Dark   │         │  Guard  │
+         │ Armory  │         │  Post   │
+         └─────────┘         └────┬────┘
+                                  │
+                        ┌─────────┴─────────┐
+                        │                   │
+                   ┌────┴────┐         ┌────┴────┐
+                   │   R03   │         │   R04   │
+                   │ Fallen  │         │  Ash    │
+                   │  Nave   │         │  Court  │
+                   └────┬────┘         └─────────┘
+                        │
+                   ┌────┴────┐
+                   │   R02   │
+                   │Gatehouse│
+                   │  Entry  │
+                   └────┬────┘
+                        │
+                   ┌────┴────┐
+                   │   R01   │
+                   │  ENTRY  │
+                   │ (Start) │
+                   └─────────┘
 
 SECRET ROOMS (not on dungeon map):
   R11a ◄═══ west wall of R10
@@ -143,7 +152,7 @@ LEGEND
 ### R03 — FALLEN NAVE
 **Shape:** Large cross-shaped room — the remnants of a grand hall. The east arm of the cross has fully collapsed, creating a rubble wall. The west arm is accessible. A wide open central space with a partially caved-in roof.
 **Size:** Large
-**Connections:** South → R02 (locked entry, key used) | North → R06 (open) | West arm → dead end with item | East arm → rubble wall *(blocked — Hammer needed, future)*
+**Connections:** South → R02 (locked entry, key used) | North → R06 (open) | East → R04 (open) | East arm → rubble wall *(blocked — Hammer needed, future)*
 
 **Contents:**
 - ⚔️ **3× Ashwalker** — two patrol the central nave on fixed routes. One stands still guarding the north exit. Can be snuck past or fought.
@@ -162,7 +171,7 @@ LEGEND
 ### R04 — ASH COURT
 **Shape:** Wide square. An open courtyard, once used for drills. The floor is thick with grey ash — ankle-deep in places. Ash muffles sound; the room feels heavy and quiet.
 **Size:** Medium-Large
-**Connections:** West → R03 (open, via nav branch from R06 south) — *actually accessed from R06, not R03 directly* | This room is a lateral branch off R06's south corridor split. Dead end — no exit other than the way in.
+**Connections:** West → R03 (open, lateral branch). Dead end — no exit other than the way in.
 
 **Connections (corrected):** North → R06 *(LOCKED — Small Key B required)* | No other exits — dead-end branch.
 
@@ -183,14 +192,14 @@ LEGEND
 ### R05 — DARK ARMORY
 **Shape:** Long horizontal rectangle. No windows, no light sources — completely dark. Shelves, weapon racks (empty), and storage crates line the walls.
 **Size:** Medium
-**Connections:** East → R06 (open) | No other exits — dead-end branch.
+**Connections:** West → R06 (open) | No other exits — dead-end branch.
 
 **Contents:**
 - ▓▓▓ **DARK ZONE** — room is pitch black without a light source. Without the Lantern (from Level 1 R06) or a torch, the player navigates blind (can only see 1-tile radius around themselves). Enemies are invisible until adjacent.
 - ⚔️ **2× Ashwalker** — stationary in the dark. Placed near the item chests. Dangerous without light.
 - [★] **Torch ×3** — on a shelf near the entrance. Found immediately even in the dark (placed at entry within 1-tile reach). Torches are consumable light sources usable in dark zones.
 - [★] **Gold Pouch (35 coins)** — in a crate on the north wall, visible with any light source.
-- [★] **Chainmail Scrap** — armor upgrade material on a weapon rack. Optional collectible.
+- [★] **Gold Pouch (25 coins)** — on a weapon rack. Optional.
 - [?] **Lore Tablet** (south wall, find-able only with light): *"The armory was stripped before the end. Whatever was left behind was left on purpose."*
 - Empty weapon racks and broken crates line every wall — all looted long ago. Atmosphere of abandonment.
 
@@ -202,7 +211,7 @@ LEGEND
 ### R06 — GUARD POST
 **Shape:** Compact square. A central room with corridors branching in four directions — a hub and chokepoint. A raised watchtower platform in the center (2 tiles high) with a Ladder climb point.
 **Size:** Medium
-**Connections:** South → R03 (open) | West → R04 *(LOCKED — Small Key B required)* | East → R05 (open) | North → R07 (open) | North → R08 (open) | North → R09 (open) *(three-way north split)*
+**Connections:** South → R03 (open) | East → R04 *(LOCKED — Small Key B required)* | West → R05 (open) | North → R07 (open)
 
 **Contents:**
 - ⚔️ **1× Ashwalker Captain** — new, stronger enemy variant. Wears a full helm (immune to frontal hits — must circle behind). Patrols the raised platform and descends on a set route. Drops **Gold Pouch (30 coins)** on death.
@@ -219,7 +228,7 @@ LEGEND
 ### R07 — WARDEN'S BARRACKS
 **Shape:** Wide horizontal rectangle. Rows of collapsed bunk frames line the walls. A raised sleeping loft runs along the north wall, 3 tiles high, accessible only by Ladder.
 **Size:** Large
-**Connections:** South → R06 (open) | North → R10 (open)
+**Connections:** South → R06 (open) | North → R08 (open) | East → R09 (open, lateral branch)
 
 **Contents:**
 - ⚔️ **3× Ashwalker** — two on the ground floor (patrol fixed routes between bunk rows), one on the loft above (stationary, watching the room below). Loft guard has a wider attack range — drops rocks on the player below if alerted.
@@ -238,7 +247,7 @@ LEGEND
 ### R08 — COLLAPSED HALL
 **Shape:** Irregular — a grand hall mid-collapse. The floor has partially given way in the center, creating a large pit. The pit is 3 tiles wide and spans the full east-west width of the room. The only way across is via a narrow intact ledge on the east wall OR by descending into the sub-level below.
 **Size:** Large
-**Connections:** South → R06 (open) | North → R10 *(LOCKED — Small Key C required)* | Down via pit → R08b *(sub-level, Ladder required to descend safely)*
+**Connections:** South → R07 (open) | North → R10 *(LOCKED — Small Key C required)* | Down via pit → R08b *(sub-level, Ladder required to descend safely)*
 
 **Contents:**
 - ⚔️ **2× Ash Drifter** — fast, on the south side of the pit only. Do not cross the pit.
@@ -263,7 +272,7 @@ LEGEND
 - ~~~ **Shallow water** — covers the eastern half of the sub-level floor. Slow wade movement. Lurkers hide in it.
 - [★] **Gold Pouch (60 coins)** — in the west dead-end alcove, inside a cracked strongbox. Largest single gold reward in the dungeon outside of secrets.
 - [★] **Healing Herb ×3** — scattered across the sub-level floor, partially buried in rubble.
-- [★] **Iron Bolt ×5** — crafting material, in the east alcove on a collapsed shelf. Optional collectible.
+- [★] **Gold Pouch (20 coins)** — in the east alcove on a collapsed shelf. Optional.
 - [?] **Lore Tablet** (west alcove wall, surprisingly intact): *"The three soldiers who fell were found down here, still at their posts. They had made new posts. Some oaths are older than the buildings that heard them."*
 - /// **North rubble wall** — a cracked wall in the northeast corner. Hammer required to break. Cannot be cleared yet. A faint orange glow pulses through the cracks — something is sealed beyond it.
 
@@ -276,7 +285,7 @@ LEGEND
 ### R09 — CHAIN HALL
 **Shape:** Tall vertical rectangle. The entire east wall is covered in massive rusted chains hanging from the ceiling — remnants of a portcullis lift system. Several chains hang low enough to climb. The room has two distinct vertical levels: floor level and an upper walkway 4 tiles up.
 **Size:** Large
-**Connections:** South → R06 (open) | Upper walkway North → R10 (open — walkway connects directly to R10's upper entrance)
+**Connections:** South → R07 (open, lateral branch from walkway) | Dead end.
 
 **Contents:**
 - ⚔️ **1× Ashwalker Captain** + **1× Ash Drifter** — Captain on the floor level, Drifter on the upper walkway.
@@ -296,7 +305,7 @@ LEGEND
 ### R10 — THE ASH BELLTOWER
 **Shape:** Large vertical rectangle — the base and lower body of a collapsed belltower. The room has three tiers: floor (ground), mid-level platform (3 tiles up), and upper platform (6 tiles up). The actual bell has fallen and crashed into the floor — it lies on its side in the center, a massive rusted object that acts as cover and obstacle simultaneously.
 **Size:** Very Large
-**Connections:** South → R07 (open, ground level) | South → R09 (open, upper tier entry from R09 walkway) | South → R08 *(LOCKED — Small Key C required, ground level)* | North → R13 *(BOSS DOOR — requires Boss Key)* | West hidden wall → R11a *(SECRET)* | East hidden wall → R11b *(SECRET)*
+**Connections:** South → R08 *(LOCKED — Small Key C required, ground level)* | North → R13 *(BOSS DOOR — requires Boss Key)* | West hidden wall → R11a *(SECRET)* | East hidden wall → R11b *(SECRET)*
 
 **Contents:**
 - ⚔️ **2× Ashwalker** — ground floor, patrolling around the fallen bell.
@@ -380,10 +389,14 @@ LEGEND
 ## DUNGEON FLOW SUMMARY
 
 ```
-CRITICAL PATH:
+CRITICAL PATH (follows the S-curve of the tail body):
 R01 (get map) → R02 (Ladder to Key A ledge) → R03 (fight, get Compass)
 → R06 (fight Captain, get Lore Scroll from platform) → R07 (fight, cross collapse tiles)
-→ R10 (bell puzzle, get Boss Key) → R13 (boss, get Piece 2 + Hammer)
+→ R08 (pit traverse, Key C) → R10 (bell puzzle, get Boss Key) → R13 (boss, get Piece 2 + Hammer)
+
+NOTE: The layout serpentines left and right as the player ascends —
+evoking the sinuous curve of the Dragon's Tail Body. Side branches
+extend at each turn of the S.
 
 KEY LOCATIONS:
   Small Key A — R02 (on raised ledge, Ladder required)
@@ -392,10 +405,10 @@ KEY LOCATIONS:
   Boss Key    — R10 (revealed after 3-plate bell puzzle)
 
 OPTIONAL PATHS:
-  R06 → R04 (Key B + healing — opens shortcut only)
-  R06 → R05 (Dark Armory — torches + gold, risky without light)
-  R06 → R08 (pit traverse or sub-level descent via Ladder → R08b)
-  R06 → R09 (Chain Hall — upper walkway entry into R10, height advantage)
+  R03 → R04 (east branch — Key B + healing, opens shortcut only)
+  R06 → R05 (west branch — Dark Armory, torches + gold, risky without light)
+  R07 → R09 (east branch — Chain Hall, dead end with walkway + items)
+  R08 → R08b (sub-level descent via Ladder)
   R10 → R11a (west secret wall — Lore Scroll + gold + boss name reveal)
   R10 → R11b (east secret wall, upper platform — cache + lore)
 

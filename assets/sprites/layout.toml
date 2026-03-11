@@ -1,21 +1,34 @@
 [hero]
-sheet = "hero.png"
-dest_scale = 3.0
+idle_sheet = "hero/hero_idle_48px.png"
+walk_sheet = "hero/hero_walk_48px.png"
+idle_sword_sheet = "hero/hero_idle_sword_48px.png"
+walk_sword_sheet = "hero/hero_walk_sword_48px.png"
+dest_scale = 0.5
+base_w = 16.0
+base_h = 16.0
 down = [
-  { x = 0, y = 0, w = 16, h = 16 },
-  { x = 16, y = 0, w = 16, h = 16 },
-]
-up = [
-  { x = 0, y = 16, w = 16, h = 16 },
-  { x = 16, y = 16, w = 16, h = 16 },
+  { x = 48, y = 0, w = 96, h = 192 },
+  { x = 240, y = 0, w = 96, h = 192 },
+  { x = 432, y = 0, w = 96, h = 192 },
+  { x = 624, y = 0, w = 96, h = 192 },
 ]
 left = [
-  { x = 0, y = 32, w = 16, h = 16 },
-  { x = 16, y = 32, w = 16, h = 16 },
+  { x = 48, y = 192, w = 96, h = 192 },
+  { x = 240, y = 192, w = 96, h = 192 },
+  { x = 432, y = 192, w = 96, h = 192 },
+  { x = 624, y = 192, w = 96, h = 192 },
 ]
 right = [
-  { x = 0, y = 48, w = 16, h = 16 },
-  { x = 16, y = 48, w = 16, h = 16 },
+  { x = 48, y = 384, w = 96, h = 192 },
+  { x = 240, y = 384, w = 96, h = 192 },
+  { x = 432, y = 384, w = 96, h = 192 },
+  { x = 624, y = 384, w = 96, h = 192 },
+]
+up = [
+  { x = 48, y = 576, w = 96, h = 192 },
+  { x = 240, y = 576, w = 96, h = 192 },
+  { x = 432, y = 576, w = 96, h = 192 },
+  { x = 624, y = 576, w = 96, h = 192 },
 ]
 
 [enemies]

@@ -322,9 +322,9 @@ impl Game {
         if dx != 0.0 || dy != 0.0 {
             self.player.state = PlayerState::Walking;
             self.player.walk_timer += 1;
-            if self.player.walk_timer >= 8 {
+            if self.player.walk_timer >= 24 {
                 self.player.walk_timer = 0;
-                self.player.walk_frame = (self.player.walk_frame + 1) % 2;
+                self.player.walk_frame = (self.player.walk_frame + 1) % 4;
             }
             let hb = self.player.hitbox();
             let new_x = self.player.x + dx;

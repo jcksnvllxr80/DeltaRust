@@ -18,60 +18,70 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: LEFT HIND LEG** — L-shaped. A vertical column (the "thigh")
+rising from entry to the knee, then rooms extend leftward as the "shin and foot."
+The boss sits at the foot's end.
+
 ```
-                                        ┌───────────┐
-                                        │    R15    │
-                                        │   BOSS    │
-                                        │[IRONJAW]  │
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                              ◄══════════     R12    ══════════►
-                           [SECRET]     │  Gear Lock │    [SECRET]
-                                        │   Chamber  │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R09   │    │   R10   │    │   R11   │
-                          │ Steam   │    │ Pressure│    │ Furnace │
-                          │ Tunnels │    │  Vault  │    │  Hall   │
-                          └────┬────┘    └────┬────┘    └─────────┘
-                               │              │
-                          ┌────┴────┐    ┌────┴────┐
-                          │  R09b   │    │  R10b   │
-                          │SUB-CHMBR│    │SUB-CHMBR│
-                          │(steam)  │    │(sealed) │
-                          └─────────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R06   │    │   R07   │    │   R08   │
-                          │ Bolt    │    │ Central │    │ Iron    │
-                          │ Gallery │    │  Works  │    │ Library │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R03   │    │   R04   │    │   R05   │
-                          │ Intake  │    │ Gear    │    │ Welding │
-                          │  Hall   │    │ Floor   │    │  Bay    │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R02    │
-                                        │  Antechamber│
-                                        │  (Entry Lock)│
-                                        └─────┬─────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R01    │
-                                        │   ENTRY   │
-                                        │  (Start)  │
-                                        └───────────┘
+    ┌───────────┐
+    │    R15    │
+    │   BOSS    │
+    │[IRONJAW]  │
+    └─────┬─────┘
+          │ [BOSS DOOR]
+    ┌─────┴─────┐
+    │    R12    ├══════════►
+    │  Gear Lock│   [SECRET R13b]
+    │   Chamber │
+◄═══    ════════┘
+[SECRET       │
+  R13a]  ┌────┴────┐
+         │   R11   │
+         │ Furnace │
+         │  Hall   │
+         └────┬────┘
+              │
+    ┌─────────┴─────────┐
+    │                   │
+┌───┴─────┐        ┌────┴────┐
+│  R09    │        │   R10   │
+│ Steam   │        │ Pressure│
+│ Tunnels │        │  Vault  │
+└────┬────┘        └────┬────┘
+     │                  │
+┌────┴────┐        ┌────┴────┐
+│  R09b   │        │  R10b   │
+│SUB-CHMBR│        │SUB-CHMBR│
+│(steam)  │        │(sealed) │
+└─────────┘        └─────────┘
+    ┌──────────────────────┘
+    │             ┌─────────────────────────────────────┐
+    │             │                                     │
+┌───┴─────┐  ┌───┴─────┐                          ┌────┴────┐
+│  R06    │  │   R08   │                          │   R07   │
+│  Bolt   │  │  Iron   │                          │ Central │
+│ Gallery │  │ Library │                          │  Works  │
+└─────────┘  └─────────┘                          └────┬────┘
+                                                       │
+                                   ┌───────────────────┼──────────────┐
+                                   │                   │              │
+                              ┌────┴────┐         ┌────┴────┐   ┌────┴────┐
+                              │   R03   │         │   R04   │   │   R05   │
+                              │ Intake  │         │  Gear   │   │ Welding │
+                              │  Hall   │         │  Floor  │   │  Bay    │
+                              └─────────┘         └────┬────┘   └─────────┘
+                                                       │
+                                                  ┌────┴────┐
+                                                  │   R02   │
+                                                  │Antechamber│
+                                                  │(Entry Lock)│
+                                                  └────┬────┘
+                                                       │
+                                                  ┌────┴────┐
+                                                  │   R01   │
+                                                  │  ENTRY  │
+                                                  │ (Start) │
+                                                  └─────────┘
 
 
 SECRET ROOMS (not on dungeon map):
@@ -132,7 +142,7 @@ LEGEND
 ### R02 — ANTECHAMBER / ENTRY LOCK
 **Shape:** Square. Feels deliberately transitional — a decompression chamber between the outside world and the vault proper. Iron walls, no decoration. A large mechanical gate on the north wall with a visible gear mechanism beside it.
 **Size:** Medium
-**Connections:** South → R01 (Ancient Key used, permanently open) | North → R04 *(gear-locked — must activate mechanism to open)* | East → R03 (open) | West → R05 (open)
+**Connections:** South → R02 (Ancient Key used, permanently open) | North → R04 *(gear-locked — must activate mechanism to open)* | West → R03 (open) | East → R05 (open)
 
 **Contents:**
 - ⚙️ **Gear Mechanism** (east wall) — a large hand-crank. Turning it (hold interact for 3 seconds) opens the north gate to R04. If the player releases the crank, the gate begins to close again. A **wedge object** (an iron bar on the floor nearby) can be jammed into the crank to hold it — teaches the "jam the mechanism" trick used again in R07 and R12.
@@ -149,7 +159,7 @@ LEGEND
 ### R03 — INTAKE HALL
 **Shape:** Long vertical rectangle. A processing corridor — conveyor track runs down the center (inactive, belts stopped). Iron crates stacked along both walls.
 **Size:** Medium-Large
-**Connections:** South → R02 (open) | North → R06 *(LOCKED — Small Key A required)* | East dead-end alcove
+**Connections:** East → R02 (open) | North → R06 *(LOCKED — Small Key A required)* | West dead-end alcove
 
 **Contents:**
 - ⚔️ **3× Iron Sentinel** — one patrols the conveyor track length, two guard the north door. Conveyor-patrol enemy moves faster than normal Sentinels (carried momentum) — new behavior variant.
@@ -186,13 +196,13 @@ LEGEND
 ### R05 — WELDING BAY
 **Shape:** Wide horizontal rectangle. Welding equipment lines the walls — iron frames, tool racks, dead forges. The ceiling is lower than other rooms. Two large iron doors on the far wall are welded shut and cannot be opened from this side.
 **Size:** Medium
-**Connections:** West → R02 (open) | North → R08 *(LOCKED — Small Key B required)*
+**Connections:** East → R02 (open) | North → R08 *(LOCKED — Small Key B required)*
 
 **Contents:**
 - ⚔️ **2× Iron Sentinel** + **1× Ash Drifter** *(carried over from Level 2 — a scout unit that wandered in through a ventilation shaft)*. The Ash Drifter moves unpredictably among the iron Sentinels — disruptive, fragile, fast.
 - [★] **Small Key B** — welded to a bracket on the north wall. **[🔨] Hammer required to knock it free.** Third mandatory Hammer use.
 - [★] **Gold Pouch (20 coins)** — inside a half-open forge on the east wall. Reachable by hand.
-- [★] **Iron Bolt ×3** — crafting material on a tool rack. Optional.
+- [★] **Gold Pouch (15 coins)** — on a tool rack. Optional.
 - [?] **Lore Tablet** (south wall): *"Bay 4: Fabrication of containment housing for the sealed artefact. Project lead: Ironjaw Unit 01. Completion date: pre-sealing. Current status: operational."*
 - **[🔨] Two welded iron doors** on the north-east wall — both are decorative dead ends even after Hammer use. One reveals an empty alcove (disappointing — teaches that not every breakable surface holds something). The other reveals **Healing Herb ×2** (rewards persistence).
 - A half-finished iron construct on a workbench — clearly an early prototype of the Iron Sentinel enemies. One arm still twitches (ambient animation).
@@ -225,7 +235,7 @@ LEGEND
 ### R07 — CENTRAL WORKS
 **Shape:** Large cross-shaped room. The mechanical heart of the vault. Pipes run floor to ceiling. Gear clusters cover the walls. A massive central piston rises and falls on a 4-second cycle — 3 tiles tall, blocks north-south movement when raised. Two raised catwalks run east-west at mid-height.
 **Size:** Very Large
-**Connections:** South → R04 (open) | North → R10 *(LOCKED — Small Key C required)* | East → R08 (open) | West → R06 (via R09 — accessible from north branch) | Upper catwalks East → R08 upper level | Upper catwalks West → R09 upper level
+**Connections:** South → R04 (open) | West → R08 (open) | West → R06 (via R09 branch) | North → R10 *(LOCKED — Small Key C required)* | Upper catwalks West → R08 upper level | Upper catwalks West → R09 upper level
 
 **Contents:**
 - ⚔️ **1× Gear Brute** + **2× Iron Sentinel** — Brute patrols around the central piston. Sentinels on the catwalks above.
@@ -245,7 +255,7 @@ LEGEND
 ### R08 — IRON LIBRARY
 **Shape:** Wide square. Shelves of iron-bound records line every wall floor to ceiling — schematics, construction logs, maintenance reports. A reading desk in the center. A locked iron cabinet on the north wall.
 **Size:** Medium
-**Connections:** West → R07 (open, floor level) | West → R07 (open, catwalk level) | North → R11 *(LOCKED — Small Key D required)*
+**Connections:** East → R07 (open, floor level) | East → R07 (open, catwalk level) | North → R11 *(LOCKED — Small Key D required)*
 
 **Contents:**
 - ⚔️ **2× Iron Sentinel** — one on the floor level, one on a catwalk-height shelf walkway (accessed via iron rungs on the east wall).
@@ -343,7 +353,7 @@ LEGEND
 
 **Contents:**
 - ⚔️ **1× Gear Brute** + **2× Steam Wraith** — Brute guards the furnace door. Wraiths emerge from two cold vents (they still function despite the furnace being dead — connected to a separate pipe network).
-- **[🔨] Furnace door** — sealed shut. Hammer breaks the seal. Inside the furnace: **Gold Pouch (50 coins)** and a **Chainmail Scrap** (armor upgrade material). The furnace interior is safe — cold for centuries.
+- **[🔨] Furnace door** — sealed shut. Hammer breaks the seal. Inside the furnace: **Gold Pouch (50 coins)** and a **Gold Pouch (20 coins)**. The furnace interior is safe — cold for centuries.
 - [★] **Small Key E** — wait, Key E was found in R10 north half. Key E unlocks the north door here. *(No second Key E spawns — player must have retrieved it from R10 first. If they haven't visited R10 yet, this door remains locked until they do. Creates a deliberate non-linear dependency.)*
 - [★] **Healing Herb ×3** — in iron cauldrons on the west side. Visible on approach.
 - [?] **Lore Tablet** (east wall): *"The furnace powered the vault for sixty years without interruption. It went cold on the day of the sealing. We have not been able to relight it. We have not tried very hard."*
@@ -441,10 +451,14 @@ LEGEND
 ## DUNGEON FLOW SUMMARY
 
 ```
-CRITICAL PATH:
+CRITICAL PATH (ascends the thigh, then extends left along the leg):
 R01 (Ancient Key used, get map, break locker) → R02 (fight, jam crank) → R04 (fight, get Compass)
 → R07 (fight, time piston, get Key C) → R10 (pressure puzzle, get Key E, open hatch to R10b)
 → R11 (fight, use Key E) → R12 (gear-lock puzzle, get Boss Key) → R15 (boss, get Piece 3 + Raft)
+
+NOTE: The layout forms an L-shape — the vertical entry column bends left
+at the mid-point, evoking the Dragon's Left Hind Leg. The boss sits at
+the "foot" end of the L.
 
 KEY LOCATIONS:
   Small Key A — R03 (sealed crate, Hammer required)

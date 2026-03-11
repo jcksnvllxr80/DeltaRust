@@ -145,7 +145,7 @@ The throwing sword is the ideal companion weapon to the sword: equip both, close
 **Range:** 10 tiles
 **Speed:** Fast throw animation
 **Special:** **Phase Travel** — the blade passes through walls, solid objects, and cover, hitting only enemies. Cannot be blocked or deflected. Ideal against enemies that hide behind shields or obstacles.
-**Appearance:** A slender blade that is only partially visible — its leading edge exists in void-space, making it appear translucent. Leaves a brief dark trail on impact. Pulled from the same dimensional material as the Voidedge sword.
+**Appearance:** A slender blade that is only partially visible — its leading edge exists in void-space, making it appear translucent. Leaves a brief dark trail on impact. Forged from the same dimensional material found within the Fractured Sanctum.
 **Flavour text:** *"The Fractured Sanctum produces things that exist between states. This blade travels in the gap between here and not-here. Enemies cannot dodge what does not fully exist until it arrives."*
 
 | Source | Location | Cost/Method |
@@ -295,12 +295,12 @@ DR range: 2% → 20%. Secondary damage reduction. Lighter resistances than body 
 ### By Dungeon
 | Level | Weapon Found | Head Found | Body Found | Legs Found |
 |-------|-------------|-----------|-----------|-----------|
-| L1 | Mossblade (sword, hidden) · Iron Dart (throwing, hidden) | — | Mosshaven Vest (hidden) | — |
+| L1 | Iron Dart (throwing, hidden) | — | Mosshaven Vest (hidden) | — |
 | L2 | Ashbrand (sword, boss drop) | — | Ash Brigandine (shop B2) | Ash Greaves (shop B2) |
-| L3 | Iron Verdict (sword, secret) · Splitblade (throwing, locker) · Ironwing (boomerang, puzzle) | Ironclad Visor (locker) | Vault Plate (sub-chamber) | Ironclad Legplates (secret) |
-| L4 | Tidecaller (sword, shop B4) | Seafarer's Wrap (shop B4) | Tidecoat (sub-chamber) | Tidestride Boots (secret) |
-| L5 | Forgeborn (sword, secret desk) | Forge Crown (sub-chamber) | Forgeplate (secret) | Forge Greaves (shop B5) |
-| L6 | Voidedge (sword, boss drop) · Voidlance (throwing, secret) | Void Veil (secret) | Void Mantle (boss drop) | Void Steps (secret) |
+| L3 | Splitblade (throwing, locker) · Ironwing (boomerang, puzzle) | Ironclad Visor (locker) | Vault Plate (sub-chamber) | Ironclad Legplates (secret) |
+| L4 | — | Seafarer's Wrap (shop B4) | Tidecoat (sub-chamber) | Tidestride Boots (secret) |
+| L5 | — | Forge Crown (sub-chamber) | Forgeplate (secret) | Forge Greaves (shop B5) |
+| L6 | Voidlance (throwing, secret) | Void Veil (secret) | Void Mantle (boss drop) | Void Steps (secret) |
 | L7 | Starforged Blade (sword, post-boss) · Celestial Ring (shop B7 / secret) | Star Helm (sub-chamber) | — | — |
 | L8 | — | — | Constellation Plate (secret) | Star Greaves (mural puzzle) |
 
@@ -308,8 +308,8 @@ DR range: 2% → 20%. Secondary damage reduction. Lighter resistances than body 
 | Source | Items |
 |--------|-------|
 | 🎮 **Starting gear** | Irongrip Sword, Worn Leather Cap, Traveller's Coat, Worn Trousers |
-| 🏰 **Dungeon earn** | Mossblade, Ashbrand, Splitblade, Ironwing, Vault Plate, Tidecoat, Tidestride Boots, Forgeborn, Forge Crown, Voidedge, Void Mantle, Starforged Blade, Star Greaves |
-| 🛒 **Shop buy** | Iron Dart, Carved Boomerang, Mossveil Hood, Fen Waders, Ashwarden Helm, Ash Brigandine, Ash Greaves, Ironclad Visor, Seafarer's Wrap, Tidecaller, Splitblade (backup), Ironwing (backup), Forge Greaves, Voidlance (backup), Celestial Merchant items |
+| 🏰 **Dungeon earn** | Ashbrand, Splitblade, Ironwing, Vault Plate, Tidecoat, Tidestride Boots, Forge Crown, Void Mantle, Starforged Blade, Star Greaves |
+| 🛒 **Shop buy** | Iron Dart, Carved Boomerang, Mossveil Hood, Fen Waders, Ashwarden Helm, Ash Brigandine, Ash Greaves, Ironclad Visor, Seafarer's Wrap, Splitblade (backup), Ironwing (backup), Forge Greaves, Voidlance (backup), Celestial Merchant items |
 | 📦 **Hidden chest / secret** | Iron Dart (alt), Voidlance, Celestial Ring (alt), Mosshaven Vest, Ironclad Legplates, Void Veil, Void Steps, Star Helm, Constellation Plate |
 
 ---
