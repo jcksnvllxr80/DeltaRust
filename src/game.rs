@@ -229,7 +229,9 @@ impl Game {
         }
         match self.check_tile_interaction() {
             Some("enter_dungeon") => {
-                self.enter_dungeon();
+                if self.can_enter_current_dungeon() {
+                    self.enter_dungeon();
+                }
                 return;
             }
             Some("exit_dungeon") => {
@@ -452,6 +454,71 @@ impl Game {
         }
     }
 
+    fn can_enter_current_dungeon(&mut self) -> bool {
+        let dungeon_id = world_data::dungeon_at(self.world.screen_x, self.world.screen_y);
+        if dungeon_id == 0 {
+            return true;
+        }
+        if dungeon_id == 3 {
+            if !self.player.has_hammer {
+                self.show_message("The vault lock panel needs the HAMMER.");
+                return false;
+            }
+            if !self.player.has_ancient_key {
+                self.show_message("You need the ANCIENT KEY.");
+                return false;
+            }
+        } else if dungeon_id == 4 {
+            if !self.player.has_raft {
+                self.show_message("You need the RAFT.");
+                return false;
+            }
+            if !self.player.has_tide_chart {
+                self.show_message("You need the TIDE CHART.");
+                return false;
+            }
+        } else if dungeon_id == 5 {
+            if !self.player.has_strong_arm_glove {
+                self.show_message("You need the STRONG ARM GLOVE.");
+                return false;
+            }
+            if !self.player.has_ember_crystal {
+                self.show_message("You need the EMBER CRYSTAL.");
+                return false;
+            }
+        } else if dungeon_id == 6 && !self.player.has_void_compass {
+            self.show_message("You need the VOID COMPASS.");
+            return false;
+        } else if dungeon_id == 7 {
+            if !self.player.has_raft {
+                self.show_message("You need the RAFT.");
+                return false;
+            }
+            if !self.player.has_portal_tool {
+                self.show_message("You need the PORTAL TOOL.");
+                return false;
+            }
+            if !self.player.has_star_sigil {
+                self.show_message("You need the STAR SIGIL.");
+                return false;
+            }
+        } else if dungeon_id == 8 {
+            if !self.player.has_dragon_codex {
+                self.show_message("You need the DRAGON CODEX.");
+                return false;
+            }
+            if !self.player.has_crystal_of_seeing {
+                self.show_message("You need the CRYSTAL OF SEEING.");
+                return false;
+            }
+            if self.player.dragon_pieces < 7 {
+                self.show_message("You need the seven DRAGON PIECES.");
+                return false;
+            }
+        }
+        true
+    }
+
     fn front_tile(&self) -> (i32, i32, TileType) {
         let mut fx = ((self.player.x + 8.0) / TILE).floor() as i32;
         let mut fy = ((self.player.y + 8.0) / TILE).floor() as i32;
@@ -465,7 +532,7 @@ impl Game {
     }
 
     fn dynamic_collides(&self, x: f32, y: f32, w: f32, h: f32) -> bool {
-        if self.world.collides(x, y, w, h) {
+        if self.player_collides(x, y, w, h) {
             return true;
         }
         let rect = Rect::new(x, y, w, h);
@@ -477,6 +544,32 @@ impl Game {
             let py = prop.tile_y as f32 * TILE;
             rect.overlaps(&Rect::new(px, py, TILE, TILE))
         })
+    }
+
+    fn player_collides(&self, x: f32, y: f32, w: f32, h: f32) -> bool {
+        let l = (x / TILE).floor() as i32;
+        let r = ((x + w - 1.0) / TILE).floor() as i32;
+        let t = (y / TILE).floor() as i32;
+        let b = ((y + h - 1.0) / TILE).floor() as i32;
+        for row in t..=b {
+            for col in l..=r {
+                let tile = self.world.get_tile(col, row);
+                let solid = matches!(
+                    tile,
+                    TileType::Tree
+                        | TileType::Rock
+                        | TileType::Cracked
+                        | TileType::Wall
+                        | TileType::DoorLocked
+                        | TileType::BossDoor
+                        | TileType::Chest
+                ) || (tile == TileType::Water && !self.player.has_raft);
+                if solid {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     fn boulder_index_at(&self, tile_x: i32, tile_y: i32) -> Option<usize> {
@@ -615,6 +708,18 @@ impl Game {
                 self.player.has_hammer = true;
                 self.show_message("You found the HAMMER!");
             }
+            PickupType::Raft => {
+                self.player.has_raft = true;
+                self.show_message("You found the RAFT!");
+            }
+            PickupType::StrongArmGlove => {
+                self.player.has_strong_arm_glove = true;
+                self.show_message("You found the STRONG ARM GLOVE!");
+            }
+            PickupType::PortalTool => {
+                self.player.has_portal_tool = true;
+                self.show_message("You found the PORTAL TOOL!");
+            }
             PickupType::DragonPiece => {
                 self.player.dragon_pieces += 1;
                 self.show_message("Dragon piece claimed!");
@@ -721,6 +826,64 @@ impl Game {
                     self.show_message("Bomb bag upgrade!\nMax bombs increased!");
                 } else {
                     self.show_message("The shop is closed.");
+                }
+            }
+            Some(world_data::CaveKind::AncientKey) => {
+                if !self.player.has_ancient_key {
+                    self.player.has_ancient_key = true;
+                    self.show_message("You found the ANCIENT KEY!");
+                } else {
+                    self.show_message("Corvin already sold you the key.");
+                }
+            }
+            Some(world_data::CaveKind::TideChart) => {
+                if !self.player.has_tide_chart {
+                    self.player.has_tide_chart = true;
+                    self.show_message("You found the TIDE CHART!");
+                } else {
+                    self.show_message("The lighthouse is empty.");
+                }
+            }
+            Some(world_data::CaveKind::EmberCrystal) => {
+                if !self.player.has_strong_arm_glove {
+                    self.show_message("The crystal is too hot to touch.");
+                } else if !self.player.has_ember_crystal {
+                    self.player.has_ember_crystal = true;
+                    self.show_message("You claimed the EMBER CRYSTAL!");
+                } else {
+                    self.show_message("Only cooling shards remain.");
+                }
+            }
+            Some(world_data::CaveKind::VoidCompass) => {
+                if !self.player.has_void_compass {
+                    self.player.has_void_compass = true;
+                    self.show_message("You found the VOID COMPASS!");
+                } else {
+                    self.show_message("The rift has gone still.");
+                }
+            }
+            Some(world_data::CaveKind::StarSigil) => {
+                if !self.player.has_star_sigil {
+                    self.player.has_star_sigil = true;
+                    self.show_message("You received the STAR SIGIL!");
+                } else {
+                    self.show_message("The merchant has already moved on.");
+                }
+            }
+            Some(world_data::CaveKind::DragonCodex) => {
+                if !self.player.has_dragon_codex {
+                    self.player.has_dragon_codex = true;
+                    self.show_message("You assembled the DRAGON CODEX!");
+                } else {
+                    self.show_message("Wren has no more pages for you.");
+                }
+            }
+            Some(world_data::CaveKind::CrystalOfSeeing) => {
+                if !self.player.has_crystal_of_seeing {
+                    self.player.has_crystal_of_seeing = true;
+                    self.show_message("You found the CRYSTAL OF SEEING!");
+                } else {
+                    self.show_message("The niche is empty.");
                 }
             }
             Some(world_data::CaveKind::Shrine) => {
@@ -1067,6 +1230,18 @@ impl Game {
             PickupType::Hammer => {
                 self.player.has_hammer = true;
                 self.show_message("You found the HAMMER!");
+            }
+            PickupType::Raft => {
+                self.player.has_raft = true;
+                self.show_message("You found the RAFT!");
+            }
+            PickupType::StrongArmGlove => {
+                self.player.has_strong_arm_glove = true;
+                self.show_message("You found the STRONG ARM GLOVE!");
+            }
+            PickupType::PortalTool => {
+                self.player.has_portal_tool = true;
+                self.show_message("You found the PORTAL TOOL!");
             }
             PickupType::DragonPiece => {
                 self.player.dragon_pieces += 1;

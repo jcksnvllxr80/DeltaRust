@@ -106,6 +106,60 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         Some(player.dragon_pieces),
     );
     line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Ancient Key", player.has_ancient_key, None);
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Tide Chart", player.has_tide_chart, None);
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Ember Crystal",
+        player.has_ember_crystal,
+        None,
+    );
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Void Compass",
+        player.has_void_compass,
+        None,
+    );
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Star Sigil",
+        player.has_star_sigil,
+        None,
+    );
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Dragon Codex",
+        player.has_dragon_codex,
+        None,
+    );
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Crystal of Seeing",
+        player.has_crystal_of_seeing,
+        None,
+    );
+    line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Bombs", player.has_bombs, Some(player.bomb_count));
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Keys", player.keys > 0, Some(player.keys));
@@ -115,6 +169,28 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Ladder", player.has_ladder, None);
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Hammer", player.has_hammer, None);
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Raft", player.has_raft, None);
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Strong Glove",
+        player.has_strong_arm_glove,
+        None,
+    );
+    line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Portal Tool",
+        player.has_portal_tool,
+        None,
+    );
 
     draw_text("MAP", map_x + px(10.0), map_y - px(10.0), px(14.0), color_u8!(197, 170, 119, 255));
     if world.in_dungeon {
@@ -969,6 +1045,9 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::Gem => SKYBLUE,
                 PickupType::Ladder => color_u8!(166, 120, 72, 255),
                 PickupType::Hammer => color_u8!(124, 124, 136, 255),
+                PickupType::Raft => color_u8!(126, 90, 52, 255),
+                PickupType::StrongArmGlove => color_u8!(168, 118, 64, 255),
+                PickupType::PortalTool => color_u8!(126, 84, 178, 255),
                 PickupType::DragonPiece => color_u8!(226, 194, 92, 255),
             };
             match pickup.pickup_type {
@@ -977,6 +1056,13 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                     draw_ladder_icon(x + px(4.0), y + px(2.0), draw_w / px(18.0), color)
                 }
                 PickupType::Hammer => draw_hammer_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::Raft => draw_raft_icon(x + px(2.0), y + px(4.0), draw_w / px(16.0)),
+                PickupType::StrongArmGlove => {
+                    draw_glove_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0))
+                }
+                PickupType::PortalTool => {
+                    draw_portal_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0))
+                }
                 PickupType::DragonPiece => {
                     draw_dragon_piece_icon(x + px(3.0), y + px(2.0), draw_w / px(16.0))
                 }
@@ -1073,6 +1159,34 @@ fn draw_hammer_icon(x: f32, y: f32, scale: f32) {
     draw_rectangle(x + scale * 5.0, y, scale * 6.0, scale * 4.0, metal);
     draw_rectangle(x + scale * 8.0, y + scale * 3.0, scale * 2.0, scale * 10.0, wood);
     draw_rectangle(x + scale * 5.0, y + scale * 3.0, scale * 3.0, scale * 2.0, metal_shadow);
+}
+
+fn draw_raft_icon(x: f32, y: f32, scale: f32) {
+    let wood = color_u8!(132, 92, 54, 255);
+    let rope = color_u8!(206, 178, 114, 255);
+    for plank in [0.0, 4.0, 8.0] {
+        draw_rectangle(x + plank * scale * 0.4, y + plank * 0.0, scale * 3.0, scale * 10.0, wood);
+    }
+    draw_rectangle(x, y + scale * 2.0, scale * 10.0, scale * 1.2, rope);
+    draw_rectangle(x, y + scale * 7.0, scale * 10.0, scale * 1.2, rope);
+}
+
+fn draw_glove_icon(x: f32, y: f32, scale: f32) {
+    let leather = color_u8!(162, 118, 68, 255);
+    let dark = color_u8!(92, 62, 30, 255);
+    draw_rectangle(x + scale * 3.0, y + scale * 2.0, scale * 6.0, scale * 8.0, leather);
+    for finger in [0.0, 2.0, 4.0, 6.0] {
+        draw_rectangle(x + scale * (3.0 + finger), y, scale * 1.5, scale * 4.0, leather);
+    }
+    draw_rectangle_lines(x + scale * 3.0, y + scale * 2.0, scale * 6.0, scale * 8.0, scale * 0.6, dark);
+}
+
+fn draw_portal_icon(x: f32, y: f32, scale: f32) {
+    let outer = color_u8!(110, 82, 196, 255);
+    let inner = color_u8!(182, 148, 255, 255);
+    draw_circle(x + scale * 6.0, y + scale * 6.0, scale * 5.0, outer);
+    draw_circle(x + scale * 6.0, y + scale * 6.0, scale * 2.8, color_u8!(18, 12, 32, 255));
+    draw_circle_lines(x + scale * 6.0, y + scale * 6.0, scale * 5.0, scale * 1.0, inner);
 }
 
 fn draw_dragon_piece_icon(x: f32, y: f32, scale: f32) {
@@ -1234,6 +1348,13 @@ fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, are
                         world_data::CaveKind::Sanctum => "E",
                         world_data::CaveKind::Bombs => "B",
                         world_data::CaveKind::Shop => "$",
+                        world_data::CaveKind::AncientKey => "K",
+                        world_data::CaveKind::TideChart => "T",
+                        world_data::CaveKind::EmberCrystal => "E",
+                        world_data::CaveKind::VoidCompass => "V",
+                        world_data::CaveKind::StarSigil => "*",
+                        world_data::CaveKind::DragonCodex => "D",
+                        world_data::CaveKind::CrystalOfSeeing => "C",
                     };
                     draw_text(label, cx - px(4.0), cy + px(4.0), px(10.0), WHITE);
                 }

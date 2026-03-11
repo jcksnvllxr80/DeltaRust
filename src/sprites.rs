@@ -436,13 +436,21 @@ fn base_pickup_frame(layout: &SpriteLayout, pickup: PickupType) -> Option<&Frame
         PickupType::BossKey => &layout.items.boss_key,
         PickupType::BombAmmo => &layout.items.bomb_ammo,
         PickupType::Bombs => &layout.items.bombs,
-        PickupType::Gem | PickupType::Ladder | PickupType::Hammer | PickupType::DragonPiece => return None,
+        PickupType::Gem
+        | PickupType::Ladder
+        | PickupType::Hammer
+        | PickupType::Raft
+        | PickupType::StrongArmGlove
+        | PickupType::PortalTool
+        | PickupType::DragonPiece => {
+            return None
+        }
     })
 }
 
 fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static FrameRect> {
-    if biome_id == Some(2) {
-        Some(match tile {
+    match biome_id {
+        Some(2) => Some(match tile {
             TileType::Grass => &frame_const::ASH_PLAIN,
             TileType::Tree | TileType::Wall => &frame_const::RUIN_WALL,
             TileType::Water => &frame_const::DEEP_ASH,
@@ -454,36 +462,144 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Cracked => &frame_const::CRACKED_FLAGSTONE,
             TileType::Bridge | TileType::Stairs => &frame_const::BELLTOWER,
             TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::RUIN_FLOOR,
-        })
-    } else {
-        None
+        }),
+        Some(3) => Some(match tile {
+            TileType::Grass => &frame_const::SPARSE_GRASS,
+            TileType::Tree | TileType::Wall => &frame_const::IRON_ROCK,
+            TileType::Water => &frame_const::STEAM_CLOUD,
+            TileType::Rock | TileType::Sand | TileType::Bush => &frame_const::PIPE_FIELD,
+            TileType::Path | TileType::FloorAlt => &frame_const::IRON_PLATE_ROAD,
+            TileType::Cave => &frame_const::ENGINEER_TOWER,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::VAULT_DOOR
+            }
+            TileType::Cracked => &frame_const::IRON_ROCK_ALT,
+            TileType::Bridge | TileType::Stairs => &frame_const::GREAT_AQUEDUCT,
+            TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::IRON_ROCK_ALT,
+        }),
+        Some(4) => Some(match tile {
+            TileType::Grass => &frame_const::BEACH_SAND,
+            TileType::Tree | TileType::Wall => &frame_const::FLOODED_RUIN,
+            TileType::Water => &frame_const::DEEP_OCEAN,
+            TileType::Rock => &frame_const::SEA_STACK,
+            TileType::Sand | TileType::Bush => &frame_const::DOCK_VILLAGE,
+            TileType::Path | TileType::Bridge => &frame_const::STONE_CAUSEWAY,
+            TileType::Cave => &frame_const::LIGHTHOUSE,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::TIDAL_GATE
+            }
+            TileType::Cracked => &frame_const::RUIN_ROOFTOP,
+            TileType::Stairs => &frame_const::SEA_STACK,
+            TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
+                &frame_const::SHALLOW_WATER
+            }
+        }),
+        Some(5) => Some(match tile {
+            TileType::Grass => &frame_const::VOLCANIC_SCRUB,
+            TileType::Tree | TileType::Wall => &frame_const::HARDENED_LAVA,
+            TileType::Water => &frame_const::MOLTEN_SEAM,
+            TileType::Rock => &frame_const::FUMAROLE,
+            TileType::Sand | TileType::Bush => &frame_const::EMBER_GARDEN,
+            TileType::Path | TileType::Bridge => &frame_const::ASCENT_PATH,
+            TileType::Cave => &frame_const::MOUNTAINEER_CAMP,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::FORGE_ENTRANCE
+            }
+            TileType::Cracked => &frame_const::CALDERA_VIEW,
+            TileType::Stairs => &frame_const::SUMMIT_APPROACH,
+            TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
+                &frame_const::HARDENED_LAVA
+            }
+        }),
+        Some(6) => Some(match tile {
+            TileType::Grass => &frame_const::PALE_STONE,
+            TileType::Tree | TileType::Wall => &frame_const::BOUNDARY_EDGE,
+            TileType::Water => &frame_const::MIRROR_POOL,
+            TileType::Rock => &frame_const::WRONG_SKY,
+            TileType::Sand | TileType::Bush => &frame_const::DEAD_SOIL,
+            TileType::Path | TileType::Bridge => &frame_const::PALE_ROAD,
+            TileType::Cave => &frame_const::STABLE_RIFT,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::SANCTUM_ENTRANCE
+            }
+            TileType::Cracked => &frame_const::VOID_SHIMMER,
+            TileType::Stairs => &frame_const::SANCTUM_APPROACH,
+            TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
+                &frame_const::PALE_STONE
+            }
+        }),
+        _ => None,
     }
 }
 
 fn themed_enemy_animation(biome_id: Option<i32>, enemy_type: EnemyType) -> Option<AnimationLayout> {
-    if biome_id == Some(2) {
-        Some(match enemy_type {
+    match biome_id {
+        Some(2) => Some(match enemy_type {
             EnemyType::Slime => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
             EnemyType::Octorok => anim(10, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
             EnemyType::Bat => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
             EnemyType::Darknut => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-        })
-    } else {
-        None
+        }),
+        Some(3) => Some(match enemy_type {
+            EnemyType::Slime => anim(20, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(14, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+        }),
+        Some(4) => Some(match enemy_type {
+            EnemyType::Slime => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(20, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+        }),
+        Some(5) => Some(match enemy_type {
+            EnemyType::Slime => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(20, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+        }),
+        Some(6) => Some(match enemy_type {
+            EnemyType::Slime => anim(20, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(16, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+        }),
+        _ => None,
     }
 }
 
 fn themed_pickup_frame(biome_id: Option<i32>, pickup: PickupType) -> Option<&'static FrameRect> {
-    if biome_id == Some(2) {
-        match pickup {
+    match biome_id {
+        Some(2) => match pickup {
             PickupType::Gem => Some(&frame_const::ASH_GOLD_POUCH),
             PickupType::Key => Some(&frame_const::SOLDIER_BADGE),
             PickupType::Bombs | PickupType::BombAmmo => Some(&frame_const::SALVAGE_TOKEN),
             _ => None,
-        }
-    } else {
-        None
+        },
+        Some(3) => match pickup {
+            PickupType::Gem => Some(&frame_const::VENT_CRYSTAL),
+            _ => None,
+        },
+        Some(4) => match pickup {
+            PickupType::Gem => Some(&frame_const::COAST_GOLD_POUCH),
+            _ => None,
+        },
+        Some(5) => match pickup {
+            PickupType::Gem => Some(&frame_const::EMBER_SHARD),
+            PickupType::Key => Some(&frame_const::HEATING_TONIC),
+            _ => None,
+        },
+        Some(6) => match pickup {
+            PickupType::Gem => Some(&frame_const::VOID_GOLD_POUCH),
+            PickupType::Key => Some(&frame_const::VOID_COMPASS_MAP),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
@@ -502,6 +618,51 @@ mod frame_const {
     pub static SALVAGE_TOKEN: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
     pub static SOLDIER_BADGE: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
     pub static ASH_GOLD_POUCH: FrameRect = FrameRect { x: 32.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static IRON_ROCK: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static IRON_PLATE_ROAD: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static PIPE_FIELD: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static GREAT_AQUEDUCT: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static ENGINEER_TOWER: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VAULT_DOOR: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SPARSE_GRASS: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static STEAM_CLOUD: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static IRON_ROCK_ALT: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static VENT_CRYSTAL: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static COAST_GOLD_POUCH: FrameRect = FrameRect { x: 16.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static DEEP_OCEAN: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SHALLOW_WATER: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static BEACH_SAND: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static STONE_CAUSEWAY: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static FLOODED_RUIN: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static LIGHTHOUSE: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static TIDAL_GATE: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SEA_STACK: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static DOCK_VILLAGE: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static RUIN_ROOFTOP: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static HARDENED_LAVA: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MOLTEN_SEAM: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static FUMAROLE: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static EMBER_GARDEN: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static ASCENT_PATH: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SUMMIT_APPROACH: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static FORGE_ENTRANCE: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MOUNTAINEER_CAMP: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static CALDERA_VIEW: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VOLCANIC_SCRUB: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static HEATING_TONIC: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static EMBER_SHARD: FrameRect = FrameRect { x: 16.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static PALE_STONE: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static DEAD_SOIL: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static STABLE_RIFT: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static PALE_ROAD: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SANCTUM_APPROACH: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SANCTUM_ENTRANCE: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MIRROR_POOL: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VOID_SHIMMER: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static WRONG_SKY: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static BOUNDARY_EDGE: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VOID_COMPASS_MAP: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VOID_GOLD_POUCH: FrameRect = FrameRect { x: 16.0, y: 16.0, w: 16.0, h: 16.0 };
 }
 
 fn draw_centered_frame(
