@@ -18,76 +18,85 @@
 
 ## ASCII MAP
 
-```
-                                        ┌───────────┐
-                                        │    R20    │
-                                        │   BOSS    │
-                                        │[AURELION] │
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                              ◄══════════    R17     ══════════►
-                           [SECRET]     │  Star     │   [SECRET]
-                                        │Alignment  │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R14   │    │   R15   │    │   R16   │
-                          │Gravity  │    │ Portal  │    │ Sky     │
-                          │Chamber  │    │ Gauntlet│    │Platform │
-                          └────┬────┘    └────┬────┘    └─────────┘
-                               │              │
-                          ┌────┴────┐    ┌────┴────┐
-                          │  R14b   │    │  R15b   │
-                          │SUB-CHMBR│    │SUB-CHMBR│
-                          │(inverted│    │(mid-     │
-                          │ vault)  │    │ shaft)   │
-                          └─────────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R09   │    │   R10   │    │   R11   │
-                          │ Wind    │    │ Central │    │ Astral  │
-                          │ Gallery │    │  Shaft  │    │  Hall   │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │   R10b    │
-                                        │ SUB-CHMBR │
-                                        │(shaft base│
-                                        │  vault)   │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R05   │    │   R06   │    │   R07   │
-                          │ Broken  │    │ Entry   │    │ Mooring │
-                          │ Bridge  │    │ Atrium  │    │  Dock   │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R04    │
-                                        │Sky Moat   │
-                                        │ Crossing  │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R02   │    │   R03   │    │   R08   │
-                          │ Base    │    │ Sigil   │    │ Outer   │
-                          │ Camp    │    │ Gate    │    │ Rampart │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R01    │
-                                        │   ENTRY   │
-                                        │  (Start)  │
-                                        └───────────┘
+**Dungeon silhouette: HEAD & HORNS** — the lower Spire forms a long vertical
+neck, then the upper dungeon splits into two horn-like branches before meeting
+again at the crown and boss platform.
+
+            ┌───────────┐
+            │    R20    │
+            │   BOSS    │
+            │[AURELION] │
+            └─────┬─────┘
+               │ [BOSS DOOR]
+         ◄══════════════╧══════════════►
+             ┌─────────────────┐
+          [SECRET] │      R17        │ [SECRET]
+             │ Star Alignment  │
+             └────────┬────────┘
+                │
+        ┌────────────────┴────────────────┐
+      ┌────┴────┐                      ┌─────┴────┐
+      │   R14   │                      │   R16    │
+      │Gravity  │                      │   Sky    │
+      │Chamber  │                      │ Platform │
+      └────┬────┘                      └──────────┘
+        │
+      ┌────┴────┐
+      │   R15   │
+      │ Portal  │
+      │Gauntlet │
+      └─┬────┬──┘
+        │    │
+      ┌────┘    └────┐
+    ┌────┴────┐    ┌────┴────┐
+    │  R14b   │    │  R15b   │
+    │SUB-CHMBR│    │SUB-CHMBR│
+    │(invertd)│    │(midshaft)│
+    └─────────┘    └─────────┘
+        │
+        ┌──┴──┐
+        │ R10 │
+        │Shaft│
+        └──┬──┘
+        │
+        ┌──┴──┐
+        │R10b │
+        │sub  │
+        └──┬──┘
+        │
+    ┌─────────┼─────────┐
+  ┌────┴────┐ ┌──┴──┐ ┌────┴────┐
+  │   R09   │ │ R11 │ │   R05   │
+  │  Wind   │ │Astrl│ │ Broken  │
+  │ Gallery │ │Hall │ │ Bridge  │
+  └────┬────┘ └──┬──┘ └────┬────┘
+    │         │         │
+  ┌────┴────┐ ┌──┴──┐ ┌────┴────┐
+  │   R07   │ │ R06 │ │   R08   │
+  │ Mooring │ │Entry│ │ Outer   │
+  │  Dock   │ │Atrium││ Rampart │
+  └─────────┘ └──┬──┘ └─────────┘
+        │
+        ┌──┴──┐
+        │ R04 │
+        │Sky  │
+        │Moat │
+        └──┬──┘
+        │
+      ┌────┴────┐
+      │   R03   │
+      │  Sigil  │
+      │  Gate   │
+      └────┬────┘
+        │
+      ┌────┴────┐
+      │   R01   │
+      │  ENTRY  │
+      │ (Start) │
+      └─────────┘
+
+Additional lower spur:
+  R02 branches east from R01 as the base camp platform.
 
 
 SECRET ROOMS (not on dungeon map):
@@ -543,11 +552,11 @@ LEGEND
 
 ```
 CRITICAL PATH:
-R01 (Star Sigil inserted, map) → R03 (fight) → R04 (Sky Moat — Raft crossing)
+R01 (Star Sigil inserted, map) → R03 (fight) → R04 (Sky Moat — Raft crossing up the neck)
 → R06 (fight, Lore Scroll) → R05 (Portal Tool — bridge gap, get Key B)
 → R09 (wind gallery — Portal Tool or platform jump) → R10 (shaft ascent — Portal + Ladder)
-→ R11 (orrery puzzle, get Key F) → R14 (gravity chamber — inversion traversal)
-→ R15 (portal gauntlet — ceiling portal) → R17 (star alignment puzzle, get Boss Key)
+→ R14 (left horn gravity branch) → R15 (portal gauntlet at the horn split)
+→ R17 (star alignment puzzle at the crown, get Boss Key)
 → R20 (boss, get Piece 7)
 
 KEY LOCATIONS:
@@ -566,11 +575,11 @@ OPTIONAL PATHS:
   R01 → R08 (outer rampart — Key A, Hammer shortcut into R06)
   R04 → R08 east gate (Key A from R08 — non-linear key dependency)
   R04 → Portal glyph pair (permanent Sky Moat portal shortcut)
-  R07 → R09 (Key C — alternate approach to wind gallery from west)
+  R07 → R09 (Key C — alternate left-branch approach to the wind gallery)
   R10 → R10b (fall or Portal — star-crystal vault, Astrolabe)
   R14 → R14b (Hammer inverted ceiling — inverted vault, gold + lore)
   R15 → R15b (floor portal glyph — mid-shaft platform, gold + Star Map)
-  R15 → R16 (sky platform — Celestial Lens backup, view, gold)
+  R15 → R16 (right horn sky platform — Celestial Lens backup, view, gold)
   R17 → R18a (west portal-rift — seventh star chamber, critical lore)
   R17 → R18b (east portal-rift — constellation cache, Merchant's note)
 
