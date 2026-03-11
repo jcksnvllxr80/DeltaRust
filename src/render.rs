@@ -91,6 +91,8 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
     let mut line_y = outer_y + px(112.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Sword", player.has_sword, None);
     line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Gems", true, Some(player.gems));
+    line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Bombs", player.has_bombs, Some(player.bomb_count));
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Keys", player.keys > 0, Some(player.keys));
@@ -904,8 +906,12 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup]) {
                 PickupType::Key => YELLOW,
                 PickupType::BossKey => ORANGE,
                 PickupType::BombAmmo | PickupType::Bombs => DARKGRAY,
+                PickupType::Gem => SKYBLUE,
             };
-            draw_rectangle(x, y, draw_w, draw_h, color);
+            match pickup.pickup_type {
+                PickupType::Gem => draw_gem_icon(x, y, draw_w / px(16.0), SKYBLUE),
+                _ => draw_rectangle(x, y, draw_w, draw_h, color),
+            }
         }
     }
 }
@@ -949,6 +955,34 @@ fn draw_projectiles(sprites: &Sprites, projectiles: &[Projectile]) {
     }
 }
 
+fn draw_sword_icon(x: f32, y: f32, scale: f32, tint: Color) {
+    let blade = tint;
+    let hilt = color_u8!(196, 160, 74, 255);
+    draw_rectangle(x + scale * 4.0, y, scale * 4.0, scale * 12.0, blade);
+    draw_rectangle(x + scale * 2.0, y + scale * 10.0, scale * 8.0, scale * 2.0, hilt);
+    draw_rectangle(x + scale * 5.0, y + scale * 12.0, scale * 2.0, scale * 4.0, hilt);
+}
+
+fn draw_gem_icon(x: f32, y: f32, scale: f32, tint: Color) {
+    draw_poly(
+        x + scale * 6.0,
+        y + scale * 6.0,
+        4,
+        scale * 5.0,
+        45.0,
+        tint,
+    );
+    draw_poly_lines(
+        x + scale * 6.0,
+        y + scale * 6.0,
+        4,
+        scale * 5.0,
+        45.0,
+        scale,
+        color_u8!(50, 90, 170, 255),
+    );
+}
+
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
     draw_rectangle(0.0, HUD_H - px(2.0), GAME_W, px(2.0), color_u8!(100, 100, 100, 255));
@@ -970,45 +1004,57 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
             draw_rectangle(x, px(8.0), px(10.0), px(10.0), color);
         }
     }
+    if player.has_sword {
+        draw_sword_icon(px(16.0), px(6.0), px(1.2), LIGHTGRAY);
+        draw_text("SWORD", px(34.0), px(20.0), px(16.0), WHITE);
+    }
+    draw_gem_icon(px(16.0), px(24.0), px(1.0), SKYBLUE);
+    draw_text(
+        &format!("x{}", player.gems),
+        px(34.0),
+        px(38.0),
+        px(16.0),
+        SKYBLUE,
+    );
     if player.has_bombs {
-        if !sprites.draw_hud_bomb(px(16.0), px(6.0), px(16.0)) {
-            draw_rectangle(px(18.0), px(8.0), px(12.0), px(12.0), DARKGRAY);
+        if !sprites.draw_hud_bomb(px(16.0), px(28.0), px(16.0)) {
+            draw_rectangle(px(18.0), px(30.0), px(12.0), px(12.0), DARKGRAY);
         }
         draw_text(
             &format!("x{}", player.bomb_count),
             px(36.0),
-            px(20.0),
-            px(20.0),
+            px(42.0),
+            px(16.0),
             WHITE,
         );
     }
     if player.keys > 0 || world.in_dungeon {
-        if !sprites.draw_hud_key(px(16.0), px(28.0), px(16.0)) {
-            draw_rectangle(px(18.0), px(30.0), px(12.0), px(12.0), YELLOW);
+        if !sprites.draw_hud_key(px(106.0), px(6.0), px(16.0)) {
+            draw_rectangle(px(108.0), px(8.0), px(12.0), px(12.0), YELLOW);
         }
         draw_text(
             &format!("x{}", player.keys),
-            px(36.0),
-            px(40.0),
+            px(126.0),
+            px(20.0),
             px(16.0),
             YELLOW,
         );
     }
     if player.has_boss_key {
         let boss_key_color = color_u8!(220, 40, 40, 255);
-        if !sprites.draw_hud_boss_key(px(76.0), px(22.0), px(24.0), boss_key_color) {
-            draw_rectangle(px(78.0), px(24.0), px(18.0), px(18.0), boss_key_color);
+        if !sprites.draw_hud_boss_key(px(106.0), px(28.0), px(24.0), boss_key_color) {
+            draw_rectangle(px(108.0), px(30.0), px(18.0), px(18.0), boss_key_color);
         }
-        draw_text("BOSS", px(104.0), px(40.0), px(16.0), boss_key_color);
+        draw_text("BOSS", px(134.0), px(44.0), px(16.0), boss_key_color);
     }
-    // location label should be smaller and further from bomb counter
+    // location label stays clear of the item group on the left.
     let location = world_data::location_name(
         world.screen_x,
         world.screen_y,
         world.in_dungeon,
         world.dungeon_id,
     );
-    draw_text(&location, px(60.0), px(20.0), px(14.0), LIGHTGRAY);
+    draw_text(&location, px(178.0), px(20.0), px(14.0), LIGHTGRAY);
 }
 
 fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, area_w: f32, area_h: f32) {
@@ -1128,6 +1174,12 @@ fn draw_inventory_stat(
 ) {
     let color = if active { WHITE } else { GRAY };
     match label {
+        "Sword" if player.has_sword => {
+            draw_sword_icon(x + px(2.0), y - px(13.0), px(1.1), LIGHTGRAY);
+        }
+        "Gems" => {
+            draw_gem_icon(x + px(2.0), y - px(13.0), px(0.9), SKYBLUE);
+        }
         "Bombs" if player.has_bombs => {
             let _ = sprites.draw_hud_bomb(x, y - px(10.0), px(22.0));
         }

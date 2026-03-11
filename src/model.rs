@@ -67,6 +67,7 @@ pub enum PickupType {
     BossKey,
     BombAmmo,
     Bombs,
+    Gem,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,6 +120,7 @@ pub struct Player {
     pub has_bombs: bool,
     pub has_boss_key: bool,
     pub keys: i32,
+    pub gems: i32,
     pub bomb_count: i32,
     pub max_bombs: i32,
     pub walk_frame: i32,
@@ -144,6 +146,7 @@ impl Player {
             has_bombs: false,
             has_boss_key: false,
             keys: 0,
+            gems: 0,
             bomb_count: 0,
             max_bombs: 8,
             walk_frame: 0,

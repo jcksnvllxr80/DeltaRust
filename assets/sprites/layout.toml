@@ -194,3 +194,233 @@ antidote_tonic = { x = 32, y = 0,  w = 16, h = 16 }
 stone_tablet   = { x = 0,  y = 16, w = 16, h = 16 }
 rare_herb      = { x = 16, y = 16, w = 16, h = 16 }
 mosshaven_map  = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 2 — THE ASHENFALL REACHES
+# =============================================================================
+
+[biome2_tiles]
+sheet = "biome/biome2/tiles.png"
+ash_plain          = { x = 0,   y = 0, w = 16, h = 16 }
+ruin_wall          = { x = 16,  y = 0, w = 16, h = 16 }
+deep_ash           = { x = 32,  y = 0, w = 16, h = 16 }
+belltower          = { x = 48,  y = 0, w = 16, h = 16 }
+salvager_camp      = { x = 64,  y = 0, w = 16, h = 16 }
+ruin_floor         = { x = 80,  y = 0, w = 16, h = 16 }
+ash_rubble         = { x = 96,  y = 0, w = 16, h = 16 }
+ruin_doorway       = { x = 112, y = 0, w = 16, h = 16 }
+cracked_flagstone  = { x = 128, y = 0, w = 16, h = 16 }
+ash_drift          = { x = 0,   y = 16, w = 16, h = 16 }
+
+[biome2_enemies]
+sheet = "biome/biome2/enemies.png"
+
+[biome2_enemies.ash_wraith]
+frame_time = 16
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+
+[biome2_enemies.ruin_golem]
+frame_time = 22
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+
+[biome2_enemies.ashkite]
+frame_time = 10
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 32, w = 16, h = 16 },
+  { x = 16, y = 32, w = 16, h = 16 },
+]
+
+[biome2_enemies.rubble_spider]
+frame_time = 12
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 48, w = 16, h = 16 },
+  { x = 16, y = 48, w = 16, h = 16 },
+]
+
+[biome2_npcs]
+sheet = "biome/biome2/npcs.png"
+
+[biome2_npcs.maren]
+frame_time = 30
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+
+[biome2_npcs.oswin]
+frame_time = 30
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+
+[biome2_items]
+sheet = "biome/biome2/items.png"
+salvage_token    = { x = 0,  y = 0,  w = 16, h = 16 }
+ashenfall_locket = { x = 16, y = 0,  w = 16, h = 16 }
+burned_page      = { x = 32, y = 0,  w = 16, h = 16 }
+soldier_badge    = { x = 0,  y = 16, w = 16, h = 16 }
+rope             = { x = 16, y = 16, w = 16, h = 16 }
+ash_gold_pouch   = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 3 — THE IRON HIGHLANDS
+# =============================================================================
+
+[biome3_tiles]
+sheet = "biome/biome3/tiles.png"
+iron_rock        = { x = 0,   y = 0,  w = 16, h = 16 }
+iron_plate_road  = { x = 16,  y = 0,  w = 16, h = 16 }
+pipe_field       = { x = 32,  y = 0,  w = 16, h = 16 }
+active_vent      = { x = 48,  y = 0,  w = 16, h = 16 }
+great_aqueduct   = { x = 64,  y = 0,  w = 16, h = 16 }
+engineer_tower   = { x = 80,  y = 0,  w = 16, h = 16 }
+vault_door       = { x = 96,  y = 0,  w = 16, h = 16 }
+sparse_grass     = { x = 112, y = 0,  w = 16, h = 16 }
+steam_cloud      = { x = 128, y = 0,  w = 16, h = 16 }
+iron_rock_alt    = { x = 0,   y = 16, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome3_enemies]
+sheet = "biome/biome3/enemies.png"
+
+[biome3_enemies.iron_drone]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.35
+
+[biome3_enemies.steam_specter]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.4
+
+[biome3_enemies.bolt_crawler]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.25
+
+[biome3_enemies.magnet_hulk]
+frames = [
+    { x = 0,  y = 48, w = 16, h = 16 },
+    { x = 16, y = 48, w = 16, h = 16 },
+]
+frame_time = 0.5
+
+[biome3_npcs]
+sheet = "biome/biome3/npcs.png"
+
+[biome3_npcs.corvin]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome3_npcs.petra]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome3_items]
+sheet = "biome/biome3/items.png"
+ancient_key      = { x = 0,  y = 0,  w = 16, h = 16 }
+heating_tonic    = { x = 16, y = 0,  w = 16, h = 16 }
+iron_shield      = { x = 32, y = 0,  w = 16, h = 16 }
+vent_crystal     = { x = 0,  y = 16, w = 16, h = 16 }
+engineer_report  = { x = 16, y = 16, w = 16, h = 16 }
+map_fragment     = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 4 — THE SUNKEN COAST
+# =============================================================================
+
+[biome4_tiles]
+sheet = "biome/biome4/tiles.png"
+deep_ocean       = { x = 0,   y = 0, w = 16, h = 16 }
+shallow_water    = { x = 16,  y = 0, w = 16, h = 16 }
+beach_sand       = { x = 32,  y = 0, w = 16, h = 16 }
+stone_causeway   = { x = 48,  y = 0, w = 16, h = 16 }
+flooded_ruin     = { x = 64,  y = 0, w = 16, h = 16 }
+lighthouse       = { x = 80,  y = 0, w = 16, h = 16 }
+tidal_gate       = { x = 96,  y = 0, w = 16, h = 16 }
+sea_stack        = { x = 112, y = 0, w = 16, h = 16 }
+dock_village     = { x = 128, y = 0, w = 16, h = 16 }
+ruin_rooftop     = { x = 144, y = 0, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome4_enemies]
+sheet = "biome/biome4/enemies.png"
+
+[biome4_enemies.tideclaw]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.3
+
+[biome4_enemies.reef_stalker]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.45
+
+[biome4_enemies.stormkite]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.3
+
+[biome4_enemies.saltform]
+frames = [
+    { x = 0,  y = 48, w = 16, h = 16 },
+    { x = 16, y = 48, w = 16, h = 16 },
+]
+frame_time = 0.5
+
+[biome4_npcs]
+sheet = "biome/biome4/npcs.png"
+
+[biome4_npcs.captain_aldric]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome4_npcs.sael]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome4_items]
+sheet = "biome/biome4/items.png"
+tide_chart           = { x = 0,  y = 0,  w = 16, h = 16 }
+tidal_passage_map    = { x = 16, y = 0,  w = 16, h = 16 }
+deep_diving_bell     = { x = 32, y = 0,  w = 16, h = 16 }
+sea_captain_compass  = { x = 0,  y = 16, w = 16, h = 16 }
+coast_gold_pouch     = { x = 16, y = 16, w = 16, h = 16 }
+coast_healing_herb   = { x = 32, y = 16, w = 16, h = 16 }

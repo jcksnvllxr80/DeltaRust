@@ -564,9 +564,17 @@ impl Game {
                 self.player.keys += 1;
                 self.show_message("Found a KEY!");
             }
+            PickupType::Gem => {
+                self.player.gems += pickup_value(item_type);
+                self.show_message("Found a GEM!");
+            }
             PickupType::BossKey | PickupType::Heart => {}
         }
-        self.audio.pickup();
+        if item_type == PickupType::Gem {
+            self.audio.currency();
+        } else {
+            self.audio.pickup();
+        }
     }
 
     fn open_all_doors(&mut self, tile_type: TileType) {
@@ -931,6 +939,7 @@ impl Game {
             }
             _ if roll < 0.25 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart),
             _ if roll < 0.35 => self.spawn_pickup(enemy.x, enemy.y, PickupType::BombAmmo),
+            _ if roll < 0.5 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Gem),
             _ => {}
         }
         if self.world.in_dungeon {
@@ -998,8 +1007,11 @@ impl Game {
                 self.player.bomb_count = 8;
                 self.show_message("You found BOMBS!\nPress X to use.");
             }
+            PickupType::Gem => {
+                self.player.gems += pickup_value(pickup);
+            }
         }
-        if pickup == PickupType::Key {
+        if matches!(pickup, PickupType::Key | PickupType::Gem) {
             self.audio.currency();
         } else {
             self.audio.pickup();
@@ -1295,4 +1307,11 @@ fn start_pressed() -> bool {
 
 fn inventory_pressed() -> bool {
     is_key_pressed(KeyCode::I) || is_key_pressed(KeyCode::Tab)
+}
+
+fn pickup_value(pickup: PickupType) -> i32 {
+    match pickup {
+        PickupType::Gem => 5,
+        _ => 0,
+    }
 }

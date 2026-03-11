@@ -591,6 +591,9 @@ fn draw_frame(
                 1,
             );
         }
+        if appearance.offhand != OffhandStyle::None {
+            draw_offhand_shape(&mut px, hand_x - 1, body_y + 8, appearance.offhand, appearance.palette.weapon);
+        }
 
         rect(&mut px, body_left + 3, body_y - 1, 3, 1, appearance.palette.skin);
         draw_head_side(&mut px, appearance, body_left, body_y - 6);
@@ -707,6 +710,14 @@ fn draw_frame(
             appearance.palette.weapon,
             facing,
         );
+    }
+    if appearance.offhand != OffhandStyle::None {
+        let (ox, oy) = if dir == 0 {
+            (body_x - 4, arm_y + 7 + arm_swing_left)
+        } else {
+            (body_x + body_w + 2, arm_y + 6 + arm_swing_right)
+        };
+        draw_offhand_shape(&mut px, ox, oy, appearance.offhand, appearance.palette.weapon);
     }
 
     if dir == 0 {
@@ -1343,6 +1354,38 @@ fn draw_weapon_shape(px: &mut [Color], x: i32, y: i32, weapon: WeaponStyle, colo
             pixel(px, x, y - 4, shade(color, 0.8));
             pixel(px, x + 1, y - 5, shade(color, 0.8));
             rect(px, x - 1, y - 12, 4, 4, color);
+        }
+    }
+}
+
+fn draw_offhand_shape(px: &mut [Color], x: i32, y: i32, offhand: OffhandStyle, color: Color) {
+    match offhand {
+        OffhandStyle::None => {}
+        OffhandStyle::Torch => {
+            vline(px, x, y - 4, y, shade(hex("#8B6914"), 1.0));
+            pixel(px, x, y - 5, hex("#ff8800"));
+            pixel(px, x - 1, y - 5, hex("#ffcc00"));
+            pixel(px, x + 1, y - 5, hex("#ff4400"));
+            pixel(px, x, y - 6, hex("#ffee88"));
+        }
+        OffhandStyle::Orb => {
+            rect(px, x - 1, y - 3, 3, 3, shade(color, 0.8));
+            pixel(px, x, y - 4, shade(color, 1.4));
+            pixel(px, x - 1, y - 2, shade(color, 1.3));
+        }
+        OffhandStyle::Dagger => {
+            vline(px, x, y - 4, y, color);
+            pixel(px, x - 1, y - 3, color);
+        }
+        OffhandStyle::Potion => {
+            rect(px, x - 1, y - 3, 3, 4, hex("#2266ff"));
+            pixel(px, x, y - 4, hex("#aaddff"));
+            pixel(px, x - 1, y - 2, hex("#4488ff"));
+        }
+        OffhandStyle::Book => {
+            rect(px, x - 2, y - 4, 4, 5, hex("#8B6914"));
+            rect(px, x - 1, y - 3, 2, 3, hex("#f5e6c8"));
+            pixel(px, x - 2, y - 4, shade(hex("#8B6914"), 1.3));
         }
     }
 }

@@ -174,6 +174,7 @@ impl Sprites {
             PickupType::BossKey => &self.layout.items.boss_key,
             PickupType::BombAmmo => &self.layout.items.bomb_ammo,
             PickupType::Bombs => &self.layout.items.bombs,
+            PickupType::Gem => return false,
         };
         draw_frame_to_size(sheet, frame, x, y, w, h, WHITE);
         true
