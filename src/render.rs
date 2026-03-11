@@ -1012,14 +1012,21 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         draw_sword_icon(px(16.0), px(6.0), px(1.2), LIGHTGRAY);
         draw_text("SWORD", px(34.0), px(20.0), px(16.0), WHITE);
     }
-    let gem_x = GAME_W - px(82.0);
+    let gem_text = format!("x{}", player.gems);
+    let gem_font_size = px(16.0);
+    let gem_measure = measure_text(&gem_text, None, gem_font_size as u16, 1.0);
+    let gem_scale = px(1.0);
+    let gem_icon_w = gem_scale * 12.0;
+    let gem_gap = px(4.0);
+    let gem_text_x = GAME_W - px(12.0) - gem_measure.width;
+    let gem_x = gem_text_x - gem_gap - gem_icon_w;
     let gem_y = px(30.0);
-    draw_gem_icon(gem_x, gem_y, px(1.0), SKYBLUE);
+    draw_gem_icon(gem_x, gem_y, gem_scale, SKYBLUE);
     draw_text(
-        &format!("x{}", player.gems),
-        GAME_W - px(54.0),
+        &gem_text,
+        gem_text_x,
         px(44.0),
-        px(16.0),
+        gem_font_size,
         SKYBLUE,
     );
     if player.has_bombs {
