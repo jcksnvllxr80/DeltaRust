@@ -424,3 +424,268 @@ deep_diving_bell     = { x = 32, y = 0,  w = 16, h = 16 }
 sea_captain_compass  = { x = 0,  y = 16, w = 16, h = 16 }
 coast_gold_pouch     = { x = 16, y = 16, w = 16, h = 16 }
 coast_healing_herb   = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 5 — GRIMFORGE APPROACHES
+# =============================================================================
+
+[biome5_tiles]
+sheet = "biome/biome5/tiles.png"
+hardened_lava    = { x = 0,   y = 0, w = 16, h = 16 }
+molten_seam      = { x = 16,  y = 0, w = 16, h = 16 }
+fumarole         = { x = 32,  y = 0, w = 16, h = 16 }
+ember_garden     = { x = 48,  y = 0, w = 16, h = 16 }
+ascent_path      = { x = 64,  y = 0, w = 16, h = 16 }
+summit_approach  = { x = 80,  y = 0, w = 16, h = 16 }
+forge_entrance   = { x = 96,  y = 0, w = 16, h = 16 }
+mountaineer_camp = { x = 112, y = 0, w = 16, h = 16 }
+caldera_view     = { x = 128, y = 0, w = 16, h = 16 }
+volcanic_scrub   = { x = 144, y = 0, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome5_enemies]
+sheet = "biome/biome5/enemies.png"
+
+[biome5_enemies.lava_beetle]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.3
+
+[biome5_enemies.basalt_crawler]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.4
+
+[biome5_enemies.ash_drifter]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.45
+
+[biome5_enemies.magma_spawn]
+frames = [
+    { x = 0,  y = 48, w = 16, h = 16 },
+    { x = 16, y = 48, w = 16, h = 16 },
+]
+frame_time = 0.5
+
+[biome5_npcs]
+sheet = "biome/biome5/npcs.png"
+
+[biome5_npcs.dax]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome5_items]
+sheet = "biome/biome5/items.png"
+ember_crystal          = { x = 0,  y = 0,  w = 16, h = 16 }
+heating_tonic          = { x = 16, y = 0,  w = 16, h = 16 }
+climbing_rope          = { x = 32, y = 0,  w = 16, h = 16 }
+lava_beetle_shell      = { x = 0,  y = 16, w = 16, h = 16 }
+ember_shard            = { x = 16, y = 16, w = 16, h = 16 }
+forgemaster_postcard   = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 6 — VOID WASTES
+# =============================================================================
+
+[biome6_tiles]
+sheet = "biome/biome6/tiles.png"
+pale_stone       = { x = 0,   y = 0, w = 16, h = 16 }
+dead_soil        = { x = 16,  y = 0, w = 16, h = 16 }
+stable_rift      = { x = 32,  y = 0, w = 16, h = 16 }
+pale_road        = { x = 48,  y = 0, w = 16, h = 16 }
+sanctum_approach = { x = 64,  y = 0, w = 16, h = 16 }
+sanctum_entrance = { x = 80,  y = 0, w = 16, h = 16 }
+mirror_pool      = { x = 96,  y = 0, w = 16, h = 16 }
+void_shimmer     = { x = 112, y = 0, w = 16, h = 16 }
+wrong_sky        = { x = 128, y = 0, w = 16, h = 16 }
+boundary_edge    = { x = 144, y = 0, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome6_enemies]
+sheet = "biome/biome6/enemies.png"
+
+[biome6_enemies.void_shade]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.4
+
+[biome6_enemies.shadow_clone]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.35
+
+[biome6_enemies.wandering_shade]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.5
+
+[biome6_enemies.rift_watcher]
+frames = [
+    { x = 0,  y = 48, w = 16, h = 16 },
+    { x = 16, y = 48, w = 16, h = 16 },
+]
+frame_time = 0.45
+
+[biome6_npcs]
+sheet = "biome/biome6/npcs.png"
+
+[biome6_npcs.vel]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome6_items]
+sheet = "biome/biome6/items.png"
+void_compass       = { x = 0,  y = 0,  w = 16, h = 16 }
+void_compass_map   = { x = 16, y = 0,  w = 16, h = 16 }
+antidote_tonic     = { x = 32, y = 0,  w = 16, h = 16 }
+rift_record        = { x = 0,  y = 16, w = 16, h = 16 }
+void_gold_pouch    = { x = 16, y = 16, w = 16, h = 16 }
+void_healing_herb  = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 7 — CELESTIAL PLATEAU
+# =============================================================================
+
+[biome7_tiles]
+sheet = "biome/biome7/tiles.png"
+white_plain      = { x = 0,   y = 0, w = 16, h = 16 }
+spire_base       = { x = 16,  y = 0, w = 16, h = 16 }
+spire_archway    = { x = 32,  y = 0, w = 16, h = 16 }
+sky_moat         = { x = 48,  y = 0, w = 16, h = 16 }
+star_map_plaza   = { x = 64,  y = 0, w = 16, h = 16 }
+merchant_lantern = { x = 80,  y = 0, w = 16, h = 16 }
+night_sky        = { x = 96,  y = 0, w = 16, h = 16 }
+plateau_edge     = { x = 112, y = 0, w = 16, h = 16 }
+dragon_carving   = { x = 128, y = 0, w = 16, h = 16 }
+white_plain_alt  = { x = 144, y = 0, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome7_enemies]
+sheet = "biome/biome7/enemies.png"
+
+[biome7_enemies.star_sentinel]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.4
+
+[biome7_enemies.night_drifter]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.45
+
+[biome7_enemies.comet_shard]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.3
+
+[biome7_npcs]
+sheet = "biome/biome7/npcs.png"
+
+[biome7_npcs.celestial_merchant]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome7_npcs.senna]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome7_items]
+sheet = "biome/biome7/items.png"
+star_sigil       = { x = 0,  y = 0,  w = 16, h = 16 }
+moon_essence     = { x = 16, y = 0,  w = 16, h = 16 }
+celestial_map    = { x = 32, y = 0,  w = 16, h = 16 }
+healing_bundle   = { x = 0,  y = 16, w = 16, h = 16 }
+builders_note    = { x = 16, y = 16, w = 16, h = 16 }
+celestial_gold   = { x = 32, y = 16, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 8 — DRAGON'S APPROACH
+# =============================================================================
+
+[biome8_tiles]
+sheet = "biome/biome8/tiles.png"
+valley_mouth         = { x = 0,   y = 0, w = 16, h = 16 }
+pilgrims_road        = { x = 16,  y = 0, w = 16, h = 16 }
+memory_alcove        = { x = 32,  y = 0, w = 16, h = 16 }
+threshold_stone      = { x = 48,  y = 0, w = 16, h = 16 }
+final_approach       = { x = 64,  y = 0, w = 16, h = 16 }
+throne_entrance      = { x = 80,  y = 0, w = 16, h = 16 }
+valley_wall_carvings = { x = 96,  y = 0, w = 16, h = 16 }
+last_camp            = { x = 112, y = 0, w = 16, h = 16 }
+carved_names         = { x = 128, y = 0, w = 16, h = 16 }
+valley_mouth_open    = { x = 144, y = 0, w = 16, h = 16 }
+dest_scale = 3.0
+
+[biome8_enemies]
+sheet = "biome/biome8/enemies.png"
+
+[biome8_enemies.valley_sentinel]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.5
+
+[biome8_enemies.highrock_eagle]
+frames = [
+    { x = 0,  y = 16, w = 16, h = 16 },
+    { x = 16, y = 16, w = 16, h = 16 },
+]
+frame_time = 0.3
+
+[biome8_enemies.drift_shadow]
+frames = [
+    { x = 0,  y = 32, w = 16, h = 16 },
+    { x = 16, y = 32, w = 16, h = 16 },
+]
+frame_time = 0.35
+
+[biome8_npcs]
+sheet = "biome/biome8/npcs.png"
+
+[biome8_npcs.wren]
+frames = [
+    { x = 0,  y = 0,  w = 16, h = 16 },
+    { x = 16, y = 0,  w = 16, h = 16 },
+]
+frame_time = 0.6
+
+[biome8_items]
+sheet = "biome/biome8/items.png"
+dragon_codex       = { x = 0,  y = 0,  w = 16, h = 16 }
+crystal_of_seeing  = { x = 16, y = 0,  w = 16, h = 16 }
+healing_herb       = { x = 32, y = 0,  w = 16, h = 16 }
+rare_healing_herb  = { x = 0,  y = 16, w = 16, h = 16 }
+torch              = { x = 16, y = 16, w = 16, h = 16 }
+eagle_feather      = { x = 32, y = 16, w = 16, h = 16 }
