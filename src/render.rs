@@ -964,23 +964,27 @@ fn draw_sword_icon(x: f32, y: f32, scale: f32, tint: Color) {
 }
 
 fn draw_gem_icon(x: f32, y: f32, scale: f32, tint: Color) {
-    draw_poly(
-        x + scale * 6.0,
-        y + scale * 6.0,
-        4,
-        scale * 5.0,
-        45.0,
-        tint,
-    );
-    draw_poly_lines(
-        x + scale * 6.0,
-        y + scale * 6.0,
-        4,
-        scale * 5.0,
-        45.0,
-        scale,
-        color_u8!(50, 90, 170, 255),
-    );
+    let top = vec2(x + scale * 6.0, y);
+    let left = vec2(x, y + scale * 6.0);
+    let right = vec2(x + scale * 12.0, y + scale * 6.0);
+    let bottom = vec2(x + scale * 6.0, y + scale * 12.0);
+    let center = vec2(x + scale * 6.0, y + scale * 6.0);
+    let dark = color_u8!(44, 92, 168, 255);
+    let mid = tint;
+    let light = color_u8!(170, 230, 255, 255);
+
+    draw_triangle(top, left, center, light);
+    draw_triangle(top, center, right, mid);
+    draw_triangle(left, bottom, center, mid);
+    draw_triangle(center, bottom, right, dark);
+
+    draw_line(top.x, top.y, right.x, right.y, scale, color_u8!(20, 56, 124, 255));
+    draw_line(right.x, right.y, bottom.x, bottom.y, scale, color_u8!(20, 56, 124, 255));
+    draw_line(bottom.x, bottom.y, left.x, left.y, scale, color_u8!(20, 56, 124, 255));
+    draw_line(left.x, left.y, top.x, top.y, scale, color_u8!(20, 56, 124, 255));
+    draw_line(top.x, top.y, bottom.x, bottom.y, scale * 0.7, color_u8!(110, 200, 245, 255));
+    draw_line(left.x, left.y, right.x, right.y, scale * 0.7, color_u8!(110, 200, 245, 255));
+    draw_circle(x + scale * 4.0, y + scale * 3.0, scale * 0.9, WHITE);
 }
 
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
@@ -1008,11 +1012,13 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         draw_sword_icon(px(16.0), px(6.0), px(1.2), LIGHTGRAY);
         draw_text("SWORD", px(34.0), px(20.0), px(16.0), WHITE);
     }
-    draw_gem_icon(px(16.0), px(24.0), px(1.0), SKYBLUE);
+    let gem_x = GAME_W - px(82.0);
+    let gem_y = px(30.0);
+    draw_gem_icon(gem_x, gem_y, px(1.0), SKYBLUE);
     draw_text(
         &format!("x{}", player.gems),
-        px(34.0),
-        px(38.0),
+        GAME_W - px(54.0),
+        px(44.0),
         px(16.0),
         SKYBLUE,
     );
