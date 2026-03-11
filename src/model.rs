@@ -15,6 +15,7 @@ pub enum Dir {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GameState {
     Title,
+    CharacterCreate,
     Playing,
     Inventory,
     Transition,

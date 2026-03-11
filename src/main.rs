@@ -1,4 +1,5 @@
 mod audio;
+mod character;
 mod constants;
 mod game;
 mod model;

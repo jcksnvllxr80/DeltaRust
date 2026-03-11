@@ -1,3 +1,4 @@
+use crate::character::{generate_hero_sheets, CharacterAppearance};
 use crate::constants::{PIXEL_SCALE, TILE};
 use crate::model::{Dir, Enemy, EnemyType, PickupType, Player, PlayerState, Projectile, TileType};
 use macroquad::prelude::*;
@@ -18,12 +19,13 @@ pub struct Sprites {
 }
 
 impl Sprites {
-    pub async fn load() -> Self {
+    pub async fn load(appearance: &CharacterAppearance) -> Self {
         let layout = load_layout();
-        let hero_idle = load_sheet(&layout.hero.idle_sheet).await;
-        let hero_walk = load_sheet(&layout.hero.walk_sheet).await;
-        let hero_idle_sword = load_optional_sheet(layout.hero.idle_sword_sheet.as_deref()).await;
-        let hero_walk_sword = load_optional_sheet(layout.hero.walk_sword_sheet.as_deref()).await;
+        let generated = generate_hero_sheets(appearance);
+        let hero_idle = Some(sheet_from_image(&generated.idle));
+        let hero_walk = Some(sheet_from_image(&generated.walk));
+        let hero_idle_sword = Some(sheet_from_image(&generated.idle_armed));
+        let hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
         let items = load_sheet(&layout.items.sheet).await;
@@ -39,6 +41,14 @@ impl Sprites {
             title_dragon,
             layout,
         }
+    }
+
+    pub fn set_hero_appearance(&mut self, appearance: &CharacterAppearance) {
+        let generated = generate_hero_sheets(appearance);
+        self.hero_idle = Some(sheet_from_image(&generated.idle));
+        self.hero_walk = Some(sheet_from_image(&generated.walk));
+        self.hero_idle_sword = Some(sheet_from_image(&generated.idle_armed));
+        self.hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
     }
 
     pub fn draw_player(&self, player: &Player, x: f32, y: f32) -> bool {
@@ -275,10 +285,6 @@ struct SpriteLayout {
 
 #[derive(Clone, Deserialize)]
 struct HeroLayout {
-    idle_sheet: String,
-    walk_sheet: String,
-    idle_sword_sheet: Option<String>,
-    walk_sword_sheet: Option<String>,
     dest_scale: Option<f32>,
     base_w: Option<f32>,
     base_h: Option<f32>,
@@ -405,11 +411,6 @@ async fn load_sheet(name: &str) -> Option<Sheet> {
     Some(Sheet { texture })
 }
 
-async fn load_optional_sheet(name: Option<&str>) -> Option<Sheet> {
-    let name = name?;
-    load_sheet(name).await
-}
-
 async fn load_image_texture(path: &Path) -> Option<Texture2D> {
     let texture = load_texture(path.to_string_lossy().as_ref()).await.ok()?;
     texture.set_filter(FilterMode::Nearest);
@@ -434,39 +435,41 @@ fn frame(x: f32, y: f32, w: f32, h: f32) -> FrameRect {
     FrameRect { x, y, w, h }
 }
 
+fn sheet_from_image(image: &Image) -> Sheet {
+    let texture = Texture2D::from_image(image);
+    texture.set_filter(FilterMode::Nearest);
+    Sheet { texture }
+}
+
 fn default_layout() -> SpriteLayout {
     SpriteLayout {
         hero: HeroLayout {
-            idle_sheet: "hero/hero_idle_48px.png".to_string(),
-            walk_sheet: "hero/hero_walk_48px.png".to_string(),
-            idle_sword_sheet: Some("hero/hero_idle_sword_48px.png".to_string()),
-            walk_sword_sheet: Some("hero/hero_walk_sword_48px.png".to_string()),
-            dest_scale: Some(0.5),
+            dest_scale: Some(2.0),
             base_w: Some(16.0),
             base_h: Some(16.0),
             down: vec![
-                frame(48.0, 0.0, 96.0, 192.0),
-                frame(240.0, 0.0, 96.0, 192.0),
-                frame(432.0, 0.0, 96.0, 192.0),
-                frame(624.0, 0.0, 96.0, 192.0),
+                frame(0.0, 0.0, 48.0, 48.0),
+                frame(48.0, 0.0, 48.0, 48.0),
+                frame(96.0, 0.0, 48.0, 48.0),
+                frame(144.0, 0.0, 48.0, 48.0),
             ],
             left: vec![
-                frame(48.0, 192.0, 96.0, 192.0),
-                frame(240.0, 192.0, 96.0, 192.0),
-                frame(432.0, 192.0, 96.0, 192.0),
-                frame(624.0, 192.0, 96.0, 192.0),
+                frame(0.0, 48.0, 48.0, 48.0),
+                frame(48.0, 48.0, 48.0, 48.0),
+                frame(96.0, 48.0, 48.0, 48.0),
+                frame(144.0, 48.0, 48.0, 48.0),
             ],
             right: vec![
-                frame(48.0, 384.0, 96.0, 192.0),
-                frame(240.0, 384.0, 96.0, 192.0),
-                frame(432.0, 384.0, 96.0, 192.0),
-                frame(624.0, 384.0, 96.0, 192.0),
+                frame(0.0, 96.0, 48.0, 48.0),
+                frame(48.0, 96.0, 48.0, 48.0),
+                frame(96.0, 96.0, 48.0, 48.0),
+                frame(144.0, 96.0, 48.0, 48.0),
             ],
             up: vec![
-                frame(48.0, 576.0, 96.0, 192.0),
-                frame(240.0, 576.0, 96.0, 192.0),
-                frame(432.0, 576.0, 96.0, 192.0),
-                frame(624.0, 576.0, 96.0, 192.0),
+                frame(0.0, 144.0, 48.0, 48.0),
+                frame(48.0, 144.0, 48.0, 48.0),
+                frame(96.0, 144.0, 48.0, 48.0),
+                frame(144.0, 144.0, 48.0, 48.0),
             ],
         },
         enemies: EnemyLayout {

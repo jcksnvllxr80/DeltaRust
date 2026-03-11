@@ -1,3 +1,4 @@
+use crate::character::CharacterCreator;
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
@@ -288,7 +289,7 @@ pub fn draw_fade_overlay(alpha: f32) {
     draw_rectangle(0.0, HUD_H, GAME_W, GAME_H, Color::new(0.0, 0.0, 0.0, alpha));
 }
 
-pub fn draw_title(sprites: &Sprites, frame: i32) {
+pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize) {
     clear_background(color_u8!(17, 17, 17, 255));
     let cx = GAME_W / 2.0;
     // enlarge banner by another 50% (now 225% of original)
@@ -314,22 +315,30 @@ pub fn draw_title(sprites: &Sprites, frame: i32) {
         px(20.0),
         GRAY,
     );
-    if (frame / 30) % 2 == 0 {
-        draw_text(
-            "Press ENTER",
-            cx - px(64.0),
-            cy + px(60.0),
-            px(24.0),
-            WHITE,
-        );
+    let menu_y = cy + px(58.0);
+    let start_color = if selected_menu == 0 { WHITE } else { GRAY };
+    let customize_color = if selected_menu == 1 { WHITE } else { GRAY };
+    if selected_menu == 0 && (frame / 30) % 2 == 0 {
+        draw_text(">", cx - px(66.0), menu_y, px(24.0), WHITE);
     }
+    if selected_menu == 1 && (frame / 30) % 2 == 0 {
+        draw_text(">", cx - px(66.0), menu_y + px(22.0), px(24.0), WHITE);
+    }
+    draw_text("Start Game", cx - px(48.0), menu_y, px(22.0), start_color);
+    draw_text(
+        "Customize Hero",
+        cx - px(74.0),
+        menu_y + px(22.0),
+        px(20.0),
+        customize_color,
+    );
 
     // control notes – formatted clearly
     let notes = [
-        "SPACE : interact",
+        "W/S  : menu",
+        "ENTER: select",
         "WASD : move around",
         "TAB  : map",
-        "X    : use item",
     ];
     // calculate left edge relative to start_x so text is centered under title
     let notes_x = start_x + px(0.0);
@@ -337,11 +346,111 @@ pub fn draw_title(sprites: &Sprites, frame: i32) {
         draw_text(
             note,
             notes_x,
-            cy + px(80.0) + i as f32 * px(20.0),
+            cy + px(96.0) + i as f32 * px(20.0),
             px(14.0),
             LIGHTGRAY,
         );
     }
+}
+
+pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, frame: i32) {
+    clear_background(color_u8!(16, 18, 24, 255));
+
+    let outer_x = px(14.0);
+    let outer_y = px(12.0);
+    let outer_w = GAME_W - px(28.0);
+    let outer_h = GAME_H + HUD_H - px(24.0);
+    let preview_w = px(126.0);
+    let list_x = outer_x + preview_w + px(18.0);
+    let list_w = outer_w - preview_w - px(30.0);
+
+    draw_rectangle(outer_x, outer_y, outer_w, outer_h, color_u8!(25, 29, 38, 255));
+    draw_rectangle_lines(
+        outer_x,
+        outer_y,
+        outer_w,
+        outer_h,
+        px(2.0),
+        color_u8!(193, 170, 118, 255),
+    );
+    draw_rectangle(
+        outer_x + px(8.0),
+        outer_y + px(36.0),
+        preview_w,
+        outer_h - px(44.0),
+        color_u8!(33, 38, 50, 255),
+    );
+    draw_rectangle(
+        list_x,
+        outer_y + px(36.0),
+        list_w,
+        outer_h - px(44.0),
+        color_u8!(20, 23, 31, 255),
+    );
+
+    draw_text("CREATE HERO", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
+    draw_text(
+        "R randomize  ENTER save",
+        outer_x + outer_w - px(166.0),
+        outer_y + px(22.0),
+        px(12.0),
+        LIGHTGRAY,
+    );
+
+    let mut preview = Player::new();
+    preview.x = outer_x + px(38.0);
+    preview.y = outer_y + px(114.0);
+    preview.dir = match (frame / 90) % 4 {
+        0 => Dir::Down,
+        1 => Dir::Left,
+        2 => Dir::Right,
+        _ => Dir::Up,
+    };
+    preview.state = PlayerState::Walking;
+    preview.walk_frame = (frame / 18) % 4;
+    draw_text("PREVIEW", outer_x + px(18.0), outer_y + px(60.0), px(16.0), color_u8!(197, 170, 119, 255));
+    draw_player(sprites, &preview);
+
+    let mut line_y = outer_y + px(58.0);
+    for index in 0..creator.field_count() {
+        let selected = index == creator.selected_field;
+        if selected {
+            draw_rectangle(
+                list_x + px(6.0),
+                line_y - px(14.0),
+                list_w - px(12.0),
+                px(20.0),
+                color_u8!(51, 61, 78, 255),
+            );
+        }
+        if let Some(color) = creator.field_color(index) {
+            draw_rectangle(list_x + px(10.0), line_y - px(10.0), px(12.0), px(12.0), color);
+            draw_rectangle_lines(
+                list_x + px(10.0),
+                line_y - px(10.0),
+                px(12.0),
+                px(12.0),
+                px(1.0),
+                BLACK,
+            );
+        }
+        draw_text(
+            &creator.field_text(index),
+            list_x + px(30.0),
+            line_y,
+            px(13.0),
+            if selected { WHITE } else { LIGHTGRAY },
+        );
+        line_y += px(18.0);
+    }
+
+    draw_text(
+        "W/S select  A/D change  ESC back",
+        list_x + px(8.0),
+        outer_y + outer_h - px(16.0),
+        px(12.0),
+        color_u8!(160, 167, 178, 255),
+    );
 }
 
 pub fn draw_game_over(frame: i32) {
@@ -570,25 +679,24 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
     let blade = LIGHTGRAY;
     let hilt = color_u8!(196, 160, 74, 255);
     if sprite_mode {
-        // Account for the enlarged hero sheet being centered on the original 16x16 footprint.
-        let x_offset = x - px(4.0);
-        let y_offset = y - px(8.0);
+        let x_offset = x;
+        let y_offset = y - px(32.0);
         match dir {
             Dir::Up => {
-                draw_rectangle(x_offset + px(13.0), y_offset - px(12.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x_offset + px(11.0), y_offset + px(4.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x_offset + px(22.0), y_offset - px(10.0), px(4.0), px(18.0), blade);
+                draw_rectangle(x_offset + px(20.0), y_offset + px(7.0), px(8.0), px(2.0), hilt);
             }
             Dir::Down => {
-                draw_rectangle(x_offset + px(13.0), y_offset + px(26.0), px(6.0), px(18.0), blade);
-                draw_rectangle(x_offset + px(11.0), y_offset + px(25.0), px(10.0), px(3.0), hilt);
+                draw_rectangle(x_offset + px(22.0), y_offset + px(30.0), px(4.0), px(18.0), blade);
+                draw_rectangle(x_offset + px(20.0), y_offset + px(29.0), px(8.0), px(2.0), hilt);
             }
             Dir::Left => {
-                draw_rectangle(x_offset - px(18.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x_offset - px(6.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x_offset - px(12.0), y_offset + px(22.0), px(18.0), px(4.0), blade);
+                draw_rectangle(x_offset + px(5.0), y_offset + px(20.0), px(2.0), px(8.0), hilt);
             }
             Dir::Right => {
-                draw_rectangle(x_offset + px(26.0), y_offset + px(13.0), px(18.0), px(6.0), blade);
-                draw_rectangle(x_offset + px(25.0), y_offset + px(11.0), px(3.0), px(10.0), hilt);
+                draw_rectangle(x_offset + px(42.0), y_offset + px(22.0), px(18.0), px(4.0), blade);
+                draw_rectangle(x_offset + px(41.0), y_offset + px(20.0), px(2.0), px(8.0), hilt);
             }
         }
         return;

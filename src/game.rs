@@ -1,4 +1,5 @@
 use crate::audio::{Audio, MusicTrack};
+use crate::character::{CharacterAppearance, CharacterCreator};
 use crate::constants::{
     ATTACK_DURATION, COLS, GAME_H, GAME_W, KNOCKBACK_FRAMES, KNOCKBACK_SPEED, PIXEL_SCALE,
     PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
@@ -20,6 +21,7 @@ fn px(value: f32) -> f32 {
 pub struct Game {
     pub state: GameState,
     pub frame: i32,
+    pub title_menu_selection: usize,
     pub transition: Transition,
     pub message_text: String,
     pub dungeon_overworld_x: i32,
@@ -34,13 +36,17 @@ pub struct Game {
     pub death_animations: Vec<DeathAnimation>,
     pub audio: Audio,
     pub sprites: Sprites,
+    pub appearance: CharacterAppearance,
+    pub creator: CharacterCreator,
 }
 
 impl Game {
     pub async fn new(dev_mode: bool) -> Self {
+        let appearance = CharacterAppearance::default();
         let mut game = Self {
             state: GameState::Title,
             frame: 0,
+            title_menu_selection: 0,
             transition: Transition::default(),
             message_text: String::new(),
             dungeon_overworld_x: 0,
@@ -54,7 +60,9 @@ impl Game {
             projectiles: vec![],
             death_animations: vec![],
             audio: Audio::load().await,
-            sprites: Sprites::load().await,
+            sprites: Sprites::load(&appearance).await,
+            appearance: appearance.clone(),
+            creator: CharacterCreator::new(appearance),
         };
         game.spawn_for_screen();
         game
@@ -65,10 +73,20 @@ impl Game {
         match self.state {
             GameState::Title => {
                 self.audio.play_music(MusicTrack::Title);
+                if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+                    self.title_menu_selection = self.title_menu_selection.saturating_sub(1);
+                }
+                if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+                    self.title_menu_selection = (self.title_menu_selection + 1).min(1);
+                }
                 if start_pressed() {
-                    self.start_new_game();
+                    match self.title_menu_selection {
+                        0 => self.start_new_game(),
+                        _ => self.begin_character_create(),
+                    }
                 }
             }
+            GameState::CharacterCreate => self.update_character_create(),
             GameState::Playing => self.update_playing(),
             GameState::Inventory => self.update_inventory(),
             GameState::Transition => self.update_transition(),
@@ -90,7 +108,12 @@ impl Game {
 
     pub fn draw(&self) {
         match self.state {
-            GameState::Title => render::draw_title(&self.sprites, self.frame),
+            GameState::Title => {
+                render::draw_title(&self.sprites, self.frame, self.title_menu_selection)
+            }
+            GameState::CharacterCreate => {
+                render::draw_character_creator(&self.sprites, &self.creator, self.frame)
+            }
             GameState::Playing => self.draw_game(),
             GameState::Inventory => {
                 render::draw_inventory(&self.sprites, &self.world.snapshot(), &self.player)
@@ -134,12 +157,59 @@ impl Game {
         let dev = self.world.dev_mode;
         self.world = World::new(dev);
         self.player = Player::new();
+        self.sprites.set_hero_appearance(&self.appearance);
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
         self.audio.play_music(MusicTrack::Overworld);
         self.state = GameState::Playing;
         self.frame = 0;
+    }
+
+    fn begin_character_create(&mut self) {
+        self.creator = CharacterCreator::new(self.appearance.clone());
+        self.sprites.set_hero_appearance(&self.creator.appearance);
+        self.state = GameState::CharacterCreate;
+        self.frame = 0;
+    }
+
+    fn update_character_create(&mut self) {
+        self.audio.play_music(MusicTrack::Title);
+        let mut changed = false;
+        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+            self.creator.move_selection(-1);
+        }
+        if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+            self.creator.move_selection(1);
+        }
+        if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) {
+            self.creator.adjust_selected(-1);
+            changed = true;
+        }
+        if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) {
+            self.creator.adjust_selected(1);
+            changed = true;
+        }
+        if is_key_pressed(KeyCode::R) {
+            self.creator.randomize();
+            changed = true;
+        }
+        if changed {
+            self.sprites.set_hero_appearance(&self.creator.appearance);
+        }
+        if is_key_pressed(KeyCode::Escape) {
+            self.sprites.set_hero_appearance(&self.appearance);
+            self.state = GameState::Title;
+            self.frame = 0;
+            return;
+        }
+        if start_pressed() {
+            self.appearance = self.creator.appearance.clone();
+            self.sprites.set_hero_appearance(&self.appearance);
+            self.state = GameState::Title;
+            self.title_menu_selection = 0;
+            self.frame = 0;
+        }
     }
 
     fn update_playing(&mut self) {
