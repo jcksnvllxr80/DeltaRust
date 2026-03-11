@@ -19,89 +19,89 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: HEART / SEAL STONE** — the final dungeon is a broad,
+dense central mass rather than a ladder. The rooms swell outward into two lobes,
+then narrow toward the throne like a heart tapering to its point.
+
 ```
-                              ┌─────────────────────────────┐
-                              │            R25              │
-                              │      THE THRONE ROOM        │
-                              │   BOSS: DRAVENIX + PIECE 8  │
-                              │     [MORAL CHOICE HERE]     │
-                              └──────────────┬──────────────┘
-                                             │ [BOSS DOOR]
-                              ┌──────────────┴──────────────┐
-                   ◄═══════════          R21               ═══════════►
-                 [SECRET]     │   The Dragon's Gallery      │   [SECRET]
-                              │   (Pre-Boss Antechamber)    │
-                              └──────────────┬──────────────┘
-                                             │
-                    ┌────────────────────────┼────────────────────────┐
-                    │                        │                        │
-               ┌────┴────┐             ┌─────┴────┐             ┌────┴────┐
-               │   R17   │             │   R18    │             │   R19   │
-               │ Chain & │             │  Lava &  │             │ Portal  │
-               │ Gravity │             │  Current │             │ Gauntlet│
-               └────┬────┘             └────┬─────┘             └────┬────┘
-                    │                       │                         │
-               ┌────┴────┐             ┌────┴────┐             ┌─────┴────┐
-               │  R17b   │             │  R18b   │             │  R19b    │
-               │SUB-CHMBR│             │SUB-CHMBR│             │ SUB-CHMBR│
-               │(chain   │             │(lava    │             │ (rift    │
-               │ vault)  │             │ descent)│             │  cache)  │
-               └─────────┘             └─────────┘             └──────────┘
-                                             │
-                    ┌────────────────────────┼────────────────────────┐
-                    │                        │                        │
-               ┌────┴────┐             ┌─────┴────┐             ┌────┴────┐
-               │   R12   │             │   R13    │             │   R14   │
-               │ Echo    │             │ Central  │             │  Echo   │
-               │ Chamber │             │  Hall    │             │ Chamber │
-               │  (West) │             │          │             │  (East) │
-               └─────────┘             └─────┬────┘             └─────────┘
-                                             │
-                                       ┌─────┴────┐
-                                       │   R15    │
-                                       │  Mirror  │
-                                       │  Passage │
-                                       └─────┬────┘
-                                             │
-                                       ┌─────┴────┐
-                                       │   R16    │
-                                       │  Moral   │
-                                       │Crossroads│
-                                       └─────┬────┘
-                                             │
-                    ┌────────────────────────┼────────────────────────┐
-                    │                        │                        │
-               ┌────┴────┐             ┌─────┴────┐             ┌────┴────┐
-               │   R07   │             │   R08    │             │   R09   │
-               │  Dark   │             │  Great   │             │  Sky    │
-               │ Armory  │             │  Nave    │             │  Court  │
-               └─────────┘             └─────┬────┘             └─────────┘
-                                             │
-                    ┌────────────────────────┼────────────────────────┐
-                    │                        │                        │
-               ┌────┴────┐             ┌─────┴────┐             ┌────┴────┐
-               │   R04   │             │   R05    │             │   R06   │
-               │  Water  │             │  Entry   │             │  Stone  │
-               │  Court  │             │  Atrium  │             │  Court  │
-               └─────────┘             └─────┬────┘             └─────────┘
-                                             │
-                                       ┌─────┴────┐
-                                       │   R03    │
-                                       │  Seal    │
-                                       │  Gate    │
-                                       └─────┬────┘
-                                             │
-                                       ┌─────┴────┐
-                                       │   R02    │
-                                       │  Descent │
-                                       │ Corridor │
-                                       └─────┬────┘
-                                             │
-                                       ┌─────┴────┐
-                                       │   R01    │
-                                       │   ENTRY  │
-                                       │  (Start) │
-                                       └──────────┘
+             ┌───────────────────────┐
+             │          R25          │
+             │   THE THRONE ROOM     │
+             │  DRAVENIX + PIECE 8   │
+             └───────────┬───────────┘
+                   │ [BOSS DOOR]
+         ◄═════════════════════╧═════════════════════►
+              ┌───────────────────────────┐
+        [SECRET] │            R21            │ [SECRET]
+              │    The Dragon's Gallery   │
+              └───────┬─────────┬────────┘
+                │         │
+          ┌──────────────┘         └──────────────┐
+        ┌────┴────┐        ┌─────────────┐       ┌────┴────┐
+        │   R17   │        │    R18      │       │   R19   │
+        │ Chain & │        │  Lava &     │       │ Portal  │
+        │ Gravity │        │  Current    │       │Gauntlet │
+        └────┬────┘        └─────┬───────┘       └────┬────┘
+          │                   │                    │
+        ┌────┴────┐        ┌─────┴─────┐        ┌─────┴────┐
+        │  R17b   │        │   R20     │        │  R19b    │
+        │SUB-CHMBR│        │ Gauntlet  │        │ SUB-CHMBR│
+        │(chain)  │        │ Corridor  │        │ (rift)   │
+        └─────────┘        └─────┬─────┘        └──────────┘
+                  │
+          ┌────────────────┼────────────────┐
+        ┌────┴────┐     ┌─────┴─────┐     ┌────┴────┐
+        │   R12   │     │   R13     │     │   R14   │
+        │  Echo   │     │  Central  │     │  Echo   │
+        │  West   │     │   Hall    │     │  East   │
+        └─────────┘     └─────┬─────┘     └─────────┘
+                  │
+                ┌────┴────┐
+                │   R16   │
+                │  Moral  │
+                │Crossrds │
+                └────┬────┘
+                  │
+                ┌────┴────┐
+                │   R15   │
+                │ Mirror  │
+                │ Passage │
+                └────┬────┘
+             ┌─────────────┼─────────────┐
+           ┌────┴────┐   ┌────┴────┐   ┌────┴────┐
+           │   R07   │   │   R08   │   │   R09   │
+           │  Dark   │   │  Great  │   │  Sky    │
+           │ Armory  │   │  Nave   │   │  Court  │
+           └────┬────┘   └────┬────┘   └────┬────┘
+             │             │             │
+           ┌────┴────┐   ┌────┴────┐   ┌────┴────┐
+           │   R04   │   │   R05   │   │   R06   │
+           │ Water   │   │  Entry  │   │ Stone   │
+           │ Court   │   │ Atrium  │   │ Court   │
+           └─────────┘   └────┬────┘   └─────────┘
+                  │
+                ┌────┴────┐
+                │   R03   │
+                │  Seal   │
+                │  Gate   │
+                └────┬────┘
+                  │
+                ┌────┴────┐
+                │   R02   │
+                │ Descent │
+                │Corridor │
+                └────┬────┘
+                  │
+                ┌────┴────┐
+                │   R01   │
+                │  ENTRY  │
+                │ (Start) │
+                └─────────┘
+
+Additional inner chambers:
+  R18b descends below R18.
+  R22a and R22b sit hidden off the west and east sides of R21.
+```
 
 
 SECRET ROOMS (not on dungeon map):
@@ -635,8 +635,8 @@ LEGEND
 ```
 CRITICAL PATH:
 R01 (Codex pages 1–7 inserted, map) → R02 (fight) → R03 (Seal Gate traversal)
-→ R05 (hub, fight) → R08 (Great Nave, fight — mandatory through)
-→ R13 (Central Hall) → R20 (Gauntlet Corridor — all tools)
+→ R05 (lower heart entry hub, fight) → R08 (Great Nave, fight — mandatory through)
+→ R13 (central heart core) → R20 (Gauntlet Corridor — all tools)
 → R17 (chain/gravity — Key F) → R18 (lava/current — Key G) → R19 (portal gauntlet — Key H)
 → R21 (mural plate puzzle, Boss Key) → R25 (boss, Piece 8, CHOICE)
 
@@ -654,8 +654,8 @@ KEY LOCATIONS:
 OPTIONAL PATHS:
   R03 east → R04 (Raft — water court, Key B, ferry bonus bridge)
   R03 west → R06 (Stone Court — Key C, Glove chain shortcut)
-  R05 NW → R07 (Dark Armoury — Key D, cracked wall torches)
-  R05 NE → R09 (Sky Court — Key E, spring healing, rift shortcut)
+  R05 NW → R07 (Dark Armoury — left lobe route, Key D, cracked wall torches)
+  R05 NE → R09 (Sky Court — right lobe route, Key E, spring healing, rift shortcut)
   R13 west → R12 (Echo Chamber West — Final Dragonbinder letter, gold)
   R13 east → R14 (Echo Chamber East — Dragon's Own Words, gold)
   R17 → R17b (Hammer inverted grate — Forgemaster's Final Entry, gold)

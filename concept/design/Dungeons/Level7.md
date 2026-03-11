@@ -22,6 +22,7 @@
 neck, then the upper dungeon splits into two horn-like branches before meeting
 again at the crown and boss platform.
 
+```
             ┌───────────┐
             │    R20    │
             │   BOSS    │
@@ -97,6 +98,7 @@ again at the crown and boss platform.
 
 Additional lower spur:
   R02 branches east from R01 as the base camp platform.
+```
 
 
 SECRET ROOMS (not on dungeon map):
