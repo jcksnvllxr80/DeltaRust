@@ -24,67 +24,64 @@ The Void Compass reveals the TRUE navigable connections.
 Some connections shown are mirror traps — they lead to duplicate
 rooms that loop back. The Compass distinguishes real from false.
 
-                                        ┌───────────┐
-                                        │    R18    │
-                                        │   BOSS    │
-                                        │[DUPLEXIS] │
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                              ◄══════════    R14     ══════════►
-                           [SECRET]     │  The Void  │   [SECRET]
-                                        │  Chamber   │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R11   │    │   R12   │    │   R13   │
-                          │ Mirror  │    │ Compass │    │ Rift    │
-                          │  Hall   │    │  Room   │    │ Bridge  │
-                          └────┬────┘    └────┬────┘    └─────────┘
-                               │              │
-                         [MIRROR         [MIRROR
-                          TRAP]           TRAP]
-                          ┌────┴────┐    ┌────┴────┐
-                          │  R11m   │    │  R12m   │
-                          │ MIRROR  │    │ MIRROR  │
-                          │ TRAP    │    │ TRAP    │
-                          └─────────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R07   │    │   R08   │    │   R09   │
-                          │ Shadow  │    │ Central │    │ Rift    │
-                          │  Hall   │    │  Nexus  │    │  Room   │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │   LOOP    │
-                                        │  R10      │
-                                        │(corridor) │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R03   │    │   R04   │    │   R05   │
-                          │ Cracked │    │ Entry   │    │ False   │
-                          │  Hall   │    │ Atrium  │    │  Hall   │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R02    │
-                                        │  Threshold│
-                                        │  Chamber  │
-                                        └─────┬─────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R01    │
-                                        │   ENTRY   │
-                                        │  (Start)  │
-                                        └───────────┘
+**Dungeon silhouette: RIGHT WING** — the real route rises along a narrow left
+spine, then spreads broadly to the right into layered mirror-feathers. The trap
+rooms hang off the wing edges like false reflections.
+
+        ┌───────────┐
+        │    R18    │
+        │   BOSS    │
+        │[DUPLEXIS] │
+        └─────┬─────┘
+           │ [BOSS DOOR]
+      ◄══════════╧══════════►
+         ┌─────────────────┐
+      [SECRET] │      R14        │ [SECRET]
+         │  The Void Chamber│
+         └──┬──────┬───────┘
+         │      │
+       ┌───────┘      └───────────┐
+     ┌────┴────┐   ┌───────────┐  ┌──┴────┐
+     │   R11   │   │   R12     │  │  R13  │
+     │ Mirror  │   │  Compass  │  │ Rift  │
+     │  Hall   │   │   Room    │  │Bridge │
+     └────┬────┘   └────┬──────┘  └───────┘
+       │         [MIRROR]
+     [MIRROR]      ┌────┴────┐
+      ┌──┴──┐      │  R12m   │
+      │ R11m│      │ MIRROR  │
+      │TRAP │      │  TRAP   │
+      └─────┘      └─────────┘
+       │              ▲
+       │              │
+     ┌────┴────┐    ┌────┴────┐──────────────┐
+     │   R08   │────┤   R10   │         ┌────┴────┐
+     │ Central │    │  LOOP   │         │   R09   │
+     │  Nexus  │    │ corridor│         │  Rift   │
+     └─┬───┬───┘    └─────────┘         │  Room   │
+    │   │                             └─────────┘
+  ┌────┘   └────┐
+┌────┴────┐   ┌────┴────┐──────────────┐
+│   R07   │   │   R04   │         ┌────┴────┐
+│ Shadow  │   │  Entry  │─────────│   R05   │
+│  Hall   │   │ Atrium  │         │ False   │
+└────┬────┘   └────┬────┘         │  Hall   │
+  │             │              └────┬────┘
+┌────┴────┐        │                   │
+│   R03   │        │              ┌────┴────┐
+│ Cracked │        │              │   R06   │
+│  Hall   │        │              │Reflectn │
+└─────────┘        │              │  Room   │
+          │              └─────────┘
+       ┌──┴──┐
+       │ R02 │
+       │Thresh│
+       └──┬──┘
+          │
+       ┌──┴──┐
+       │ R01 │
+       │ENTRY│
+       └─────┘
 
 
 SECRET ROOMS (not on dungeon map):
@@ -488,7 +485,7 @@ LEGEND
 ```
 CRITICAL PATH:
 R01 (Compass calibrated, map) → R02 (Compass navigation, fight Clones)
-→ R04 (hub, floor compass — fight) → R08 (Compass mandatory, fight, get Key E via timed plate)
+→ R04 (lower spine hub, floor compass — fight) → R08 (wing nexus, Compass mandatory, fight, get Key E via timed plate)
 → R10 (loop corridor — Compass to break loop) → R11 (mirror hall, Key E used, fight)
 → R13 (rift bridge, fight) → R14 (void altar puzzle, get Boss Key)
 → R18 (boss, get Piece 6 + Portal Tool)
@@ -505,10 +502,10 @@ KEY LOCATIONS:
 
 OPTIONAL PATHS:
   R04 → R03 (Key A + healing — opens R07 approach)
-  R04 → R05 (Key B via Ladder — opens R06)
+  R04 → R05 (Key B via Ladder — opens the far right feather at R06)
   R05 → R06 (all mirrors broken — Key C + gold)
   R06 → R09 (Key C → R09 rift room, Key F, rift shortcuts)
-  R07 → R08 via shadow wall (Key D shortcut to upper dungeon)
+  R07 → R08 via shadow wall (Key D shortcut into the upper wing)
   R09 → Rift shortcuts (rotating rifts provide optional fast-travel)
   R12 → floor compass key-charge (any spare key becomes universal)
   R14 → R15a (west void panel, Compass to open — Dragonbinder 6 + gold)

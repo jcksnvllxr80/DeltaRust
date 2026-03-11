@@ -18,61 +18,67 @@
 
 ## ASCII MAP
 
+**Dungeon silhouette: LEFT WING** — a narrow right-side spine with the dungeon
+fanning broadly leftward into layered "feathers." The boss sits at the upper wing
+root while the lower half spreads outward in longer horizontal spans.
+
 ```
-                                        ┌───────────┐
-                                        │    R15    │
-                                        │   BOSS    │
-                                        │[MOLTENFIST│
-                                        └─────┬─────┘
-                                              │ [BOSS DOOR]
-                                        ┌─────┴─────┐
-                              ◄══════════    R12     ══════════►
-                           [SECRET]     │ Master    │   [SECRET]
-                                        │  Forge    │
-                                        └─────┬─────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R09   │    │   R10   │    │   R11   │
-                          │ Chain   │    │  Lava   │    │ Casting │
-                          │  Hall   │    │  River  │    │  Floor  │
-                          └────┬────┘    └────┬────┘    └─────────┘
-                               │              │
-                          ┌────┴────┐    ┌────┴────┐
-                          │  R09b   │    │  R10b   │
-                          │SUB-CHMBR│    │SUB-CHMBR│
-                          │(chain   │    │ (lava   │
-                          │ vault)  │    │ tunnel) │
-                          └─────────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R06   │    │   R07   │    │   R08   │
-                          │ Bellows │    │ Central │    │ Smelting│
-                          │  Room   │    │  Works  │    │   Hall  │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                               ┌──────────────┼──────────────┐
-                               │              │              │
-                          ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-                          │   R03   │    │   R04   │    │   R05   │
-                          │ Intake  │    │  Forge  │    │ Cooling │
-                          │  Shaft  │    │  Floor  │    │  Vats   │
-                          └─────────┘    └────┬────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R02    │
-                                        │  Descent  │
-                                        │ Antechamber│
-                                        └─────┬─────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │    R01    │
-                                        │   ENTRY   │
-                                        │  (Start)  │
-                                        └───────────┘
+                ┌───────────┐
+                │    R15    │
+                │   BOSS    │
+                │[MOLTENFIST│
+                └─────┬─────┘
+                │ [BOSS DOOR]
+           ◄══════════════╧══════════════►
+               ┌───────────┐
+           [SECRET]  │    R12    │  [SECRET]
+               │  Master   │
+               │   Forge   │
+               └─┬────┬──┬─┘
+              │    │  │
+            ┌──────────┘    │  └──────────┐
+          ┌────┴────┐     ┌────┴────┐   ┌────┴────┐
+          │   R09   │     │   R10   │   │   R11   │
+          │ Chain   │     │  Lava   │   │ Casting │
+          │  Hall   │     │  River  │   │  Floor  │
+          └────┬────┘     └────┬────┘   └────┬────┘
+            │               │             │
+          ┌────┴────┐     ┌────┴────┐        │
+          │  R09b   │     │  R10b   │        │
+          │SUB-CHMBR│     │SUB-CHMBR│        │
+          │(chain   │     │ (lava   │        │
+          │ vault)  │     │ tunnel) │        │
+          └─────────┘     └─────────┘        │
+            ▲               ▲              │
+            │               │              │
+          ┌────┴────┐     ┌────┴────┐   ┌────┴────┐
+          │   R06   ├─────┤   R07   ├───┤   R08   │
+          │ Bellows │     │ Central │   │Smelting │
+          │  Room   │     │  Works  │   │  Hall   │
+          └────┬────┘     └────┬────┘   └─────────┘
+            ▲               │
+            │               │
+          ┌────┴────┐     ┌────┴────┐
+          │   R05   │     │   R04   │
+          │ Cooling │─────┤  Forge  │
+          │  Vats   │     │  Floor  │
+          └────┬────┘     └────┬────┘
+            │               │
+            └──────┐   ┌────┘
+             │   │
+             ┌──┴───┴──┐    ┌─────────┐
+             │   R02   ├────┤   R03   │
+             │ Descent │    │ Intake  │
+             │Antechmb.│    │  Shaft  │
+             └────┬────┘    └────┬────┘
+               │              │
+             ┌────┴────┐         │
+             │   R01   │         │
+             │  ENTRY  │         │
+             │ (Start) │         │
+             └─────────┘         │
+                     ▼
+                  to R06
 
 
 SECRET ROOMS (not on dungeon map):
@@ -175,7 +181,7 @@ LEGEND
 ### R04 — FORGE FLOOR
 **Shape:** Very wide square. The main working floor of the forge — the largest open space in the dungeon. Lava channels cut across the floor in a grid pattern, dividing the room into stone island-sections. The channels are 2 tiles wide — too wide to jump across unaided. Iron bridges (2 tiles wide, no rails) span the channels at intervals — some intact, some collapsed. The ceiling is vaulted and high, lost in smoke and heat haze.
 **Size:** Very Large
-**Connections:** South → R02 (open — top of ramp) | North → R07 (open — far north) | East → R05 (open — east channel bridge) | West → R06 (open — west channel bridge)
+**Connections:** South → R02 (open — top of ramp) | North → R07 (open — far north) | West → R05 (open — lower wing span) | North-West → R06 (open — upper wing span)
 
 **Contents:**
 - 🔥🔥🔥 **Lava channels** — crossing them deals instant death. Intact bridges are safe. Collapsed bridges leave a 2-tile gap — a [B] **iron beam** nearby can be lifted with the Glove and laid across the gap as a makeshift bridge. First mandatory Glove-lift-and-place puzzle.
@@ -194,7 +200,7 @@ LEGEND
 ### R05 — COOLING VATS
 **Shape:** Wide horizontal rectangle. A row of enormous iron vats along the north wall, each filled with dark cooling fluid — the contrast to the heat of the rest of the dungeon. The fluid is not water — it is black, viscous, and faintly luminescent. The floor is dry but cool. The southern half is an open workspace with workbenches and tool racks (all empty).
 **Size:** Medium-Large
-**Connections:** East → R02 (open — ramp level, via the collapsed railing shortcut OR standard entry) | North → R08 *(LOCKED — Small Key B required)*
+**Connections:** East → R02 (open — ramp level, via the collapsed railing shortcut OR standard entry) | East → R04 (open — forge floor span) | North-East → R08 *(LOCKED — Small Key B required)*
 
 **Contents:**
 - ⚔️ **2× Forge Hound** + **1× Slag Golem** — Golem patrols between the cooling vats.
@@ -213,7 +219,7 @@ LEGEND
 ### R06 — BELLOWS ROOM
 **Shape:** Large square. The room that feeds air into the forge — six enormous iron bellows, each the size of a small house, are mounted on the walls. Three are active (rhythmically pumping, creating wind gusts that push the player sideways). Three are inactive and still. The floor has grating over lava beneath — the grating is intact but warm.
 **Size:** Large
-**Connections:** North → R03 (open — top of intake shaft, via floor-level exit) | East → R04 (open — channel bridge) | North → R09 *(LOCKED — Small Key C required)*
+**Connections:** South → R03 (open — top of intake shaft, via floor-level exit) | East → R07 *(LOCKED — Small Key C required from the central works side)* | South-East → R04 (open — channel bridge) | North → R09 *(LOCKED — Small Key C required)*
 
 **Contents:**
 - ⚔️ **3× Forge Hound** — two navigate the bellows gusts (they lean into the wind, unfazed — the player must time movement through gusts to avoid being pushed into the hot grating).
@@ -274,7 +280,7 @@ LEGEND
 ### R09 — CHAIN HALL
 **Shape:** Tall vertical rectangle. The entire ceiling is covered in hanging chains of varying thickness — some decorative, some functional. The thickest chains connect to massive iron counterweights on the east and west walls. The floor has a large iron hatch in the center, sealed with four chain-wrapped locks.
 **Size:** Large
-**Connections:** South → R06 (locked entry, Key C used) | North → R12 (open) | Down via floor hatch → R09b *(sub-chamber — four chain locks, Glove required)*
+**Connections:** South → R06 (locked entry, Key C used) | North → R12 (open — left wing root approach) | Down via floor hatch → R09b *(sub-chamber — four chain locks, Glove required)*
 
 **Contents:**
 - ⚔️ **2× Slag Golem** — one on each side of the central hatch. Stationary. Guardians.
@@ -312,7 +318,7 @@ LEGEND
 ### R10 — LAVA RIVER
 **Shape:** Wide horizontal rectangle. The floor is divided by a single massive lava river — not a channel, a true river. The river is 4 tiles wide and flows east to west. A collapsed iron bridge spans the river in the center — the bridge is broken in the middle (a 2-tile gap). The north half of the room is accessible only by crossing.
 **Size:** Large
-**Connections:** South → R07 (open — south bank) | North → R12 (open — north bank, past river) | Down via lava tube → R10b *(sub-chamber — heat-shielded passage, timed crossing with Heating Tonic)*
+**Connections:** South → R07 (open — south bank) | North → R12 (open — upper wing root, past river) | Down via lava tube → R10b *(sub-chamber — heat-shielded passage, timed crossing with Heating Tonic)*
 
 **Contents:**
 - 🔥🔥🔥 **Lava river** — 4 tiles wide, instant death. Bridge spans it but has a 2-tile gap in the center.
@@ -369,7 +375,7 @@ LEGEND
 ### R12 — THE MASTER FORGE
 **Shape:** Very large octagon. The heart of Grimforge — a cathedral of industry. The Master Forge dominates the center: an enormous furnace-altar, 4 tiles across, currently dark and cold (the Ember Crystal inserted in R01 has been carrying heat up through the pipes — but the forge is not yet lit). Four massive chain-pull mechanisms on the cardinal walls. A raised iron walkway rings the upper level. The Boss Door is in the north wall, above the walkway level.
 **Size:** Very Large
-**Connections:** South → R09 (open — chain hall approach) | South → R10 (open — lava river approach) | North → R15 *(BOSS DOOR — requires Boss Key)* | West hidden wall → R13a *(SECRET)* | East hidden wall → R13b *(SECRET)*
+**Connections:** South-West → R09 (open — chain hall approach) | South → R10 (open — lava river approach) | South-East → R11 *(LOCKED — Small Key F required to release bolt mechanism)* | North → R15 *(BOSS DOOR — requires Boss Key)* | West hidden wall → R13a *(SECRET)* | East hidden wall → R13b *(SECRET)*
 
 **Contents:**
 - ⚔️ **1× Slag Golem** + **2× Forge Hound** + **2× Steam Wraith** *(carried over from Level 3 — living in the pipe vents)* — heaviest pre-boss encounter in the dungeon.
@@ -458,9 +464,10 @@ LEGEND
 
 ```
 CRITICAL PATH:
-R01 (Ember Crystal inserted, map, Glove test) → R02 (fight, get Key A) → R04 (Glove bridge puzzle, get Key C via weight plate)
-→ R07 (anvil weight plate, get Key D) → R08 (fight, get Key E, Forge Tongs)
-→ R10 (bridge lava gap, get Key F north bank) → R11 (Key F + Glove chain bolt, enter R12)
+R01 (Ember Crystal inserted, map, Glove test) → R02 (fight, get Key A, enter the right-side wing spine)
+→ R04 (Glove bridge puzzle, get Key C via weight plate) → R07 (anvil weight plate, get Key D)
+→ R08 (fight, get Key E, Forge Tongs) → R10 (bridge lava gap, get Key F north bank)
+→ R11 (Key F + Glove chain bolt, enter the upper wing root)
 → R12 (four-chain Forge lighting puzzle, get Boss Key) → R15 (boss, get Piece 5)
 
 KEY LOCATIONS:
@@ -473,10 +480,10 @@ KEY LOCATIONS:
   Boss Key    — R12 (descends on chain after forge lighting puzzle)
 
 OPTIONAL PATHS:
-  R02 → R03 (Key B + lore — opens R06 approach from below)
+  R02 → R03 (Key B + lore — drops into the outer feather at R06)
   R02 → R05 (Compass + Glove retrieval from cooling vat)
   R05 → Cooling Ingot (carry to R07 as alternate weight plate solution)
-  R06 → Chain pull (deactivates all bellows — quality of life)
+  R06 → Chain pull (deactivates all bellows — quality of life on the wing's far edge)
   R06 → Heating Tonic (useful for R10b descent)
   R09 → R09b (four chain-unwinding — gold + lore)
   R10 → R10b (lava tube — Heating Tonic recommended, gold + Glove upgrade)
