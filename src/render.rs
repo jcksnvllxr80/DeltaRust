@@ -1,4 +1,4 @@
-use crate::character::CharacterCreator;
+use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
@@ -408,40 +408,45 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     };
     preview.state = PlayerState::Walking;
     preview.walk_frame = (frame / 18) % 4;
+    preview.has_sword = creator.appearance.weapon != WeaponStyle::None;
     draw_text("PREVIEW", outer_x + px(18.0), outer_y + px(60.0), px(16.0), color_u8!(197, 170, 119, 255));
     draw_player(sprites, &preview);
 
-    let mut line_y = outer_y + px(58.0);
+    let rows_per_col = creator.field_count().div_ceil(2);
+    let col_w = (list_w - px(20.0)) / 2.0;
     for index in 0..creator.field_count() {
+        let col = index / rows_per_col;
+        let row = index % rows_per_col;
+        let line_x = list_x + px(8.0) + col as f32 * col_w;
+        let line_y = outer_y + px(58.0) + row as f32 * px(15.0);
         let selected = index == creator.selected_field;
         if selected {
             draw_rectangle(
-                list_x + px(6.0),
+                line_x - px(2.0),
                 line_y - px(14.0),
-                list_w - px(12.0),
+                col_w - px(4.0),
                 px(20.0),
                 color_u8!(51, 61, 78, 255),
             );
         }
         if let Some(color) = creator.field_color(index) {
-            draw_rectangle(list_x + px(10.0), line_y - px(10.0), px(12.0), px(12.0), color);
+            draw_rectangle(line_x + px(4.0), line_y - px(10.0), px(10.0), px(10.0), color);
             draw_rectangle_lines(
-                list_x + px(10.0),
+                line_x + px(4.0),
                 line_y - px(10.0),
-                px(12.0),
-                px(12.0),
+                px(10.0),
+                px(10.0),
                 px(1.0),
                 BLACK,
             );
         }
         draw_text(
             &creator.field_text(index),
-            list_x + px(30.0),
+            line_x + px(18.0),
             line_y,
-            px(13.0),
+            px(10.0),
             if selected { WHITE } else { LIGHTGRAY },
         );
-        line_y += px(18.0);
     }
 
     draw_text(

@@ -114,3 +114,83 @@ hud_heart_empty = { x = 48, y = 32, w = 16, h = 16 }
 hud_bomb = { x = 0, y = 48, w = 16, h = 16 }
 hud_key = { x = 16, y = 48, w = 16, h = 16 }
 hud_boss_key = { x = 32, y = 48, w = 16, h = 16 }
+
+# =============================================================================
+# BIOME 1 — MOSSHAVEN WILDS
+# =============================================================================
+
+[biome1_tiles]
+sheet = "biome/biome1/tiles.png"
+moss_grass       = { x = 0,   y = 0, w = 16, h = 16 }
+moss_tree        = { x = 16,  y = 0, w = 16, h = 16 }
+fen_water        = { x = 32,  y = 0, w = 16, h = 16 }
+root_bridge      = { x = 48,  y = 0, w = 16, h = 16 }
+mushroom         = { x = 64,  y = 0, w = 16, h = 16 }
+stepping_stone   = { x = 80,  y = 0, w = 16, h = 16 }
+cave_moss        = { x = 96,  y = 0, w = 16, h = 16 }
+grandfather_tree = { x = 112, y = 0, w = 16, h = 16 }
+hollow_root      = { x = 128, y = 0, w = 16, h = 16 }
+forest_path      = { x = 0,   y = 16, w = 16, h = 16 }
+
+[biome1_enemies]
+sheet = "biome/biome1/enemies.png"
+
+[biome1_enemies.bogwolf]
+frame_time = 14
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+
+[biome1_enemies.thornvine_crawler]
+frame_time = 20
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+
+[biome1_enemies.spore_puffer]
+frame_time = 22
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 32, w = 16, h = 16 },
+  { x = 16, y = 32, w = 16, h = 16 },
+]
+
+[biome1_enemies.fen_lurker]
+frame_time = 24
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 48, w = 16, h = 16 },
+  { x = 16, y = 48, w = 16, h = 16 },
+]
+
+[biome1_npcs]
+sheet = "biome/biome1/npcs.png"
+
+[biome1_npcs.elara]
+frame_time = 30
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 0, w = 16, h = 16 },
+  { x = 16, y = 0, w = 16, h = 16 },
+]
+
+[biome1_npcs.barnett]
+frame_time = 30
+dest_scale = 3.0
+frames = [
+  { x = 0, y = 16, w = 16, h = 16 },
+  { x = 16, y = 16, w = 16, h = 16 },
+]
+
+[biome1_items]
+sheet = "biome/biome1/items.png"
+seed_pouch     = { x = 0,  y = 0,  w = 16, h = 16 }
+gold_pouch     = { x = 16, y = 0,  w = 16, h = 16 }
+antidote_tonic = { x = 32, y = 0,  w = 16, h = 16 }
+stone_tablet   = { x = 0,  y = 16, w = 16, h = 16 }
+rare_herb      = { x = 16, y = 16, w = 16, h = 16 }
+mosshaven_map  = { x = 32, y = 16, w = 16, h = 16 }
