@@ -1,8 +1,8 @@
 use crate::constants::{COLS, ROWS, TILE};
 use crate::model::{EnemySpawn, ItemDef, TileGrid, TileType, WorldSnapshot};
 use crate::world_data::{
-    build_dungeons, build_overworld, dungeon_entry, empty_tiles, enemy_spawns, overworld_start,
-    screen_items, screen_key,
+    build_dungeons, build_overworld, dungeon_entry, dungeon_map_rooms, empty_tiles, enemy_spawns,
+    overworld_start, screen_items, screen_key,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -216,10 +216,7 @@ impl World {
         if !self.in_dungeon {
             return HashSet::new();
         }
-        self.dungeon_data
-            .get(&self.dungeon_id)
-            .map(|d| d.keys().cloned().collect())
-            .unwrap_or_default()
+        dungeon_map_rooms(self.dungeon_id)
     }
 
     /// Key used for the cleared-rooms set.

@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType,
-    Player, PlayerState, Projectile, TileType, Transition,
+    Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -31,6 +31,7 @@ pub struct Game {
     pub world: World,
     pub enemies: Vec<Enemy>,
     pub pickups: Vec<Pickup>,
+    pub props: Vec<WorldProp>,
     pub bombs: Vec<Bomb>,
     pub projectiles: Vec<Projectile>,
     pub death_animations: Vec<DeathAnimation>,
@@ -56,6 +57,7 @@ impl Game {
             world: World::new(dev_mode),
             enemies: vec![],
             pickups: vec![],
+            props: vec![],
             bombs: vec![],
             projectiles: vec![],
             death_animations: vec![],
@@ -146,6 +148,7 @@ impl Game {
             &self.player,
             &self.enemies,
             &self.pickups,
+            &self.props,
             &self.bombs,
             &self.projectiles,
             &self.death_animations,
@@ -221,6 +224,9 @@ impl Game {
             self.start_transition(dir, nx, ny);
             return;
         }
+        if start_pressed() && self.try_use_ladder_point() {
+            return;
+        }
         match self.check_tile_interaction() {
             Some("enter_dungeon") => {
                 self.enter_dungeon();
@@ -242,6 +248,7 @@ impl Game {
             _ => {}
         }
         self.update_enemies();
+        self.update_room_props();
         self.update_items();
         self.update_death_animations();
         self.check_damage();
@@ -319,16 +326,10 @@ impl Game {
             let hb = self.player.hitbox();
             let nx = self.player.x + self.player.knock_dx;
             let ny = self.player.y + self.player.knock_dy;
-            if !self
-                .world
-                .collides(nx + px(2.0), self.player.y + px(4.0), hb.w, hb.h)
-            {
+            if !self.dynamic_collides(nx + px(2.0), self.player.y + px(4.0), hb.w, hb.h) {
                 self.player.x = nx;
             }
-            if !self
-                .world
-                .collides(self.player.x + px(2.0), ny + px(4.0), hb.w, hb.h)
-            {
+            if !self.dynamic_collides(self.player.x + px(2.0), ny + px(4.0), hb.w, hb.h) {
                 self.player.y = ny;
             }
             self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
@@ -390,6 +391,7 @@ impl Game {
             dy *= factor;
         }
         if dx != 0.0 || dy != 0.0 {
+            self.try_push_boulder();
             self.player.state = PlayerState::Walking;
             self.player.walk_timer += 1;
             if self.player.walk_timer >= 24 {
@@ -399,16 +401,10 @@ impl Game {
             let hb = self.player.hitbox();
             let new_x = self.player.x + dx;
             let new_y = self.player.y + dy;
-            if !self
-                .world
-                .collides(new_x + px(2.0), self.player.y + px(4.0), hb.w, hb.h)
-            {
+            if !self.dynamic_collides(new_x + px(2.0), self.player.y + px(4.0), hb.w, hb.h) {
                 self.player.x = new_x;
             }
-            if !self
-                .world
-                .collides(self.player.x + px(2.0), new_y + px(4.0), hb.w, hb.h)
-            {
+            if !self.dynamic_collides(self.player.x + px(2.0), new_y + px(4.0), hb.w, hb.h) {
                 self.player.y = new_y;
             }
             let (_, _, front_tile) = self.front_tile();
@@ -466,6 +462,49 @@ impl Game {
             Dir::Right => fx += 1,
         }
         (fx, fy, self.world.get_tile(fx, fy))
+    }
+
+    fn dynamic_collides(&self, x: f32, y: f32, w: f32, h: f32) -> bool {
+        if self.world.collides(x, y, w, h) {
+            return true;
+        }
+        let rect = Rect::new(x, y, w, h);
+        self.props.iter().any(|prop| {
+            if !matches!(prop.kind, crate::model::PropKind::Boulder) {
+                return false;
+            }
+            let px = prop.tile_x as f32 * TILE;
+            let py = prop.tile_y as f32 * TILE;
+            rect.overlaps(&Rect::new(px, py, TILE, TILE))
+        })
+    }
+
+    fn boulder_index_at(&self, tile_x: i32, tile_y: i32) -> Option<usize> {
+        self.props.iter().position(|prop| {
+            matches!(prop.kind, crate::model::PropKind::Boulder)
+                && prop.tile_x == tile_x
+                && prop.tile_y == tile_y
+        })
+    }
+
+    fn try_push_boulder(&mut self) {
+        let (front_x, front_y, _) = self.front_tile();
+        let Some(index) = self.boulder_index_at(front_x, front_y) else {
+            return;
+        };
+        let (dx, dy) = match self.player.dir {
+            Dir::Up => (0, -1),
+            Dir::Down => (0, 1),
+            Dir::Left => (-1, 0),
+            Dir::Right => (1, 0),
+        };
+        let target_x = self.props[index].tile_x + dx;
+        let target_y = self.props[index].tile_y + dy;
+        if self.world.is_solid(target_x, target_y) || self.boulder_index_at(target_x, target_y).is_some() {
+            return;
+        }
+        self.props[index].tile_x = target_x;
+        self.props[index].tile_y = target_y;
     }
 
     fn sword_hit_check(&mut self) {
@@ -568,9 +607,21 @@ impl Game {
                 self.player.gems += pickup_value(item_type);
                 self.show_message("Found a GEM!");
             }
+            PickupType::Ladder => {
+                self.player.has_ladder = true;
+                self.show_message("You found the LADDER!");
+            }
+            PickupType::Hammer => {
+                self.player.has_hammer = true;
+                self.show_message("You found the HAMMER!");
+            }
+            PickupType::DragonPiece => {
+                self.player.dragon_pieces += 1;
+                self.show_message("Dragon piece claimed!");
+            }
             PickupType::BossKey | PickupType::Heart => {}
         }
-        if item_type == PickupType::Gem {
+        if matches!(item_type, PickupType::Gem | PickupType::DragonPiece) {
             self.audio.currency();
         } else {
             self.audio.pickup();
@@ -935,7 +986,6 @@ impl Game {
         match enemy.enemy_type {
             EnemyType::Boss => {
                 self.spawn_pickup(enemy.x + 4.0, enemy.y + 4.0, PickupType::HeartContainer);
-                self.spawn_pickup(enemy.x + 16.0, enemy.y + 4.0, PickupType::BossKey);
             }
             _ if roll < 0.25 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart),
             _ if roll < 0.35 => self.spawn_pickup(enemy.x, enemy.y, PickupType::BombAmmo),
@@ -1010,8 +1060,20 @@ impl Game {
             PickupType::Gem => {
                 self.player.gems += pickup_value(pickup);
             }
+            PickupType::Ladder => {
+                self.player.has_ladder = true;
+                self.show_message("You found the LADDER!");
+            }
+            PickupType::Hammer => {
+                self.player.has_hammer = true;
+                self.show_message("You found the HAMMER!");
+            }
+            PickupType::DragonPiece => {
+                self.player.dragon_pieces += 1;
+                self.show_message("You claimed a dragon piece!");
+            }
         }
-        if matches!(pickup, PickupType::Key | PickupType::Gem) {
+        if matches!(pickup, PickupType::Key | PickupType::Gem | PickupType::DragonPiece) {
             self.audio.currency();
         } else {
             self.audio.pickup();
@@ -1025,6 +1087,12 @@ impl Game {
             .into_iter()
             .map(create_enemy)
             .collect();
+        self.props = world_data::screen_props(
+            self.world.screen_x,
+            self.world.screen_y,
+            self.world.in_dungeon,
+            self.world.dungeon_id,
+        );
     }
 
     fn reset_items(&mut self) {
@@ -1035,36 +1103,105 @@ impl Game {
 
     fn load_screen_items(&mut self) {
         if self.world.in_dungeon && !self.player.has_boss_key {
-            // Each dungeon has a boss key in a specific room
-            let should_spawn = match self.world.dungeon_id {
-                1 => self.world.screen_x == 0 && self.world.screen_y == 1,
-                2 => self.world.screen_x == 2 && self.world.screen_y == 1,
-                3 => self.world.screen_x == 1 && self.world.screen_y == 0,
-                4 => self.world.screen_x == 1 && self.world.screen_y == 0,
-                _ => false,
-            };
-            if should_spawn {
-                self.spawn_pickup(8.0 * TILE, 5.0 * TILE + px(4.0), PickupType::BossKey);
+            if let Some((tile_x, tile_y)) = world_data::boss_key_spawn_tile(
+                self.world.dungeon_id,
+                self.world.screen_x,
+                self.world.screen_y,
+            ) {
+                if self.props.is_empty() {
+                    self.spawn_pickup(
+                        tile_x as f32 * TILE,
+                        tile_y as f32 * TILE + px(4.0),
+                        PickupType::BossKey,
+                    );
+                }
+            } else {
+                let should_spawn = match self.world.dungeon_id {
+                    2 => self.world.screen_x == 2 && self.world.screen_y == 1,
+                    3 => self.world.screen_x == 1 && self.world.screen_y == 0,
+                    4 => self.world.screen_x == 1 && self.world.screen_y == 0,
+                    _ => false,
+                };
+                if should_spawn {
+                    self.spawn_pickup(8.0 * TILE, 5.0 * TILE + px(4.0), PickupType::BossKey);
+                }
             }
         }
     }
 
     /// Called when all enemies in a dungeon room are defeated.
     fn on_dungeon_room_cleared(&mut self) {
-        let did = self.world.dungeon_id;
-        let sx = self.world.screen_x;
-        let sy = self.world.screen_y;
-        // Spawn a key in specific rooms when cleared
-        let should_spawn_key = match did {
-            1 => sx == 1 && sy == 1,
-            2 => sx == 0 && sy == 1,
-            3 => sx == 0 && sy == 1,
-            4 => sx == 2 && sy == 1,
-            _ => false,
-        };
-        if should_spawn_key {
-            self.spawn_pickup(7.0 * TILE, 5.0 * TILE, PickupType::Key);
+        for reward in world_data::room_clear_rewards(
+            self.world.dungeon_id,
+            self.world.screen_x,
+            self.world.screen_y,
+        ) {
+            self.spawn_pickup(
+                reward.tile_x as f32 * TILE,
+                reward.tile_y as f32 * TILE,
+                reward.pickup_type,
+            );
         }
+    }
+
+    fn update_room_props(&mut self) {
+        use crate::model::PropKind;
+
+        let plate_positions: Vec<(i32, i32)> = self
+            .props
+            .iter()
+            .filter(|prop| matches!(prop.kind, PropKind::PressurePlate))
+            .map(|prop| (prop.tile_x, prop.tile_y))
+            .collect();
+        if plate_positions.is_empty() || self.player.has_boss_key {
+            return;
+        }
+        let all_pressed = plate_positions
+            .iter()
+            .all(|(x, y)| self.boulder_index_at(*x, *y).is_some());
+        if !all_pressed {
+            return;
+        }
+        let boss_key_present = self
+            .pickups
+            .iter()
+            .any(|pickup| !pickup.collected && pickup.pickup_type == PickupType::BossKey);
+        if boss_key_present {
+            return;
+        }
+        if let Some((tile_x, tile_y)) = world_data::boss_key_spawn_tile(
+            self.world.dungeon_id,
+            self.world.screen_x,
+            self.world.screen_y,
+        ) {
+            self.spawn_pickup(
+                tile_x as f32 * TILE,
+                tile_y as f32 * TILE + px(4.0),
+                PickupType::BossKey,
+            );
+            self.show_message("A hidden panel slides open!");
+        }
+    }
+
+    fn try_use_ladder_point(&mut self) -> bool {
+        if !self.player.has_ladder {
+            return false;
+        }
+        let tile_x = ((self.player.x + 8.0) / TILE).floor() as i32;
+        let tile_y = ((self.player.y + 8.0) / TILE).floor() as i32;
+        let Some(prop) = self.props.iter().find(|prop| {
+            matches!(prop.kind, PropKind::LadderPoint)
+                && prop.tile_x == tile_x
+                && prop.tile_y == tile_y
+                && prop.target_tile_x.is_some()
+                && prop.target_tile_y.is_some()
+        }) else {
+            return false;
+        };
+        self.player.x = prop.target_tile_x.unwrap() as f32 * TILE;
+        self.player.y = prop.target_tile_y.unwrap() as f32 * TILE;
+        self.show_message("You climb with the LADDER.");
+        true
     }
 
     fn show_message(&mut self, text: &str) {

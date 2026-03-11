@@ -68,6 +68,16 @@ pub enum PickupType {
     BombAmmo,
     Bombs,
     Gem,
+    Ladder,
+    Hammer,
+    DragonPiece,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PropKind {
+    Boulder,
+    PressurePlate,
+    LadderPoint,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -121,8 +131,11 @@ pub struct Player {
     pub has_boss_key: bool,
     pub keys: i32,
     pub gems: i32,
+    pub dragon_pieces: i32,
     pub bomb_count: i32,
     pub max_bombs: i32,
+    pub has_ladder: bool,
+    pub has_hammer: bool,
     pub walk_frame: i32,
     pub walk_timer: i32,
     pub last_axis: Option<char>,
@@ -147,8 +160,11 @@ impl Player {
             has_boss_key: false,
             keys: 0,
             gems: 0,
+            dragon_pieces: 0,
             bomb_count: 0,
             max_bombs: 8,
+            has_ladder: false,
+            has_hammer: false,
             walk_frame: 0,
             walk_timer: 0,
             last_axis: None,
@@ -233,6 +249,15 @@ pub struct Projectile {
     pub from_enemy: bool,
     pub active: bool,
     pub timer: i32,
+}
+
+#[derive(Clone)]
+pub struct WorldProp {
+    pub kind: PropKind,
+    pub tile_x: i32,
+    pub tile_y: i32,
+    pub target_tile_x: Option<i32>,
+    pub target_tile_y: Option<i32>,
 }
 
 #[derive(Clone)]

@@ -3,6 +3,7 @@ use crate::constants::{PIXEL_SCALE, TILE};
 use crate::model::{Dir, Enemy, EnemyType, PickupType, Player, PlayerState, Projectile, TileType};
 use macroquad::prelude::*;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,7 @@ pub struct Sprites {
     enemies: Option<Sheet>,
     tiles: Option<Sheet>,
     items: Option<Sheet>,
+    biome_sheets: HashMap<i32, BiomeSpriteSet>,
     title_dragon: Option<Texture2D>,
     layout: SpriteLayout,
 }
@@ -29,6 +31,7 @@ impl Sprites {
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
         let items = load_sheet(&layout.items.sheet).await;
+        let biome_sheets = load_biome_sprite_sets().await;
         let title_dragon = load_image_texture(&concept_asset_path("dragon.png")).await;
         Self {
             hero_idle,
@@ -38,6 +41,7 @@ impl Sprites {
             enemies,
             tiles,
             items,
+            biome_sheets,
             title_dragon,
             layout,
         }
@@ -105,16 +109,28 @@ impl Sprites {
         }
     }
 
-    pub fn draw_enemy(&self, enemy: &Enemy, x: f32, y: f32) -> bool {
-        let Some(sheet) = &self.enemies else {
-            return false;
-        };
-        let anim = match enemy.enemy_type {
-            EnemyType::Slime => &self.layout.enemies.slime,
-            EnemyType::Octorok => &self.layout.enemies.octorok,
-            EnemyType::Bat => &self.layout.enemies.bat,
-            EnemyType::Darknut => &self.layout.enemies.darknut,
-            EnemyType::Boss => &self.layout.enemies.boss,
+    pub fn draw_enemy(&self, biome_id: Option<i32>, enemy: &Enemy, x: f32, y: f32) -> bool {
+        let themed = biome_id
+            .and_then(|id| self.biome_sheets.get(&id))
+            .and_then(|set| {
+                let sheet = set.enemies.as_ref()?;
+                let anim = themed_enemy_animation(biome_id, enemy.enemy_type)?;
+                Some((sheet, anim))
+            });
+        let (sheet, anim) = if let Some((sheet, anim)) = themed {
+            (sheet, anim)
+        } else {
+            let Some(sheet) = &self.enemies else {
+                return false;
+            };
+            let anim = match enemy.enemy_type {
+                EnemyType::Slime => self.layout.enemies.slime.clone(),
+                EnemyType::Octorok => self.layout.enemies.octorok.clone(),
+                EnemyType::Bat => self.layout.enemies.bat.clone(),
+                EnemyType::Darknut => self.layout.enemies.darknut.clone(),
+                EnemyType::Boss => self.layout.enemies.boss.clone(),
+            };
+            (sheet, anim)
         };
         let frame_index = if anim.frames.len() > 1 {
             ((enemy.timer / anim.frame_time.max(1)) as usize) % anim.frames.len()
@@ -133,48 +149,52 @@ impl Sprites {
         true
     }
 
-    pub fn draw_tile(&self, tile: TileType, x: f32, y: f32, color: Color) -> bool {
-        let Some(sheet) = &self.tiles else {
-            return false;
-        };
-        let frame = match tile {
-            TileType::Grass => &self.layout.tiles.grass,
-            TileType::Tree => &self.layout.tiles.tree,
-            TileType::Water => &self.layout.tiles.water,
-            TileType::Rock => &self.layout.tiles.rock,
-            TileType::Sand => &self.layout.tiles.sand,
-            TileType::Path => &self.layout.tiles.path,
-            TileType::Cave => &self.layout.tiles.cave,
-            TileType::Dungeon => &self.layout.tiles.dungeon,
-            TileType::Cracked => &self.layout.tiles.cracked,
-            TileType::Bush => &self.layout.tiles.bush,
-            TileType::Bridge => &self.layout.tiles.bridge,
-            TileType::Wall => &self.layout.tiles.wall,
-            TileType::Floor => &self.layout.tiles.floor,
-            TileType::DoorLocked => &self.layout.tiles.door_locked,
-            TileType::Door => &self.layout.tiles.door,
-            TileType::Stairs => &self.layout.tiles.stairs,
-            TileType::Chest => &self.layout.tiles.chest,
-            TileType::Goal => &self.layout.tiles.goal,
-            TileType::BossDoor => &self.layout.tiles.boss_door,
-            TileType::FloorAlt => &self.layout.tiles.floor_alt,
+    pub fn draw_tile(&self, biome_id: Option<i32>, tile: TileType, x: f32, y: f32, color: Color) -> bool {
+        let themed = biome_id
+            .and_then(|id| self.biome_sheets.get(&id))
+            .and_then(|set| {
+                let sheet = set.tiles.as_ref()?;
+                let frame = themed_tile_frame(biome_id, tile)?;
+                Some((sheet, frame))
+            });
+        let (sheet, frame) = if let Some((sheet, frame)) = themed {
+            (sheet, frame)
+        } else {
+            let Some(sheet) = &self.tiles else {
+                return false;
+            };
+            (sheet, base_tile_frame(&self.layout, tile))
         };
         draw_frame_to_size(sheet, frame, x, y, TILE, TILE, color);
         true
     }
 
-    pub fn draw_pickup(&self, pickup: PickupType, x: f32, y: f32, w: f32, h: f32) -> bool {
-        let Some(sheet) = &self.items else {
-            return false;
-        };
-        let frame = match pickup {
-            PickupType::Heart => &self.layout.items.heart_pickup,
-            PickupType::HeartContainer => &self.layout.items.heart_container,
-            PickupType::Key => &self.layout.items.key,
-            PickupType::BossKey => &self.layout.items.boss_key,
-            PickupType::BombAmmo => &self.layout.items.bomb_ammo,
-            PickupType::Bombs => &self.layout.items.bombs,
-            PickupType::Gem => return false,
+    pub fn draw_pickup(
+        &self,
+        biome_id: Option<i32>,
+        pickup: PickupType,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) -> bool {
+        let themed = biome_id
+            .and_then(|id| self.biome_sheets.get(&id))
+            .and_then(|set| {
+                let sheet = set.items.as_ref()?;
+                let frame = themed_pickup_frame(biome_id, pickup)?;
+                Some((sheet, frame))
+            });
+        let (sheet, frame) = if let Some((sheet, frame)) = themed {
+            (sheet, frame)
+        } else {
+            let Some(sheet) = &self.items else {
+                return false;
+            };
+            let Some(frame) = base_pickup_frame(&self.layout, pickup) else {
+                return false;
+            };
+            (sheet, frame)
         };
         draw_frame_to_size(sheet, frame, x, y, w, h, WHITE);
         true
@@ -350,6 +370,12 @@ struct ItemLayout {
     hud_boss_key: FrameRect,
 }
 
+struct BiomeSpriteSet {
+    tiles: Option<Sheet>,
+    enemies: Option<Sheet>,
+    items: Option<Sheet>,
+}
+
 #[derive(Clone, Deserialize)]
 struct AnimationLayout {
     frame_time: i32,
@@ -363,6 +389,119 @@ struct FrameRect {
     y: f32,
     w: f32,
     h: f32,
+}
+
+fn frame(x: f32, y: f32, w: f32, h: f32) -> FrameRect {
+    FrameRect { x, y, w, h }
+}
+
+fn anim(frame_time: i32, frames: &[(f32, f32, f32, f32)]) -> AnimationLayout {
+    AnimationLayout {
+        frame_time,
+        dest_scale: Some(3.0),
+        frames: frames.iter().map(|(x, y, w, h)| frame(*x, *y, *w, *h)).collect(),
+    }
+}
+
+fn base_tile_frame(layout: &SpriteLayout, tile: TileType) -> &FrameRect {
+    match tile {
+        TileType::Grass => &layout.tiles.grass,
+        TileType::Tree => &layout.tiles.tree,
+        TileType::Water => &layout.tiles.water,
+        TileType::Rock => &layout.tiles.rock,
+        TileType::Sand => &layout.tiles.sand,
+        TileType::Path => &layout.tiles.path,
+        TileType::Cave => &layout.tiles.cave,
+        TileType::Dungeon => &layout.tiles.dungeon,
+        TileType::Cracked => &layout.tiles.cracked,
+        TileType::Bush => &layout.tiles.bush,
+        TileType::Bridge => &layout.tiles.bridge,
+        TileType::Wall => &layout.tiles.wall,
+        TileType::Floor => &layout.tiles.floor,
+        TileType::DoorLocked => &layout.tiles.door_locked,
+        TileType::Door => &layout.tiles.door,
+        TileType::Stairs => &layout.tiles.stairs,
+        TileType::Chest => &layout.tiles.chest,
+        TileType::Goal => &layout.tiles.goal,
+        TileType::BossDoor => &layout.tiles.boss_door,
+        TileType::FloorAlt => &layout.tiles.floor_alt,
+    }
+}
+
+fn base_pickup_frame(layout: &SpriteLayout, pickup: PickupType) -> Option<&FrameRect> {
+    Some(match pickup {
+        PickupType::Heart => &layout.items.heart_pickup,
+        PickupType::HeartContainer => &layout.items.heart_container,
+        PickupType::Key => &layout.items.key,
+        PickupType::BossKey => &layout.items.boss_key,
+        PickupType::BombAmmo => &layout.items.bomb_ammo,
+        PickupType::Bombs => &layout.items.bombs,
+        PickupType::Gem | PickupType::Ladder | PickupType::Hammer | PickupType::DragonPiece => return None,
+    })
+}
+
+fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static FrameRect> {
+    if biome_id == Some(2) {
+        Some(match tile {
+            TileType::Grass => &frame_const::ASH_PLAIN,
+            TileType::Tree | TileType::Wall => &frame_const::RUIN_WALL,
+            TileType::Water => &frame_const::DEEP_ASH,
+            TileType::Rock | TileType::Sand | TileType::Bush => &frame_const::ASH_RUBBLE,
+            TileType::Path | TileType::FloorAlt => &frame_const::ASH_DRIFT,
+            TileType::Cave | TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::RUIN_DOORWAY
+            }
+            TileType::Cracked => &frame_const::CRACKED_FLAGSTONE,
+            TileType::Bridge | TileType::Stairs => &frame_const::BELLTOWER,
+            TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::RUIN_FLOOR,
+        })
+    } else {
+        None
+    }
+}
+
+fn themed_enemy_animation(biome_id: Option<i32>, enemy_type: EnemyType) -> Option<AnimationLayout> {
+    if biome_id == Some(2) {
+        Some(match enemy_type {
+            EnemyType::Slime => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(10, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+        })
+    } else {
+        None
+    }
+}
+
+fn themed_pickup_frame(biome_id: Option<i32>, pickup: PickupType) -> Option<&'static FrameRect> {
+    if biome_id == Some(2) {
+        match pickup {
+            PickupType::Gem => Some(&frame_const::ASH_GOLD_POUCH),
+            PickupType::Key => Some(&frame_const::SOLDIER_BADGE),
+            PickupType::Bombs | PickupType::BombAmmo => Some(&frame_const::SALVAGE_TOKEN),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+mod frame_const {
+    use super::FrameRect;
+
+    pub static ASH_PLAIN: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static RUIN_WALL: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static DEEP_ASH: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static BELLTOWER: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static RUIN_FLOOR: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static ASH_RUBBLE: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static RUIN_DOORWAY: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static CRACKED_FLAGSTONE: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static ASH_DRIFT: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static SALVAGE_TOKEN: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SOLDIER_BADGE: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static ASH_GOLD_POUCH: FrameRect = FrameRect { x: 32.0, y: 16.0, w: 16.0, h: 16.0 };
 }
 
 fn draw_centered_frame(
@@ -412,6 +551,26 @@ async fn load_sheet(name: &str) -> Option<Sheet> {
     Some(Sheet { texture })
 }
 
+async fn load_biome_sprite_sets() -> HashMap<i32, BiomeSpriteSet> {
+    let mut sets = HashMap::new();
+    for biome_id in 1..=8 {
+        let tiles = load_sheet(&format!("biome/biome{biome_id}/tiles.png")).await;
+        let enemies = load_sheet(&format!("biome/biome{biome_id}/enemies.png")).await;
+        let items = load_sheet(&format!("biome/biome{biome_id}/items.png")).await;
+        if tiles.is_some() || enemies.is_some() || items.is_some() {
+            sets.insert(
+                biome_id,
+                BiomeSpriteSet {
+                    tiles,
+                    enemies,
+                    items,
+                },
+            );
+        }
+    }
+    sets
+}
+
 async fn load_image_texture(path: &Path) -> Option<Texture2D> {
     let texture = load_texture(path.to_string_lossy().as_ref()).await.ok()?;
     texture.set_filter(FilterMode::Nearest);
@@ -430,10 +589,6 @@ fn concept_asset_path(name: &str) -> PathBuf {
         .join("concept")
         .join("art")
         .join(name)
-}
-
-fn frame(x: f32, y: f32, w: f32, h: f32) -> FrameRect {
-    FrameRect { x, y, w, h }
 }
 
 fn sheet_from_image(image: &Image) -> Sheet {

@@ -2,7 +2,7 @@ use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
-    Projectile, TileGrid, TileType, Transition, WorldSnapshot,
+    Projectile, PropKind, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
 use crate::world_data;
@@ -20,18 +20,21 @@ pub fn draw_game(
     player: &Player,
     enemies: &[Enemy],
     pickups: &[Pickup],
+    props: &[WorldProp],
     bombs: &[Bomb],
     projectiles: &[Projectile],
     death_animations: &[DeathAnimation],
 ) {
     clear_background(color_u8!(17, 17, 17, 255));
-    draw_tiles(sprites, &world.tiles, 0.0, 0.0);
-    draw_pickups(sprites, pickups);
+    let theme_id = world_data::visual_theme_id(world.screen_x, world.screen_y, world.in_dungeon, world.dungeon_id);
+    draw_tiles(sprites, &world.tiles, 0.0, 0.0, theme_id);
+    draw_props(props);
+    draw_pickups(sprites, pickups, theme_id);
     draw_bombs(sprites, bombs);
     draw_projectiles(sprites, projectiles);
     for enemy in enemies {
         if enemy.active {
-            draw_enemy(sprites, enemy);
+            draw_enemy(sprites, enemy, theme_id);
         }
     }
     draw_death_animations(death_animations);
@@ -93,11 +96,25 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Gems", true, Some(player.gems));
     line_y += px(28.0);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Pieces",
+        player.dragon_pieces > 0,
+        Some(player.dragon_pieces),
+    );
+    line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Bombs", player.has_bombs, Some(player.bomb_count));
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Keys", player.keys > 0, Some(player.keys));
     line_y += px(28.0);
     draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Boss Key", player.has_boss_key, None);
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Ladder", player.has_ladder, None);
+    line_y += px(28.0);
+    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Hammer", player.has_hammer, None);
 
     draw_text("MAP", map_x + px(10.0), map_y - px(10.0), px(14.0), color_u8!(197, 170, 119, 255));
     if world.in_dungeon {
@@ -261,6 +278,7 @@ pub fn draw_transition(
     player: &Player,
 ) {
     clear_background(color_u8!(17, 17, 17, 255));
+    let theme_id = world_data::visual_theme_id(world.screen_x, world.screen_y, world.in_dungeon, world.dungeon_id);
     let (mut old_ox, mut old_oy, mut new_ox, mut new_oy) = (0.0, 0.0, 0.0, 0.0);
     match transition.dir.unwrap() {
         Dir::Left => {
@@ -280,9 +298,9 @@ pub fn draw_transition(
             new_oy = GAME_H - transition.progress;
         }
     }
-    draw_tiles(sprites, &transition.old_tiles, old_ox, old_oy);
+    draw_tiles(sprites, &transition.old_tiles, old_ox, old_oy, theme_id);
     if let Some(next_tiles) = next_tiles {
-        draw_tiles(sprites, next_tiles, new_ox, new_oy);
+        draw_tiles(sprites, next_tiles, new_ox, new_oy, theme_id);
     }
     draw_hud(sprites, player, world);
 }
@@ -526,16 +544,16 @@ pub fn draw_message_box(text: &str) {
     }
 }
 
-fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32) {
+fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32, theme_id: Option<i32>) {
     for (row, line) in tiles.iter().enumerate() {
         for (col, tile) in line.iter().enumerate() {
             let x = ox + col as f32 * TILE;
             let y = oy + row as f32 * TILE + HUD_H;
             let underlay = tile_base(*tile).unwrap_or(*tile);
-            if !sprites.draw_tile(underlay, x, y, WHITE) {
+            if !sprites.draw_tile(theme_id, underlay, x, y, WHITE) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(underlay));
             }
-            if !sprites.draw_tile(*tile, x, y, tile_tint(*tile)) {
+            if !sprites.draw_tile(theme_id, *tile, x, y, tile_tint(*tile)) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(*tile));
             }
             match *tile {
@@ -556,6 +574,48 @@ fn draw_keyhole(x: f32, y: f32, color: Color) {
     // Slot bottom of keyhole
     draw_rectangle(cx - px(2.0), cy + px(1.0), px(4.0), px(6.0), BLACK);
     draw_rectangle(cx - px(1.0), cy + px(2.0), px(2.0), px(4.0), color);
+}
+
+fn draw_props(props: &[WorldProp]) {
+    for prop in props {
+        let x = prop.tile_x as f32 * TILE;
+        let y = prop.tile_y as f32 * TILE + HUD_H;
+        match prop.kind {
+            PropKind::PressurePlate => {
+                draw_rectangle(
+                    x + px(6.0),
+                    y + px(22.0),
+                    TILE - px(12.0),
+                    px(10.0),
+                    color_u8!(86, 128, 118, 255),
+                );
+                draw_rectangle_lines(
+                    x + px(6.0),
+                    y + px(22.0),
+                    TILE - px(12.0),
+                    px(10.0),
+                    px(1.0),
+                    color_u8!(44, 66, 60, 255),
+                );
+            }
+            PropKind::Boulder => {
+                draw_rectangle(x + px(6.0), y + px(6.0), TILE - px(12.0), TILE - px(12.0), color_u8!(76, 84, 92, 255));
+                draw_rectangle(x + px(12.0), y + px(10.0), TILE - px(24.0), TILE - px(24.0), color_u8!(116, 124, 132, 255));
+                draw_rectangle_lines(
+                    x + px(6.0),
+                    y + px(6.0),
+                    TILE - px(12.0),
+                    TILE - px(12.0),
+                    px(2.0),
+                    color_u8!(46, 50, 56, 255),
+                );
+            }
+            PropKind::LadderPoint => {
+                draw_ladder_icon(x + px(8.0), y + px(4.0), 1.0, color_u8!(174, 138, 88, 255));
+                draw_circle(x + TILE - px(8.0), y + px(8.0), px(3.0), color_u8!(230, 214, 164, 255));
+            }
+        }
+    }
 }
 
 fn tile_base(tile: TileType) -> Option<TileType> {
@@ -728,14 +788,14 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
     }
 }
 
-fn draw_enemy(sprites: &Sprites, enemy: &Enemy) {
+fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
     let x = enemy.x.round();
     let y = enemy.y.round() + HUD_H;
     if enemy.flash_timer > 0 && (enemy.flash_timer / 2) % 2 == 0 {
         draw_rectangle(x, y, enemy.w, enemy.h, WHITE);
         return;
     }
-    if sprites.draw_enemy(enemy, x, y) {
+    if sprites.draw_enemy(theme_id, enemy, x, y) {
         return;
     }
     let outline = color_u8!(18, 18, 24, 255);
@@ -893,23 +953,33 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy) {
     }
 }
 
-fn draw_pickups(sprites: &Sprites, pickups: &[Pickup]) {
+fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
     for pickup in pickups {
         let draw_w = pickup.w * PICKUP_RENDER_SCALE;
         let draw_h = pickup.h * PICKUP_RENDER_SCALE;
         let x = pickup.x.round() - (draw_w - pickup.w) * 0.5;
         let y = pickup.y.round() + HUD_H + (pickup.timer as f32 * 0.1).sin() * px(1.5)
             - (draw_h - pickup.h) * 0.5;
-        if !sprites.draw_pickup(pickup.pickup_type, x, y, draw_w, draw_h) {
+        if !sprites.draw_pickup(theme_id, pickup.pickup_type, x, y, draw_w, draw_h) {
             let color = match pickup.pickup_type {
                 PickupType::Heart | PickupType::HeartContainer => RED,
                 PickupType::Key => YELLOW,
                 PickupType::BossKey => ORANGE,
                 PickupType::BombAmmo | PickupType::Bombs => DARKGRAY,
                 PickupType::Gem => SKYBLUE,
+                PickupType::Ladder => color_u8!(166, 120, 72, 255),
+                PickupType::Hammer => color_u8!(124, 124, 136, 255),
+                PickupType::DragonPiece => color_u8!(226, 194, 92, 255),
             };
             match pickup.pickup_type {
                 PickupType::Gem => draw_gem_icon(x, y, draw_w / px(16.0), SKYBLUE),
+                PickupType::Ladder => {
+                    draw_ladder_icon(x + px(4.0), y + px(2.0), draw_w / px(18.0), color)
+                }
+                PickupType::Hammer => draw_hammer_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::DragonPiece => {
+                    draw_dragon_piece_icon(x + px(3.0), y + px(2.0), draw_w / px(16.0))
+                }
                 _ => draw_rectangle(x, y, draw_w, draw_h, color),
             }
         }
@@ -987,6 +1057,43 @@ fn draw_gem_icon(x: f32, y: f32, scale: f32, tint: Color) {
     draw_circle(x + scale * 4.0, y + scale * 3.0, scale * 0.9, WHITE);
 }
 
+fn draw_ladder_icon(x: f32, y: f32, scale: f32, tint: Color) {
+    let dark = color_u8!(90, 62, 34, 255);
+    draw_rectangle(x, y, scale * 2.0, scale * 14.0, dark);
+    draw_rectangle(x + scale * 8.0, y, scale * 2.0, scale * 14.0, dark);
+    for rung in [2.0, 5.0, 8.0, 11.0] {
+        draw_rectangle(x + scale * 1.5, y + scale * rung, scale * 7.0, scale * 1.2, tint);
+    }
+}
+
+fn draw_hammer_icon(x: f32, y: f32, scale: f32) {
+    let metal = color_u8!(150, 154, 168, 255);
+    let metal_shadow = color_u8!(90, 96, 110, 255);
+    let wood = color_u8!(126, 82, 44, 255);
+    draw_rectangle(x + scale * 5.0, y, scale * 6.0, scale * 4.0, metal);
+    draw_rectangle(x + scale * 8.0, y + scale * 3.0, scale * 2.0, scale * 10.0, wood);
+    draw_rectangle(x + scale * 5.0, y + scale * 3.0, scale * 3.0, scale * 2.0, metal_shadow);
+}
+
+fn draw_dragon_piece_icon(x: f32, y: f32, scale: f32) {
+    let outer = color_u8!(219, 186, 94, 255);
+    let inner = color_u8!(255, 230, 153, 255);
+    let dark = color_u8!(130, 96, 28, 255);
+    draw_triangle(
+        vec2(x + scale * 6.0, y),
+        vec2(x, y + scale * 10.0),
+        vec2(x + scale * 12.0, y + scale * 12.0),
+        outer,
+    );
+    draw_triangle(
+        vec2(x + scale * 5.5, y + scale * 2.0),
+        vec2(x + scale * 2.0, y + scale * 9.0),
+        vec2(x + scale * 10.0, y + scale * 10.0),
+        inner,
+    );
+    draw_line(x + scale * 6.0, y, x + scale * 12.0, y + scale * 12.0, scale * 0.8, dark);
+}
+
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
     draw_rectangle(0.0, HUD_H - px(2.0), GAME_W, px(2.0), color_u8!(100, 100, 100, 255));
@@ -1040,6 +1147,21 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
             px(16.0),
             WHITE,
         );
+    }
+    if player.dragon_pieces > 0 {
+        let x = px(160.0);
+        draw_dragon_piece_icon(x, px(29.0), px(1.0));
+        draw_text(
+            &format!("x{}", player.dragon_pieces),
+            x + px(18.0),
+            px(44.0),
+            px(16.0),
+            color_u8!(226, 194, 92, 255),
+        );
+    }
+    if player.has_ladder {
+        draw_ladder_icon(px(160.0), px(6.0), px(1.0), color_u8!(186, 145, 96, 255));
+        draw_text("LADDER", px(176.0), px(20.0), px(16.0), color_u8!(186, 145, 96, 255));
     }
     if player.keys > 0 || world.in_dungeon {
         if !sprites.draw_hud_key(px(106.0), px(6.0), px(16.0)) {
@@ -1196,11 +1318,17 @@ fn draw_inventory_stat(
         "Bombs" if player.has_bombs => {
             let _ = sprites.draw_hud_bomb(x, y - px(10.0), px(22.0));
         }
+        "Pieces" => {
+            draw_dragon_piece_icon(x + px(3.0), y - px(11.0), px(0.85));
+        }
         "Keys" if player.keys > 0 => {
             let _ = sprites.draw_hud_key(x + px(2.0), y - px(8.0), px(18.0));
         }
         "Boss Key" if player.has_boss_key => {
             let _ = sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
+        }
+        "Ladder" if player.has_ladder => {
+            draw_ladder_icon(x + px(4.0), y - px(11.0), px(0.9), color_u8!(181, 141, 91, 255));
         }
         _ => {}
     }
