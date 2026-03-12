@@ -1,6 +1,7 @@
 use macroquad::prelude::{Color, Image, WHITE};
 use macroquad::rand::gen_range;
 use std::collections::HashSet;
+use crate::model::NpcKind;
 
 pub const FRAME_SIZE: u16 = 48;
 pub const SHEET_SIZE: u16 = FRAME_SIZE * 4;
@@ -201,6 +202,181 @@ impl CharacterAppearance {
             offhand: OFFHAND_STYLES[gen_range(0, OFFHAND_STYLES.len())],
         }
     }
+}
+
+pub fn npc_appearance(kind: NpcKind) -> CharacterAppearance {
+    let mut appearance = CharacterAppearance::default();
+    appearance.weapon = WeaponStyle::None;
+    appearance.offhand = OffhandStyle::None;
+    appearance.shield_on = false;
+    appearance.has_cape = false;
+    appearance.armors.clear();
+    match kind {
+        NpcKind::Elara => {
+            appearance.palette.skin = rgb(235, 194, 156);
+            appearance.palette.hair = rgb(92, 52, 24);
+            appearance.palette.shirt = rgb(82, 138, 84);
+            appearance.palette.pants = rgb(98, 72, 46);
+            appearance.palette.boots = rgb(62, 42, 24);
+            appearance.face = FaceShape::Round;
+            appearance.eyes = EyeExpression::Happy;
+            appearance.hair_style = HairStyle::Long;
+            appearance.clothes = ClothesStyle::Robe;
+            appearance.offhand = OffhandStyle::Potion;
+        }
+        NpcKind::Barnett => {
+            appearance.palette.skin = rgb(220, 182, 142);
+            appearance.palette.hair = rgb(68, 42, 20);
+            appearance.palette.shirt = rgb(88, 118, 156);
+            appearance.palette.pants = rgb(92, 78, 54);
+            appearance.palette.boots = rgb(56, 38, 22);
+            appearance.face = FaceShape::Square;
+            appearance.eyes = EyeExpression::Thinking;
+            appearance.hair_style = HairStyle::Short;
+            appearance.clothes = ClothesStyle::Vest;
+            appearance.offhand = OffhandStyle::Book;
+        }
+        NpcKind::Maren => {
+            appearance.palette.skin = rgb(214, 172, 132);
+            appearance.palette.hair = rgb(44, 22, 10);
+            appearance.palette.shirt = rgb(132, 98, 70);
+            appearance.palette.pants = rgb(62, 54, 48);
+            appearance.palette.boots = rgb(44, 30, 18);
+            appearance.face = FaceShape::Square;
+            appearance.eyes = EyeExpression::Normal;
+            appearance.hair_style = HairStyle::Ponytail;
+            appearance.clothes = ClothesStyle::Vest;
+            appearance.weapon = WeaponStyle::Hammer;
+        }
+        NpcKind::Oswin => {
+            appearance.palette.skin = rgb(230, 196, 156);
+            appearance.palette.hair = rgb(196, 188, 164);
+            appearance.palette.shirt = rgb(112, 96, 82);
+            appearance.palette.pants = rgb(84, 74, 66);
+            appearance.palette.boots = rgb(52, 40, 28);
+            appearance.face = FaceShape::Narrow;
+            appearance.eyes = EyeExpression::Tired;
+            appearance.hair_style = HairStyle::Bald;
+            appearance.clothes = ClothesStyle::Robe;
+        }
+        NpcKind::Corvin => {
+            appearance.palette.skin = rgb(198, 160, 128);
+            appearance.palette.hair = rgb(42, 30, 22);
+            appearance.palette.shirt = rgb(96, 94, 122);
+            appearance.palette.pants = rgb(68, 68, 84);
+            appearance.palette.boots = rgb(42, 34, 28);
+            appearance.palette.armor = rgb(158, 170, 180);
+            appearance.face = FaceShape::Narrow;
+            appearance.eyes = EyeExpression::Angry;
+            appearance.hair_style = HairStyle::Short;
+            appearance.clothes = ClothesStyle::Cloak;
+            appearance.has_cape = true;
+            appearance.offhand = OffhandStyle::Book;
+        }
+        NpcKind::Petra => {
+            appearance.palette.skin = rgb(224, 188, 150);
+            appearance.palette.hair = rgb(92, 52, 18);
+            appearance.palette.shirt = rgb(136, 108, 82);
+            appearance.palette.pants = rgb(78, 62, 48);
+            appearance.palette.boots = rgb(48, 34, 24);
+            appearance.face = FaceShape::Round;
+            appearance.eyes = EyeExpression::Wide;
+            appearance.hair_style = HairStyle::Mohawk;
+            appearance.clothes = ClothesStyle::Vest;
+            appearance.offhand = OffhandStyle::Torch;
+        }
+        NpcKind::Aldric => {
+            appearance.palette.skin = rgb(224, 192, 160);
+            appearance.palette.hair = rgb(214, 196, 124);
+            appearance.palette.shirt = rgb(74, 126, 154);
+            appearance.palette.pants = rgb(76, 88, 112);
+            appearance.palette.boots = rgb(48, 34, 24);
+            appearance.palette.armor = rgb(170, 188, 196);
+            appearance.face = FaceShape::Square;
+            appearance.eyes = EyeExpression::Normal;
+            appearance.hair_style = HairStyle::Short;
+            appearance.clothes = ClothesStyle::Vest;
+            appearance.helmet = HelmetStyle::Cap;
+            appearance.offhand = OffhandStyle::Book;
+        }
+        NpcKind::Sael => {
+            appearance.palette.skin = rgb(202, 164, 132);
+            appearance.palette.hair = rgb(28, 18, 16);
+            appearance.palette.shirt = rgb(80, 112, 138);
+            appearance.palette.pants = rgb(70, 84, 104);
+            appearance.palette.boots = rgb(44, 32, 24);
+            appearance.face = FaceShape::Round;
+            appearance.eyes = EyeExpression::Confused;
+            appearance.hair_style = HairStyle::Long;
+            appearance.clothes = ClothesStyle::Cloak;
+            appearance.has_cape = true;
+            appearance.offhand = OffhandStyle::Torch;
+        }
+        NpcKind::Dax => {
+            appearance.palette.skin = rgb(192, 144, 116);
+            appearance.palette.hair = rgb(116, 52, 22);
+            appearance.palette.shirt = rgb(146, 96, 62);
+            appearance.palette.pants = rgb(82, 68, 56);
+            appearance.palette.boots = rgb(50, 36, 24);
+            appearance.face = FaceShape::Square;
+            appearance.eyes = EyeExpression::Straining;
+            appearance.hair_style = HairStyle::Spiky;
+            appearance.build = BuildType::Stocky;
+            appearance.clothes = ClothesStyle::Vest;
+            appearance.weapon = WeaponStyle::Hammer;
+        }
+        NpcKind::Vel => {
+            appearance.palette.skin = rgb(208, 186, 166);
+            appearance.palette.hair = rgb(170, 194, 228);
+            appearance.palette.shirt = rgb(124, 118, 164);
+            appearance.palette.pants = rgb(88, 84, 112);
+            appearance.palette.boots = rgb(46, 36, 30);
+            appearance.face = FaceShape::Narrow;
+            appearance.eyes = EyeExpression::Thinking;
+            appearance.hair_style = HairStyle::Long;
+            appearance.clothes = ClothesStyle::Robe;
+            appearance.offhand = OffhandStyle::Orb;
+        }
+        NpcKind::CelestialMerchant => {
+            appearance.palette.skin = rgb(226, 202, 182);
+            appearance.palette.hair = rgb(246, 240, 190);
+            appearance.palette.shirt = rgb(146, 126, 196);
+            appearance.palette.pants = rgb(100, 90, 140);
+            appearance.palette.boots = rgb(54, 40, 34);
+            appearance.palette.cape = rgb(224, 206, 120);
+            appearance.face = FaceShape::Round;
+            appearance.eyes = EyeExpression::Happy;
+            appearance.hair_style = HairStyle::Long;
+            appearance.clothes = ClothesStyle::Robe;
+            appearance.has_cape = true;
+            appearance.offhand = OffhandStyle::Orb;
+        }
+        NpcKind::Senna => {
+            appearance.palette.skin = rgb(234, 212, 192);
+            appearance.palette.hair = rgb(204, 216, 242);
+            appearance.palette.shirt = rgb(138, 144, 182);
+            appearance.palette.pants = rgb(94, 98, 128);
+            appearance.palette.boots = rgb(50, 40, 34);
+            appearance.face = FaceShape::Narrow;
+            appearance.eyes = EyeExpression::Sad;
+            appearance.hair_style = HairStyle::Long;
+            appearance.clothes = ClothesStyle::Cloak;
+            appearance.has_cape = true;
+        }
+        NpcKind::Wren => {
+            appearance.palette.skin = rgb(210, 174, 146);
+            appearance.palette.hair = rgb(190, 178, 126);
+            appearance.palette.shirt = rgb(138, 126, 90);
+            appearance.palette.pants = rgb(90, 82, 62);
+            appearance.palette.boots = rgb(48, 36, 26);
+            appearance.face = FaceShape::Square;
+            appearance.eyes = EyeExpression::Tired;
+            appearance.hair_style = HairStyle::Ponytail;
+            appearance.clothes = ClothesStyle::Cloak;
+            appearance.offhand = OffhandStyle::Potion;
+        }
+    }
+    appearance
 }
 
 #[derive(Clone, Debug)]

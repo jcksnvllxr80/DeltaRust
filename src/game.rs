@@ -144,6 +144,7 @@ impl Game {
     fn draw_game(&self) {
         render::draw_game(
             &self.sprites,
+            self.frame,
             &self.world.snapshot(),
             &self.player,
             &self.enemies,
@@ -770,16 +771,78 @@ impl Game {
             self.player.y = self.player.y.clamp(0.0, GAME_H - TILE);
             return;
         }
+        let Some((player_new_x, player_new_y)) = self.find_transition_target(dir, next_x, next_y, nx, ny) else {
+            self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
+            self.player.y = self.player.y.clamp(0.0, GAME_H - TILE);
+            return;
+        };
         self.transition = Transition {
             dir: Some(dir),
             progress: 0.0,
             old_tiles: self.world.tiles.clone(),
             new_screen_x: next_x,
             new_screen_y: next_y,
-            player_new_x: nx,
-            player_new_y: ny,
+            player_new_x,
+            player_new_y,
         };
         self.state = GameState::Transition;
+    }
+
+    fn find_transition_target(
+        &self,
+        dir: Dir,
+        next_x: i32,
+        next_y: i32,
+        nx: f32,
+        ny: f32,
+    ) -> Option<(f32, f32)> {
+        let next_tiles = self.world.screen_tiles(next_x, next_y)?;
+        match dir {
+            Dir::Left | Dir::Right => {
+                let start_row = ((self.player.y + 8.0) / TILE).floor() as i32;
+                let current_edge = if matches!(dir, Dir::Left) { 0 } else { COLS - 1 };
+                let next_edge = if matches!(dir, Dir::Left) { COLS - 1 } else { 0 };
+                let mut candidates: Vec<i32> = (0..ROWS).map(|row| row as i32).collect();
+                candidates.sort_by_key(|row| (row - start_row).abs());
+                for row in candidates {
+                    let row_usize = row as usize;
+                    if self.transition_tile_open(self.world.tiles[row_usize][current_edge])
+                        && self.transition_tile_open(next_tiles[row_usize][next_edge])
+                    {
+                        return Some((nx, row as f32 * TILE));
+                    }
+                }
+            }
+            Dir::Up | Dir::Down => {
+                let start_col = ((self.player.x + 8.0) / TILE).floor() as i32;
+                let current_edge = if matches!(dir, Dir::Up) { 0 } else { ROWS - 1 };
+                let next_edge = if matches!(dir, Dir::Up) { ROWS - 1 } else { 0 };
+                let mut candidates: Vec<i32> = (0..COLS).map(|col| col as i32).collect();
+                candidates.sort_by_key(|col| (col - start_col).abs());
+                for col in candidates {
+                    let col_usize = col as usize;
+                    if self.transition_tile_open(self.world.tiles[current_edge][col_usize])
+                        && self.transition_tile_open(next_tiles[next_edge][col_usize])
+                    {
+                        return Some((col as f32 * TILE, ny));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn transition_tile_open(&self, tile: TileType) -> bool {
+        !matches!(
+            tile,
+            TileType::Tree
+                | TileType::Rock
+                | TileType::Cracked
+                | TileType::Wall
+                | TileType::DoorLocked
+                | TileType::BossDoor
+                | TileType::Chest
+        ) && (tile != TileType::Water || self.player.has_raft)
     }
 
     fn enter_dungeon(&mut self) {

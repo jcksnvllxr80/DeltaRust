@@ -1,17 +1,21 @@
-use crate::character::{generate_hero_sheets, CharacterAppearance};
+use crate::character::{generate_hero_sheets, npc_appearance, CharacterAppearance};
 use crate::constants::{PIXEL_SCALE, TILE};
-use crate::model::{Dir, Enemy, EnemyType, PickupType, Player, PlayerState, Projectile, TileType};
+use crate::model::{Dir, Enemy, EnemyType, NpcKind, PickupType, Player, PlayerState, Projectile, TileType};
 use macroquad::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+const WALK_FRAME_TICKS: i32 = 24;
+const IDLE_FRAME_TICKS: i32 = WALK_FRAME_TICKS * 3;
+
 pub struct Sprites {
     hero_idle: Option<Sheet>,
     hero_walk: Option<Sheet>,
     hero_idle_sword: Option<Sheet>,
     hero_walk_sword: Option<Sheet>,
+    npc_idle: HashMap<NpcKind, Sheet>,
     enemies: Option<Sheet>,
     tiles: Option<Sheet>,
     items: Option<Sheet>,
@@ -28,6 +32,7 @@ impl Sprites {
         let hero_walk = Some(sheet_from_image(&generated.walk));
         let hero_idle_sword = Some(sheet_from_image(&generated.idle_armed));
         let hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
+        let npc_idle = load_npc_sheets();
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
         let items = load_sheet(&layout.items.sheet).await;
@@ -38,6 +43,7 @@ impl Sprites {
             hero_walk,
             hero_idle_sword,
             hero_walk_sword,
+            npc_idle,
             enemies,
             tiles,
             items,
@@ -55,7 +61,7 @@ impl Sprites {
         self.hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
     }
 
-    pub fn draw_player(&self, player: &Player, x: f32, y: f32) -> bool {
+    pub fn draw_player(&self, player: &Player, x: f32, y: f32, anim_frame: i32) -> bool {
         let (sheet, frames) = match player.state {
             PlayerState::Walking => {
                 let sheet = if player.has_sword {
@@ -86,8 +92,29 @@ impl Sprites {
         let frame_index = if player.state == PlayerState::Walking {
             (player.walk_frame as usize) % frames.len()
         } else {
-            0
+            ((anim_frame / IDLE_FRAME_TICKS) as usize) % frames.len()
         };
+        draw_centered_frame(
+            sheet,
+            &frames[frame_index],
+            x,
+            y,
+            self.layout.hero.dest_scale.unwrap_or(PIXEL_SCALE),
+            self.layout.hero.base_w.unwrap_or(frames[frame_index].w),
+            self.layout.hero.base_h.unwrap_or(frames[frame_index].h),
+        );
+        true
+    }
+
+    pub fn draw_npc(&self, npc: NpcKind, x: f32, y: f32, anim_frame: i32) -> bool {
+        let Some(sheet) = self.npc_idle.get(&npc) else {
+            return false;
+        };
+        let frames = &self.layout.hero.down;
+        if frames.is_empty() {
+            return false;
+        }
+        let frame_index = ((anim_frame / IDLE_FRAME_TICKS) as usize) % frames.len();
         draw_centered_frame(
             sheet,
             &frames[frame_index],
@@ -825,6 +852,31 @@ fn sprite_asset_path(name: &str) -> PathBuf {
         .join("assets")
         .join("sprites")
         .join(name)
+}
+
+fn load_npc_sheets() -> HashMap<NpcKind, Sheet> {
+    [
+        NpcKind::Elara,
+        NpcKind::Barnett,
+        NpcKind::Maren,
+        NpcKind::Oswin,
+        NpcKind::Corvin,
+        NpcKind::Petra,
+        NpcKind::Aldric,
+        NpcKind::Sael,
+        NpcKind::Dax,
+        NpcKind::Vel,
+        NpcKind::CelestialMerchant,
+        NpcKind::Senna,
+        NpcKind::Wren,
+    ]
+    .into_iter()
+    .map(|kind| {
+        let appearance = npc_appearance(kind);
+        let generated = generate_hero_sheets(&appearance);
+        (kind, sheet_from_image(&generated.idle))
+    })
+    .collect()
 }
 
 fn concept_asset_path(name: &str) -> PathBuf {

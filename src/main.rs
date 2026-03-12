@@ -2,6 +2,7 @@ mod audio;
 mod character;
 mod constants;
 mod game;
+mod generated_overworld;
 mod model;
 mod render;
 mod sprites;

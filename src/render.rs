@@ -1,7 +1,7 @@
 use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemyType, NpcKind, Pickup, PickupType, Player, PlayerState,
+    Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
     Projectile, PropKind, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
@@ -16,6 +16,7 @@ const PICKUP_RENDER_SCALE: f32 = 2.0;
 
 pub fn draw_game(
     sprites: &Sprites,
+    frame: i32,
     world: &WorldSnapshot,
     player: &Player,
     enemies: &[Enemy],
@@ -28,7 +29,7 @@ pub fn draw_game(
     clear_background(color_u8!(17, 17, 17, 255));
     let theme_id = world_data::visual_theme_id(world.screen_x, world.screen_y, world.in_dungeon, world.dungeon_id);
     draw_tiles(sprites, &world.tiles, 0.0, 0.0, theme_id);
-    draw_props(props);
+    draw_props(sprites, props, frame);
     draw_pickups(sprites, pickups, theme_id);
     draw_bombs(sprites, bombs);
     draw_projectiles(sprites, projectiles);
@@ -38,7 +39,7 @@ pub fn draw_game(
         }
     }
     draw_death_animations(death_animations);
-    draw_player(sprites, player);
+    draw_player(sprites, player, frame);
     draw_hud(sprites, player, world);
 }
 
@@ -506,7 +507,7 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     preview.walk_frame = (frame / 18) % 4;
     preview.has_sword = creator.appearance.weapon != WeaponStyle::None;
     draw_text("PREVIEW", outer_x + px(18.0), outer_y + px(60.0), px(16.0), color_u8!(197, 170, 119, 255));
-    draw_player(sprites, &preview);
+    draw_player(sprites, &preview, frame);
 
     let rows_per_col = creator.field_count().div_ceil(2);
     let col_w = (list_w - px(20.0)) / 2.0;
@@ -652,7 +653,7 @@ fn draw_keyhole(x: f32, y: f32, color: Color) {
     draw_rectangle(cx - px(1.0), cy + px(2.0), px(2.0), px(4.0), color);
 }
 
-fn draw_props(props: &[WorldProp]) {
+fn draw_props(sprites: &Sprites, props: &[WorldProp], frame: i32) {
     for prop in props {
         let x = prop.tile_x as f32 * TILE;
         let y = prop.tile_y as f32 * TILE + HUD_H;
@@ -691,23 +692,7 @@ fn draw_props(props: &[WorldProp]) {
                 draw_circle(x + TILE - px(8.0), y + px(8.0), px(3.0), color_u8!(230, 214, 164, 255));
             }
             PropKind::Npc(kind) => {
-                let robe = match kind {
-                    NpcKind::Elara | NpcKind::Barnett => color_u8!(86, 136, 78, 255),
-                    NpcKind::Maren | NpcKind::Oswin => color_u8!(132, 104, 86, 255),
-                    NpcKind::Corvin | NpcKind::Petra => color_u8!(118, 114, 136, 255),
-                    NpcKind::Aldric | NpcKind::Sael => color_u8!(72, 126, 156, 255),
-                    NpcKind::Dax => color_u8!(154, 94, 62, 255),
-                    NpcKind::Vel => color_u8!(118, 118, 148, 255),
-                    NpcKind::CelestialMerchant | NpcKind::Senna => color_u8!(150, 138, 204, 255),
-                    NpcKind::Wren => color_u8!(176, 164, 112, 255),
-                };
-                let trim = color_u8!(38, 32, 30, 255);
-                draw_circle(x + px(16.0), y + px(13.0), px(5.0), color_u8!(232, 206, 186, 255));
-                draw_rectangle(x + px(10.0), y + px(18.0), px(12.0), px(12.0), robe);
-                draw_rectangle_lines(x + px(10.0), y + px(18.0), px(12.0), px(12.0), px(1.0), trim);
-                draw_rectangle(x + px(12.0), y + px(30.0), px(3.0), px(4.0), trim);
-                draw_rectangle(x + px(17.0), y + px(30.0), px(3.0), px(4.0), trim);
-                draw_circle(x + px(26.0), y + px(11.0), px(3.0), color_u8!(252, 230, 142, 255));
+                let _ = sprites.draw_npc(kind, x + TILE * 0.5, y + TILE * 0.72, frame);
             }
         }
     }
@@ -773,13 +758,13 @@ fn draw_death_animations(animations: &[DeathAnimation]) {
     }
 }
 
-fn draw_player(sprites: &Sprites, player: &Player) {
+fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
     let x = player.x.round();
     let y = player.y.round() + HUD_H;
     if player.invuln_timer > 0 && (player.invuln_timer / 3) % 2 == 0 {
         return;
     }
-    if sprites.draw_player(player, x, y) {
+    if sprites.draw_player(player, x, y, frame) {
         if player.attack_timer > 0 {
             draw_player_sword(player.dir, x, y, true);
         }

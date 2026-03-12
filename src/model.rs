@@ -76,7 +76,7 @@ pub enum PickupType {
     DragonPiece,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NpcKind {
     Elara,
     Barnett,

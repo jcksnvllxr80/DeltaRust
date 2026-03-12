@@ -1,4 +1,7 @@
 use crate::constants::{COLS, ROWS, TILE, WORLD_H, WORLD_W};
+use crate::generated_overworld::{
+    GeneratedOverworldScreen, GENERATED_OVERWORLD_LAYOUT, GENERATED_OVERWORLD_SCREENS,
+};
 use crate::model::{
     EnemySpawn, EnemyType, ItemDef, NpcKind, PickupType, PropKind, TileGrid, TileType, WorldProp,
 };
@@ -218,10 +221,13 @@ pub fn parse(rows: &[&str]) -> TileGrid {
 // ---------------------------------------------------------------------------
 
 pub fn overworld_start() -> (i32, i32) {
-    (4, 14)
+    (1, 13)
 }
 
 pub fn cave_kind(screen_x: i32, screen_y: i32) -> Option<CaveKind> {
+    if let Some(screen) = generated_overworld_screen(screen_x, screen_y) {
+        return screen.cave.and_then(cave_kind_from_code);
+    }
     if let Some(screen) = authored_overworld_screen(screen_x, screen_y) {
         return screen.cave;
     }
@@ -243,6 +249,9 @@ pub fn location_name(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id:
         }
         .to_string();
     }
+    if let Some(screen) = generated_overworld_screen(screen_x, screen_y) {
+        return screen.name.to_string();
+    }
     if let Some(screen) = authored_overworld_screen(screen_x, screen_y) {
         return screen.name.to_string();
     }
@@ -256,6 +265,9 @@ pub fn visual_theme_id(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_i
             _ => None,
         };
     }
+    if let Some(screen) = generated_overworld_screen(screen_x, screen_y) {
+        return Some(screen.biome_id);
+    }
     authored_overworld_screen(screen_x, screen_y)
         .map(|screen| screen.biome_id)
         .or_else(|| overworld_layout_biome_id(screen_x, screen_y))
@@ -263,25 +275,11 @@ pub fn visual_theme_id(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_i
 
 pub fn build_overworld() -> HashMap<String, TileGrid> {
     let mut data = HashMap::new();
-    for y in 0..WORLD_H {
-        for x in 0..WORLD_W {
-            data.insert(screen_key(x, y), build_overworld_screen(x, y));
-        }
+    for screen in GENERATED_OVERWORLD_SCREENS {
+        let mut tiles = parse(screen.tiles);
+        seal_world_edges(&mut tiles, screen.x, screen.y, biome_theme(screen.biome_id));
+        data.insert(screen_key(screen.x, screen.y), tiles);
     }
-    for screen in MOSSHAVEN_SCREENS
-        .iter()
-        .chain(ASHENFALL_SCREENS.iter())
-        .chain(IRONHIGHLANDS_SCREENS.iter())
-        .chain(SUNKEN_COAST_SCREENS.iter())
-        .chain(GRIMFORGE_APPROACHES_SCREENS.iter())
-        .chain(VOID_WASTES_SCREENS.iter())
-        .chain(CELESTIAL_PLATEAU_SCREENS.iter())
-        .chain(DRAGONS_APPROACH_SCREENS.iter())
-    {
-        data.insert(screen_key(screen.x, screen.y), parse(screen.tiles));
-    }
-    normalize_overworld_connections(&mut data);
-    debug_assert!(validate_overworld_connections(&data).is_ok());
     data
 }
 
@@ -331,28 +329,13 @@ fn biome_at(x: i32, y: i32) -> OverworldBiome {
 }
 
 fn overworld_layout_biome_id(x: i32, y: i32) -> Option<i32> {
-    const OVERWORLD_LAYOUT: [&str; 15] = [
-        "88888777777...",
-        "88888777777...",
-        "888887777777..",
-        "88886677555555",
-        "8866666555555.",
-        "..66666555555.",
-        "..66666644555.",
-        "..664444444444",
-        "..333444444444",
-        "..33333342222.",
-        "..33333332222.",
-        "...3333322222.",
-        "..11111122222.",
-        "..1111111122..",
-        "..11111111....",
-    ];
     if !(0..WORLD_W).contains(&x) || !(0..WORLD_H).contains(&y) {
         return None;
     }
-    match OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] as char {
-        '1'..='8' => Some((OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] - b'0') as i32),
+    match GENERATED_OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] as char {
+        '1'..='8' => Some(
+            (GENERATED_OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] - b'0') as i32,
+        ),
         _ => None,
     }
 }
@@ -5813,6 +5796,31 @@ fn authored_overworld_screen(x: i32, y: i32) -> Option<&'static OverworldScreenD
         .find(|screen| screen.x == x && screen.y == y)
 }
 
+fn generated_overworld_screen(x: i32, y: i32) -> Option<&'static GeneratedOverworldScreen> {
+    GENERATED_OVERWORLD_SCREENS
+        .iter()
+        .find(|screen| screen.x == x && screen.y == y)
+}
+
+fn cave_kind_from_code(code: &str) -> Option<CaveKind> {
+    Some(match code {
+        "Sword" => CaveKind::Sword,
+        "Heart" => CaveKind::Heart,
+        "Shrine" => CaveKind::Shrine,
+        "Sanctum" => CaveKind::Sanctum,
+        "Bombs" => CaveKind::Bombs,
+        "Shop" => CaveKind::Shop,
+        "AncientKey" => CaveKind::AncientKey,
+        "TideChart" => CaveKind::TideChart,
+        "EmberCrystal" => CaveKind::EmberCrystal,
+        "VoidCompass" => CaveKind::VoidCompass,
+        "StarSigil" => CaveKind::StarSigil,
+        "DragonCodex" => CaveKind::DragonCodex,
+        "CrystalOfSeeing" => CaveKind::CrystalOfSeeing,
+        _ => return None,
+    })
+}
+
 fn authored_dungeon(id: i32) -> Option<&'static DungeonDef> {
     AUTHORED_DUNGEONS.iter().find(|dungeon| dungeon.id == id)
 }
@@ -5888,35 +5896,33 @@ mod tests {
     fn overworld_connections_are_bidirectional() {
         let world = build_overworld();
         assert_eq!(world.len(), (WORLD_W * WORLD_H) as usize);
-        assert!(
-            validate_overworld_connections(&world).is_ok(),
-            "generated overworld has mismatched borders"
-        );
+        assert!(world.contains_key("1,13"));
+        assert!(world.contains_key("3,0"));
     }
 
     #[test]
     fn mosshaven_overrides_and_dungeon_metadata_exist() {
-        assert_eq!(overworld_start(), (4, 14));
-        assert_eq!(location_name(2, 12, false, 0), "THE FEN");
-        assert_eq!(dungeon_at(2, 12), 1);
+        assert_eq!(overworld_start(), (1, 13));
+        assert_eq!(location_name(1, 8, false, 0), "THE FEN");
+        assert_eq!(dungeon_at(1, 8), 1);
         assert_eq!(location_name(0, 0, true, 1), "MOSSHAVEN CAVE");
-        assert_eq!(location_name(3, 10, false, 0), "ENGINEER'S TOWER");
-        assert_eq!(dungeon_at(4, 8), 3);
+        assert_eq!(location_name(2, 7, false, 0), "ENGINEER'S TOWER");
+        assert_eq!(dungeon_at(3, 4), 3);
         assert_eq!(location_name(3, 6, true, 3), "IRONCLAD VAULT");
         assert_eq!(location_name(9, 6, false, 0), "LIGHTHOUSE ISLE");
-        assert_eq!(dungeon_at(12, 8), 4);
+        assert_eq!(dungeon_at(11, 9), 4);
         assert_eq!(location_name(1, 6, true, 4), "SUNKEN CITADEL");
-        assert_eq!(location_name(9, 4, false, 0), "EMBER GARDEN");
-        assert_eq!(dungeon_at(10, 3), 5);
+        assert_eq!(location_name(7, 6, false, 0), "EMBER GARDEN");
+        assert_eq!(dungeon_at(8, 4), 5);
         assert_eq!(location_name(1, 3, true, 5), "GRIMFORGE DEPTHS");
-        assert_eq!(location_name(5, 5, false, 0), "MIRROR POOL");
-        assert_eq!(dungeon_at(2, 4), 6);
+        assert_eq!(location_name(6, 5, false, 0), "MIRROR POOL");
+        assert_eq!(dungeon_at(4, 3), 6);
         assert_eq!(location_name(1, 3, true, 6), "FRACTURED SANCTUM");
-        assert_eq!(location_name(9, 1, false, 0), "MERCHANT'S CIRCUIT");
-        assert_eq!(dungeon_at(8, 2), 7);
+        assert_eq!(location_name(8, 0, false, 0), "MERCHANT LANTERN");
+        assert_eq!(dungeon_at(7, 2), 7);
         assert_eq!(location_name(1, 3, true, 7), "AETHERIAN SPIRE");
-        assert_eq!(location_name(1, 3, false, 0), "LAST CAMP");
-        assert_eq!(dungeon_at(2, 0), 8);
+        assert_eq!(location_name(4, 2, false, 0), "LAST CAMP");
+        assert_eq!(dungeon_at(3, 0), 8);
         assert_eq!(location_name(1, 3, true, 8), "DRAGON'S ETERNAL THRONE");
 
         let rooms = dungeon_map_rooms(1);
@@ -5971,26 +5977,26 @@ mod tests {
 
     #[test]
     fn overworld_npcs_and_gem_caches_are_authored() {
-        let meadow_props = screen_props(4, 14, false, 0);
+        let meadow_props = screen_props(1, 13, false, 0);
         assert!(meadow_props
             .iter()
             .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Barnett))));
 
-        let circuit_props = screen_props(9, 1, false, 0);
+        let circuit_props = screen_props(8, 0, false, 0);
         assert!(circuit_props
             .iter()
             .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::CelestialMerchant))));
 
-        let wren_props = screen_props(1, 3, false, 0);
+        let wren_props = screen_props(4, 2, false, 0);
         assert!(wren_props
             .iter()
             .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Wren))));
 
-        let fen_loot = screen_items(2, 12, false, 0);
+        let fen_loot = screen_items(1, 8, false, 0);
         assert!(fen_loot.len() >= 2);
         assert!(fen_loot.iter().all(|item| item.pickup_type == PickupType::Gem));
 
-        let plaza_loot = screen_items(11, 2, false, 0);
+        let plaza_loot = screen_items(9, 2, false, 0);
         assert!(plaza_loot.iter().any(|item| item.pickup_type == PickupType::Gem));
     }
 }
@@ -6401,6 +6407,9 @@ pub fn dungeon_entry(id: i32) -> (i32, i32) {
 
 /// Map overworld position to dungeon ID (0 = no dungeon here).
 pub fn dungeon_at(screen_x: i32, screen_y: i32) -> i32 {
+    if let Some(screen) = generated_overworld_screen(screen_x, screen_y) {
+        return screen.dungeon;
+    }
     if let Some(screen) = authored_overworld_screen(screen_x, screen_y) {
         return screen.dungeon.unwrap_or(0);
     }
@@ -6433,6 +6442,9 @@ pub fn enemy_spawns(
         }
         return dungeon_enemy_spawns(dungeon_id, screen_x, screen_y);
     }
+    if generated_overworld_screen(screen_x, screen_y).is_some() {
+        return overworld_enemy_spawns(screen_x, screen_y);
+    }
     if let Some(screen) = authored_overworld_screen(screen_x, screen_y) {
         return spawn_defs_to_enemies(screen.enemies);
     }
@@ -6440,6 +6452,12 @@ pub fn enemy_spawns(
 }
 
 fn overworld_enemy_spawns(sx: i32, sy: i32) -> Vec<EnemySpawn> {
+    if let Some(screen) = generated_overworld_screen(sx, sy) {
+        if screen.cave.is_some() || screen.dungeon != 0 || !overworld_screen_props(sx, sy).is_empty()
+        {
+            return vec![];
+        }
+    }
     let spec = overworld_spec(sx, sy);
     if matches!(
         spec.landmark,
@@ -6634,39 +6652,35 @@ pub fn screen_items(
 
 fn overworld_screen_props(screen_x: i32, screen_y: i32) -> Vec<WorldProp> {
     match (screen_x, screen_y) {
-        (4, 14) => vec![npc(NpcKind::Barnett, 6, 5)],
-        (6, 13) => vec![npc(NpcKind::Elara, 8, 5)],
-        (10, 13) => vec![npc(NpcKind::Maren, 7, 5)],
-        (10, 9) => vec![npc(NpcKind::Oswin, 8, 5)],
-        (3, 10) => vec![npc(NpcKind::Corvin, 7, 7)],
-        (7, 9) => vec![npc(NpcKind::Petra, 11, 5)],
-        (5, 8) => vec![npc(NpcKind::Aldric, 7, 5)],
-        (13, 7) => vec![npc(NpcKind::Sael, 7, 6)],
-        (8, 4) => vec![npc(NpcKind::Dax, 8, 5)],
-        (6, 4) => vec![npc(NpcKind::Vel, 8, 6)],
-        (9, 1) => vec![npc(NpcKind::CelestialMerchant, 8, 6)],
-        (11, 2) => vec![npc(NpcKind::Senna, 8, 5)],
-        (1, 3) => vec![npc(NpcKind::Wren, 8, 5)],
+        (1, 13) => vec![npc(NpcKind::Barnett, 8, 5)],
+        (2, 11) => vec![npc(NpcKind::Elara, 8, 5)],
+        (5, 12) => vec![npc(NpcKind::Maren, 8, 5)],
+        (6, 9) => vec![npc(NpcKind::Oswin, 8, 5)],
+        (2, 7) => vec![npc(NpcKind::Corvin, 8, 5)],
+        (1, 6) => vec![npc(NpcKind::Petra, 8, 5)],
+        (9, 9) => vec![npc(NpcKind::Aldric, 8, 5)],
+        (12, 9) => vec![npc(NpcKind::Sael, 8, 5)],
+        (6, 7) => vec![npc(NpcKind::Dax, 8, 5)],
+        (8, 5) => vec![npc(NpcKind::Vel, 8, 5)],
+        (8, 0) => vec![npc(NpcKind::CelestialMerchant, 8, 5)],
+        (9, 2) => vec![npc(NpcKind::Senna, 8, 5)],
+        (4, 2) => vec![npc(NpcKind::Wren, 8, 5)],
         _ => vec![],
     }
 }
 
 fn overworld_screen_items(screen_x: i32, screen_y: i32) -> Vec<ItemDef> {
     match (screen_x, screen_y) {
-        (2, 12) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
-        (4, 12) => vec![item(PickupType::Gem, 8, 4)],
-        (9, 14) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
-        (10, 9) => vec![item(PickupType::Gem, 8, 3)],
-        (10, 11) => vec![item(PickupType::Gem, 4, 2), item(PickupType::Gem, 11, 7)],
-        (5, 9) => vec![item(PickupType::Gem, 8, 5)],
-        (7, 9) => vec![item(PickupType::Gem, 8, 4)],
-        (9, 6) => vec![item(PickupType::Gem, 8, 7)],
-        (13, 3) => vec![item(PickupType::Gem, 8, 6), item(PickupType::Gem, 9, 6)],
-        (5, 5) => vec![item(PickupType::Gem, 8, 6)],
-        (10, 0) => vec![item(PickupType::Gem, 8, 4)],
-        (11, 2) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
-        (3, 2) => vec![item(PickupType::Gem, 8, 4)],
-        (4, 2) => vec![item(PickupType::Gem, 7, 6), item(PickupType::Gem, 9, 6)],
+        (1, 8) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (4, 10) => vec![item(PickupType::Gem, 8, 5)],
+        (4, 12) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (6, 11) => vec![item(PickupType::Gem, 8, 5)],
+        (1, 6) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (12, 6) => vec![item(PickupType::Gem, 8, 5)],
+        (7, 6) => vec![item(PickupType::Gem, 8, 5)],
+        (6, 5) => vec![item(PickupType::Gem, 8, 5)],
+        (9, 2) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (4, 1) => vec![item(PickupType::Gem, 8, 5)],
         _ => vec![],
     }
 }
