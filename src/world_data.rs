@@ -198,22 +198,14 @@ pub fn parse(rows: &[&str]) -> TileGrid {
 // ---------------------------------------------------------------------------
 
 pub fn overworld_start() -> (i32, i32) {
-    (3, 7)
+    (4, 14)
 }
 
 pub fn cave_kind(screen_x: i32, screen_y: i32) -> Option<CaveKind> {
     if let Some(screen) = authored_overworld_screen(screen_x, screen_y) {
         return screen.cave;
     }
-    match (screen_x, screen_y) {
-        (3, 5) => Some(CaveKind::Sword),
-        (1, 1) => Some(CaveKind::Heart),
-        (8, 8) => Some(CaveKind::Shrine),
-        (12, 6) => Some(CaveKind::Sanctum),
-        (1, 12) => Some(CaveKind::Bombs),
-        (10, 13) => Some(CaveKind::Shop),
-        _ => None,
-    }
+    None
 }
 
 pub fn location_name(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: i32) -> String {
@@ -244,7 +236,9 @@ pub fn visual_theme_id(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_i
             _ => None,
         };
     }
-    authored_overworld_screen(screen_x, screen_y).map(|screen| screen.biome_id)
+    authored_overworld_screen(screen_x, screen_y)
+        .map(|screen| screen.biome_id)
+        .or_else(|| overworld_layout_biome_id(screen_x, screen_y))
 }
 
 pub fn build_overworld() -> HashMap<String, TileGrid> {
@@ -261,6 +255,8 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
         .chain(SUNKEN_COAST_SCREENS.iter())
         .chain(GRIMFORGE_APPROACHES_SCREENS.iter())
         .chain(VOID_WASTES_SCREENS.iter())
+        .chain(CELESTIAL_PLATEAU_SCREENS.iter())
+        .chain(DRAGONS_APPROACH_SCREENS.iter())
     {
         data.insert(screen_key(screen.x, screen.y), parse(screen.tiles));
     }
@@ -280,113 +276,92 @@ fn build_overworld_screen(x: i32, y: i32) -> TileGrid {
         OverworldLandmark::BombCave => bomb_cave_screen(),
         OverworldLandmark::Shop => secret_shop_screen(),
         OverworldLandmark::Dungeon(id) => dungeon_gate_screen(id),
-        OverworldLandmark::None => biome_screen(spec.biome, x, y),
+        OverworldLandmark::None => {
+            if overworld_layout_biome_id(x, y).is_some() {
+                biome_screen(spec.biome, x, y)
+            } else {
+                plains_screen(((x * 17 + y * 31).unsigned_abs() % 2) as i32)
+            }
+        }
     };
     seal_world_edges(&mut tiles, x, y, spec.biome);
     tiles
 }
 
 fn overworld_spec(x: i32, y: i32) -> OverworldSpec {
-    let biome = biome_at(x, y);
-    match (x, y) {
-        (2, 6) => OverworldSpec {
-            biome: OverworldBiome::Plains,
-            landmark: OverworldLandmark::StartVillage,
-            name: "TRADING POST",
-        },
-        (3, 5) => OverworldSpec {
-            biome: OverworldBiome::Forest,
-            landmark: OverworldLandmark::SwordCave,
-            name: "ELDER WOODS",
-        },
-        (1, 1) => OverworldSpec {
-            biome: OverworldBiome::Mountain,
-            landmark: OverworldLandmark::HeartCave,
-            name: "CLIFF HOLLOW",
-        },
-        (8, 8) => OverworldSpec {
-            biome: OverworldBiome::Lake,
-            landmark: OverworldLandmark::IslandShrine,
-            name: "ISLAND SHRINE",
-        },
-        (12, 6) => OverworldSpec {
-            biome: OverworldBiome::Ruins,
-            landmark: OverworldLandmark::EastSanctum,
-            name: "SUNKEN SANCTUM",
-        },
-        (1, 12) => OverworldSpec {
-            biome: OverworldBiome::Coast,
-            landmark: OverworldLandmark::BombCave,
-            name: "SALT CAVERN",
-        },
-        (10, 13) => OverworldSpec {
-            biome: OverworldBiome::Canyon,
-            landmark: OverworldLandmark::Shop,
-            name: "SECRET SHOP",
-        },
-        (1, 0) => OverworldSpec {
-            biome: OverworldBiome::Mountain,
-            landmark: OverworldLandmark::Dungeon(1),
-            name: "LEVEL 1 GATE",
-        },
-        (6, 10) => OverworldSpec {
-            biome: OverworldBiome::Mountain,
-            landmark: OverworldLandmark::Dungeon(2),
-            name: "LEVEL 2 GATE",
-        },
-        (11, 1) => OverworldSpec {
-            biome: OverworldBiome::Snow,
-            landmark: OverworldLandmark::Dungeon(3),
-            name: "LEVEL 3 GATE",
-        },
-        (6, 6) => OverworldSpec {
-            biome: OverworldBiome::Lake,
-            landmark: OverworldLandmark::Dungeon(4),
-            name: "LEVEL 4 GATE",
-        },
-        (10, 4) => OverworldSpec {
-            biome: OverworldBiome::Ruins,
-            landmark: OverworldLandmark::Dungeon(5),
-            name: "LEVEL 5 GATE",
-        },
-        _ => OverworldSpec {
-            biome,
+    if let Some(biome_id) = overworld_layout_biome_id(x, y) {
+        return OverworldSpec {
+            biome: biome_at(x, y),
             landmark: OverworldLandmark::None,
-            name: biome_name(biome),
-        },
+            name: biome_region_name(biome_id),
+        };
+    }
+
+    OverworldSpec {
+        biome: biome_at(x, y),
+        landmark: OverworldLandmark::None,
+        name: "CONNECTOR PATH",
     }
 }
 
 fn biome_at(x: i32, y: i32) -> OverworldBiome {
-    const BIOME_MAP: [&str; 15] = [
-        "MMHHHFFHMMMSSS",
-        "MMHFFFFHMMSSSS",
-        "MFFFHFHMMRSSSS",
-        "FFFPGGFHMRRREE",
-        "FFFGWWGFMRREEE",
-        "FGGGWWWGGRREEE",
-        "FGGWWWWGGREEEE",
-        "GGRWWWWGGRNEEE",
-        "GGRRGWGGGNNNEE",
-        "GGGGMMGGGNNNEE",
-        "GGGMMMMGGNNEEE",
-        "CGGMMMMMMNNCEE",
-        "CCGMMMMMMNNCCE",
-        "CCCGMMMSNNNCCW",
-        "CCCCEEEENNCCWW",
+    overworld_layout_biome_id(x, y)
+        .map(biome_theme)
+        .unwrap_or(OverworldBiome::Plains)
+}
+
+fn overworld_layout_biome_id(x: i32, y: i32) -> Option<i32> {
+    const OVERWORLD_LAYOUT: [&str; 15] = [
+        "88888777777...",
+        "88888777777...",
+        "888887777777..",
+        "88886677555555",
+        "8866666555555.",
+        "..66666555555.",
+        "..66666644555.",
+        "..664444444444",
+        "..333444444444",
+        "..33333342222.",
+        "..33333332222.",
+        "...3333322222.",
+        "..11111122222.",
+        "..1111111122..",
+        "..11111111....",
     ];
-    match BIOME_MAP[y as usize].as_bytes()[x as usize] as char {
-        'P' | 'G' => OverworldBiome::Plains,
-        'F' => OverworldBiome::Forest,
-        'H' => OverworldBiome::Highlands,
-        'M' => OverworldBiome::Mountain,
-        'W' => OverworldBiome::Lake,
-        'E' => OverworldBiome::Desert,
-        'R' => OverworldBiome::Ruins,
-        'C' => OverworldBiome::Coast,
-        'S' => OverworldBiome::Snow,
-        'N' => OverworldBiome::Canyon,
-        _ => OverworldBiome::DeepForest,
+    if !(0..WORLD_W).contains(&x) || !(0..WORLD_H).contains(&y) {
+        return None;
+    }
+    match OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] as char {
+        '1'..='8' => Some((OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] - b'0') as i32),
+        _ => None,
+    }
+}
+
+fn biome_theme(biome_id: i32) -> OverworldBiome {
+    match biome_id {
+        1 => OverworldBiome::Forest,
+        2 => OverworldBiome::Ruins,
+        3 => OverworldBiome::Highlands,
+        4 => OverworldBiome::Coast,
+        5 => OverworldBiome::Mountain,
+        6 => OverworldBiome::Canyon,
+        7 => OverworldBiome::Snow,
+        8 => OverworldBiome::Mountain,
+        _ => OverworldBiome::Plains,
+    }
+}
+
+fn biome_region_name(biome_id: i32) -> &'static str {
+    match biome_id {
+        1 => "MOSSHAVEN WILDS",
+        2 => "ASHENFALL REACHES",
+        3 => "IRON HIGHLANDS",
+        4 => "SUNKEN COAST",
+        5 => "GRIMFORGE APPROACHES",
+        6 => "VOID WASTES",
+        7 => "CELESTIAL PLATEAU",
+        8 => "DRAGON'S APPROACH",
+        _ => "WILDERNESS",
     }
 }
 
@@ -941,22 +916,30 @@ fn seal_world_edges(tiles: &mut TileGrid, x: i32, y: i32, biome: OverworldBiome)
     };
     if x == 0 {
         for row in tiles.iter_mut() {
-            row[0] = wall;
+            for tile in row.iter_mut().take(3) {
+                *tile = wall;
+            }
         }
     }
     if x == WORLD_W - 1 {
         for row in tiles.iter_mut() {
-            row[COLS - 1] = wall;
+            for col in (COLS - 3)..COLS {
+                row[col] = wall;
+            }
         }
     }
     if y == 0 {
-        for col in 0..COLS {
-            tiles[0][col] = wall;
+        for row in tiles.iter_mut().take(3) {
+            for tile in row.iter_mut() {
+                *tile = wall;
+            }
         }
     }
     if y == WORLD_H - 1 {
-        for col in 0..COLS {
-            tiles[ROWS - 1][col] = wall;
+        for row in tiles.iter_mut().skip(ROWS - 3) {
+            for tile in row.iter_mut() {
+                *tile = wall;
+            }
         }
     }
 }
@@ -978,6 +961,8 @@ fn normalize_overworld_connections(data: &mut HashMap<String, TileGrid>) {
                     &mut right,
                     connector_tile(overworld_spec(x, y)),
                     connector_tile(overworld_spec(x + 1, y)),
+                    seam_block_tile(overworld_spec(x, y)),
+                    seam_block_tile(overworld_spec(x + 1, y)),
                 );
                 data.insert(left_key, left);
                 data.insert(right_key, right);
@@ -997,6 +982,8 @@ fn normalize_overworld_connections(data: &mut HashMap<String, TileGrid>) {
                     &mut bottom,
                     connector_tile(overworld_spec(x, y)),
                     connector_tile(overworld_spec(x, y + 1)),
+                    seam_block_tile(overworld_spec(x, y)),
+                    seam_block_tile(overworld_spec(x, y + 1)),
                 );
                 data.insert(top_key, top);
                 data.insert(bottom_key, bottom);
@@ -1010,12 +997,24 @@ fn carve_horizontal_connection(
     right: &mut TileGrid,
     left_tile: TileType,
     right_tile: TileType,
+    left_block: TileType,
+    right_block: TileType,
 ) {
+    for row in 0..ROWS {
+        for col in (COLS - 3)..COLS {
+            left[row][col] = left_block;
+        }
+        for col in 0..=2 {
+            right[row][col] = right_block;
+        }
+    }
     for row in 4..=6 {
-        left[row][COLS - 2] = left_tile;
-        left[row][COLS - 1] = left_tile;
-        right[row][0] = right_tile;
-        right[row][1] = right_tile;
+        for col in (COLS - 3)..COLS {
+            left[row][col] = left_tile;
+        }
+        for col in 0..=2 {
+            right[row][col] = right_tile;
+        }
     }
 }
 
@@ -1024,12 +1023,26 @@ fn carve_vertical_connection(
     bottom: &mut TileGrid,
     top_tile: TileType,
     bottom_tile: TileType,
+    top_block: TileType,
+    bottom_block: TileType,
 ) {
+    for row in (ROWS - 3)..ROWS {
+        for col in 0..COLS {
+            top[row][col] = top_block;
+        }
+    }
+    for row in 0..=2 {
+        for col in 0..COLS {
+            bottom[row][col] = bottom_block;
+        }
+    }
     for col in 6..=9 {
-        top[ROWS - 2][col] = top_tile;
-        top[ROWS - 1][col] = top_tile;
-        bottom[0][col] = bottom_tile;
-        bottom[1][col] = bottom_tile;
+        for row in (ROWS - 3)..ROWS {
+            top[row][col] = top_tile;
+        }
+        for row in 0..=2 {
+            bottom[row][col] = bottom_tile;
+        }
     }
 }
 
@@ -1045,6 +1058,14 @@ fn connector_tile(spec: OverworldSpec) -> TileType {
             }
             _ => TileType::Grass,
         },
+    }
+}
+
+fn seam_block_tile(spec: OverworldSpec) -> TileType {
+    match spec.biome {
+        OverworldBiome::Forest | OverworldBiome::DeepForest => TileType::Tree,
+        OverworldBiome::Lake | OverworldBiome::Coast => TileType::Water,
+        _ => TileType::Rock,
     }
 }
 
@@ -1067,6 +1088,22 @@ fn validate_overworld_connections(data: &HashMap<String, TileGrid>) -> Result<()
                         "horizontal mismatch between {left_key} and {right_key}"
                     ));
                 }
+                for row in 0..ROWS {
+                    let in_corridor = (4..=6).contains(&row);
+                    let left_safe = ((COLS - 3)..COLS).all(|col| is_walkable(left[row][col]));
+                    let right_safe = (0..=2).all(|col| is_walkable(right[row][col]));
+                    if in_corridor {
+                        if !left_safe || !right_safe {
+                            return Err(format!(
+                                "unsafe horizontal corridor between {left_key} and {right_key} at row {row}"
+                            ));
+                        }
+                    } else if is_walkable(left[row][COLS - 1]) || is_walkable(right[row][0]) {
+                        return Err(format!(
+                            "unexpected horizontal opening between {left_key} and {right_key} at row {row}"
+                        ));
+                    }
+                }
             }
 
             if y + 1 < WORLD_H {
@@ -1084,6 +1121,22 @@ fn validate_overworld_connections(data: &HashMap<String, TileGrid>) -> Result<()
                     return Err(format!(
                         "vertical mismatch between {top_key} and {bottom_key}"
                     ));
+                }
+                for col in 0..COLS {
+                    let in_corridor = (6..=9).contains(&col);
+                    let top_safe = ((ROWS - 3)..ROWS).all(|row| is_walkable(top[row][col]));
+                    let bottom_safe = (0..=2).all(|row| is_walkable(bottom[row][col]));
+                    if in_corridor {
+                        if !top_safe || !bottom_safe {
+                            return Err(format!(
+                                "unsafe vertical corridor between {top_key} and {bottom_key} at col {col}"
+                            ));
+                        }
+                    } else if is_walkable(top[ROWS - 1][col]) || is_walkable(bottom[0][col]) {
+                        return Err(format!(
+                            "unexpected vertical opening between {top_key} and {bottom_key} at col {col}"
+                        ));
+                    }
                 }
             }
         }
@@ -1216,7 +1269,7 @@ const R07_PROPS: &[PropDef] = &[
 const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
         x: 2,
-        y: 5,
+        y: 12,
         biome_id: 1,
         name: "THE FEN",
         tiles: &[
@@ -1237,8 +1290,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: MOSSHAVEN_FEN_ENEMIES,
     },
     OverworldScreenDef {
-        x: 3,
-        y: 5,
+        x: 4,
+        y: 13,
         biome_id: 1,
         name: "CLEARWATER STREAM",
         tiles: &[
@@ -1259,8 +1312,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: MOSSHAVEN_WOOD_ENEMIES,
     },
     OverworldScreenDef {
-        x: 4,
-        y: 5,
+        x: 9,
+        y: 13,
         biome_id: 1,
         name: "HIGH CANOPY TRAIL",
         tiles: &[
@@ -1281,8 +1334,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: MOSSHAVEN_WOOD_ENEMIES,
     },
     OverworldScreenDef {
-        x: 2,
-        y: 6,
+        x: 4,
+        y: 12,
         biome_id: 1,
         name: "DEEP WOOD",
         tiles: &[
@@ -1303,8 +1356,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: MOSSHAVEN_WOOD_ENEMIES,
     },
     OverworldScreenDef {
-        x: 3,
-        y: 6,
+        x: 6,
+        y: 13,
         biome_id: 1,
         name: "GRANDFATHER TREE",
         tiles: &[
@@ -1325,8 +1378,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 4,
-        y: 6,
+        x: 9,
+        y: 14,
         biome_id: 1,
         name: "FUNGAL RING",
         tiles: &[
@@ -1347,8 +1400,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: MOSSHAVEN_RING_ENEMIES,
     },
     OverworldScreenDef {
-        x: 2,
-        y: 7,
+        x: 4,
+        y: 14,
         biome_id: 1,
         name: "SOUTHERN MEADOW",
         tiles: &[
@@ -1373,8 +1426,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 3,
-        y: 7,
+        x: 6,
+        y: 14,
         biome_id: 1,
         name: "SOUTHERN MEADOW",
         tiles: &[
@@ -1395,8 +1448,8 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 4,
-        y: 7,
+        x: 8,
+        y: 14,
         biome_id: 1,
         name: "EASTERN WOODS",
         tiles: &[
@@ -1446,8 +1499,8 @@ const ASHENFALL_RUIN_ENEMIES: &[SpawnDef] = &[
 
 const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
-        x: 5,
-        y: 5,
+        x: 8,
+        y: 10,
         biome_id: 2,
         name: "ASH PLAIN WEST",
         tiles: &[
@@ -1468,8 +1521,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         enemies: ASHENFALL_PLAIN_ENEMIES,
     },
     OverworldScreenDef {
-        x: 6,
-        y: 5,
+        x: 10,
+        y: 9,
         biome_id: 2,
         name: "BELLTOWER REMAINS",
         tiles: &[
@@ -1494,8 +1547,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 7,
-        y: 5,
+        x: 12,
+        y: 9,
         biome_id: 2,
         name: "RUIN QUARTER NORTH",
         tiles: &[
@@ -1516,8 +1569,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         enemies: ASHENFALL_RUIN_ENEMIES,
     },
     OverworldScreenDef {
-        x: 5,
-        y: 6,
+        x: 8,
+        y: 12,
         biome_id: 2,
         name: "SALVAGER APPROACH",
         tiles: &[
@@ -1542,8 +1595,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 6,
-        y: 6,
+        x: 10,
+        y: 11,
         biome_id: 2,
         name: "DEEP ASH PIT",
         tiles: &[
@@ -1575,8 +1628,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         ],
     },
     OverworldScreenDef {
-        x: 7,
-        y: 6,
+        x: 12,
+        y: 11,
         biome_id: 2,
         name: "WARDEN'S POST",
         tiles: &[
@@ -1597,8 +1650,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         enemies: ASHENFALL_RUIN_ENEMIES,
     },
     OverworldScreenDef {
-        x: 5,
-        y: 7,
+        x: 10,
+        y: 13,
         biome_id: 2,
         name: "SALVAGER'S CAMP",
         tiles: &[
@@ -1619,8 +1672,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 6,
-        y: 7,
+        x: 10,
+        y: 12,
         biome_id: 2,
         name: "ASH ROAD",
         tiles: &[
@@ -1645,8 +1698,8 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 7,
-        y: 7,
+        x: 12,
+        y: 12,
         biome_id: 2,
         name: "RUIN QUARTER SOUTH",
         tiles: &[
@@ -1696,8 +1749,8 @@ const IRONHIGHLANDS_VENT_ENEMIES: &[SpawnDef] = &[
 
 const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
-        x: 5,
-        y: 2,
+        x: 2,
+        y: 8,
         biome_id: 3,
         name: "PIPE FIELDS NORTH",
         tiles: &[
@@ -1718,8 +1771,8 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         enemies: IRONHIGHLANDS_PIPE_ENEMIES,
     },
     OverworldScreenDef {
-        x: 6,
-        y: 2,
+        x: 4,
+        y: 8,
         biome_id: 3,
         name: "VAULT APPROACH",
         tiles: &[
@@ -1752,7 +1805,7 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 7,
-        y: 2,
+        y: 9,
         biome_id: 3,
         name: "PRIMARY VENT",
         tiles: &[
@@ -1773,8 +1826,8 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         enemies: IRONHIGHLANDS_VENT_ENEMIES,
     },
     OverworldScreenDef {
-        x: 5,
-        y: 3,
+        x: 3,
+        y: 10,
         biome_id: 3,
         name: "ENGINEER'S TOWER",
         tiles: &[
@@ -1795,8 +1848,8 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 6,
-        y: 3,
+        x: 5,
+        y: 10,
         biome_id: 3,
         name: "AQUEDUCT CROSSING",
         tiles: &[
@@ -1818,7 +1871,7 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 7,
-        y: 3,
+        y: 10,
         biome_id: 3,
         name: "ACTIVE VENTS",
         tiles: &[
@@ -1839,8 +1892,8 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         enemies: IRONHIGHLANDS_VENT_ENEMIES,
     },
     OverworldScreenDef {
-        x: 5,
-        y: 4,
+        x: 3,
+        y: 11,
         biome_id: 3,
         name: "PIPE FIELDS SOUTH",
         tiles: &[
@@ -1861,8 +1914,8 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         enemies: IRONHIGHLANDS_PIPE_ENEMIES,
     },
     OverworldScreenDef {
-        x: 6,
-        y: 4,
+        x: 5,
+        y: 11,
         biome_id: 3,
         name: "APPROACH ROAD",
         tiles: &[
@@ -1888,7 +1941,7 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 7,
-        y: 4,
+        y: 11,
         biome_id: 3,
         name: "VENT RIDGE",
         tiles: &[
@@ -1938,8 +1991,8 @@ const FLOODED_RUINS_ENEMIES: &[SpawnDef] = &[
 
 const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
-        x: 8,
-        y: 5,
+        x: 5,
+        y: 8,
         biome_id: 4,
         name: "TIDAL VILLAGE",
         tiles: &[
@@ -1961,7 +2014,7 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 9,
-        y: 5,
+        y: 6,
         biome_id: 4,
         name: "LIGHTHOUSE ISLE",
         tiles: &[
@@ -1982,8 +2035,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 10,
-        y: 5,
+        x: 13,
+        y: 7,
         biome_id: 4,
         name: "SEA STACK",
         tiles: &[
@@ -2008,8 +2061,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 8,
-        y: 6,
+        x: 5,
+        y: 9,
         biome_id: 4,
         name: "CAUSEWAY SOUTH",
         tiles: &[
@@ -2030,8 +2083,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         enemies: SUNKEN_COAST_ENEMIES,
     },
     OverworldScreenDef {
-        x: 9,
-        y: 6,
+        x: 8,
+        y: 8,
         biome_id: 4,
         name: "ISLAND CLUSTER",
         tiles: &[
@@ -2052,8 +2105,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         enemies: SUNKEN_COAST_ENEMIES,
     },
     OverworldScreenDef {
-        x: 10,
-        y: 6,
+        x: 12,
+        y: 8,
         biome_id: 4,
         name: "FLOODED RUINS",
         tiles: &[
@@ -2075,7 +2128,7 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 8,
-        y: 7,
+        y: 9,
         biome_id: 4,
         name: "TIDAL GATE",
         tiles: &[
@@ -2096,8 +2149,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         enemies: SUNKEN_COAST_ENEMIES,
     },
     OverworldScreenDef {
-        x: 9,
-        y: 7,
+        x: 11,
+        y: 8,
         biome_id: 4,
         name: "CAUSEWAY EAST",
         tiles: &[
@@ -2118,8 +2171,8 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         enemies: SUNKEN_COAST_ENEMIES,
     },
     OverworldScreenDef {
-        x: 10,
-        y: 7,
+        x: 13,
+        y: 8,
         biome_id: 4,
         name: "ROOFTOP REACH",
         tiles: &[
@@ -3858,7 +3911,7 @@ const VOID_WASTES_ENEMIES: &[SpawnDef] = &[
 
 const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
-        x: 11,
+        x: 7,
         y: 5,
         biome_id: 5,
         name: "LAVA FIELDS WEST",
@@ -3880,7 +3933,7 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: GRIMFORGE_FIELDS_ENEMIES,
     },
     OverworldScreenDef {
-        x: 12,
+        x: 8,
         y: 5,
         biome_id: 5,
         name: "ASCENT PATH",
@@ -3902,8 +3955,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: GRIMFORGE_FIELDS_ENEMIES,
     },
     OverworldScreenDef {
-        x: 13,
-        y: 5,
+        x: 10,
+        y: 3,
         biome_id: 5,
         name: "SUMMIT APPROACH",
         tiles: &[
@@ -3924,8 +3977,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 11,
-        y: 6,
+        x: 8,
+        y: 4,
         biome_id: 5,
         name: "MOUNTAINEER'S CAMP",
         tiles: &[
@@ -3946,8 +3999,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 12,
-        y: 6,
+        x: 9,
+        y: 4,
         biome_id: 5,
         name: "EMBER GARDEN",
         tiles: &[
@@ -3969,7 +4022,7 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
     },
     OverworldScreenDef {
         x: 13,
-        y: 6,
+        y: 3,
         biome_id: 5,
         name: "CALDERA VIEW",
         tiles: &[
@@ -3994,8 +4047,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         }],
     },
     OverworldScreenDef {
-        x: 11,
-        y: 7,
+        x: 10,
+        y: 6,
         biome_id: 5,
         name: "LOW PASS",
         tiles: &[
@@ -4016,8 +4069,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: GRIMFORGE_FIELDS_ENEMIES,
     },
     OverworldScreenDef {
-        x: 12,
-        y: 7,
+        x: 11,
+        y: 5,
         biome_id: 5,
         name: "LAVA FIELDS EAST",
         tiles: &[
@@ -4038,8 +4091,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         enemies: GRIMFORGE_FIELDS_ENEMIES,
     },
     OverworldScreenDef {
-        x: 13,
-        y: 7,
+        x: 12,
+        y: 6,
         biome_id: 5,
         name: "ASH SLOPE",
         tiles: &[
@@ -4063,8 +4116,8 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
 
 const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
     OverworldScreenDef {
-        x: 11,
-        y: 8,
+        x: 2,
+        y: 4,
         biome_id: 6,
         name: "SANCTUM APPROACH",
         tiles: &[
@@ -4085,8 +4138,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 12,
-        y: 8,
+        x: 4,
+        y: 5,
         biome_id: 6,
         name: "PALE ROAD",
         tiles: &[
@@ -4107,8 +4160,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 13,
-        y: 8,
+        x: 6,
+        y: 4,
         biome_id: 6,
         name: "FIRST STABLE RIFT",
         tiles: &[
@@ -4129,8 +4182,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 11,
-        y: 9,
+        x: 3,
+        y: 6,
         biome_id: 6,
         name: "RIFT FIELDS",
         tiles: &[
@@ -4151,8 +4204,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 12,
-        y: 9,
+        x: 5,
+        y: 5,
         biome_id: 6,
         name: "MIRROR POOL",
         tiles: &[
@@ -4173,8 +4226,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: &[],
     },
     OverworldScreenDef {
-        x: 13,
-        y: 9,
+        x: 7,
+        y: 6,
         biome_id: 6,
         name: "SHADE'S CIRCUIT",
         tiles: &[
@@ -4195,8 +4248,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 11,
-        y: 10,
+        x: 2,
+        y: 7,
         biome_id: 6,
         name: "LOW MOUNTAIN PASS",
         tiles: &[
@@ -4217,8 +4270,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 12,
-        y: 10,
+        x: 5,
+        y: 6,
         biome_id: 6,
         name: "SECOND STABLE RIFT",
         tiles: &[
@@ -4239,8 +4292,8 @@ const VOID_WASTES_SCREENS: &[OverworldScreenDef] = &[
         enemies: VOID_WASTES_ENEMIES,
     },
     OverworldScreenDef {
-        x: 13,
-        y: 10,
+        x: 6,
+        y: 7,
         biome_id: 6,
         name: "OUTER WASTES",
         tiles: &[
@@ -4742,6 +4795,917 @@ const LEVEL6_ROOMS: &[DungeonRoomDef] = &[
     },
 ];
 
+const CELESTIAL_ENEMIES: &[SpawnDef] = &[
+    SpawnDef {
+        enemy_type: EnemyType::Darknut,
+        tile_x: 5.0,
+        tile_y: 4.0,
+    },
+    SpawnDef {
+        enemy_type: EnemyType::Bat,
+        tile_x: 10.0,
+        tile_y: 3.0,
+    },
+];
+
+const DRAGON_APPROACH_ENEMIES: &[SpawnDef] = &[
+    SpawnDef {
+        enemy_type: EnemyType::Darknut,
+        tile_x: 7.0,
+        tile_y: 4.0,
+    },
+    SpawnDef {
+        enemy_type: EnemyType::Bat,
+        tile_x: 11.0,
+        tile_y: 5.0,
+    },
+];
+
+const CELESTIAL_PLATEAU_SCREENS: &[OverworldScreenDef] = &[
+    OverworldScreenDef {
+        x: 5,
+        y: 2,
+        biome_id: 7,
+        name: "WHITE PLAIN WEST",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^....==....==..^",
+            "^..............^",
+            "^..^^......^^..^",
+            "^..............^",
+            "^..==......==..^",
+            "^..............^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 8,
+        y: 2,
+        biome_id: 7,
+        name: "SPIRE BASE",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^...^^dddd^^...^",
+            "^...^^dddd^^...^",
+            "^....^^^^^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: Some(7),
+        enemies: &[],
+    },
+    OverworldScreenDef {
+        x: 11,
+        y: 2,
+        biome_id: 7,
+        name: "STAR MAP PLAZA",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^...^^^^..^^^^.^",
+            "^...^..^..^..^.^",
+            "^...^^^^==^^^^.^",
+            "^......==......^",
+            "^...^^^^==^^^^.^",
+            "^...^..^..^..^.^",
+            "^...^^^^..^^^^.^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 5,
+        y: 1,
+        biome_id: 7,
+        name: "PLATEAU EDGE",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^..............^",
+            "^..==......==..^",
+            "^..............^",
+            "^..^^......^^..^",
+            "^..............^",
+            "^..==......==..^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 9,
+        y: 1,
+        biome_id: 7,
+        name: "MERCHANT'S CIRCUIT",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^....^^^^^^....^",
+            "^....^cccc^....^",
+            "^....^cccc^....^",
+            "^....^^^^^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: Some(CaveKind::StarSigil),
+        dungeon: None,
+        enemies: &[],
+    },
+    OverworldScreenDef {
+        x: 10,
+        y: 0,
+        biome_id: 7,
+        name: "MERCHANT'S LANTERN",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^......==......^",
+            "^......==......^",
+            "^....^^..^^....^",
+            "^....^^..^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: &[],
+    },
+    OverworldScreenDef {
+        x: 6,
+        y: 3,
+        biome_id: 7,
+        name: "WHITE PLAIN SOUTH",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^..^^......^^..^",
+            "^..............^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..^^......^^..^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 7,
+        y: 3,
+        biome_id: 7,
+        name: "SKY MOAT OVERLOOK",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....~~~~~~....^",
+            "^...~~....~~...^",
+            "^...~~....~~...^",
+            "^....~~~~~~....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 5,
+        y: 3,
+        biome_id: 7,
+        name: "WEST FACE STAIRS",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^......==......^",
+            "^......==......^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^......==......^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: CELESTIAL_ENEMIES,
+    },
+];
+
+const DRAGONS_APPROACH_SCREENS: &[OverworldScreenDef] = &[
+    OverworldScreenDef {
+        x: 1,
+        y: 4,
+        biome_id: 8,
+        name: "VALLEY MOUTH",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^...^^....^^...^",
+            "^...^..==..^...^",
+            "^...^..==..^...^",
+            "^...^..==..^...^",
+            "^...^^....^^...^",
+            "^....^^^^^^....^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 2,
+        y: 0,
+        biome_id: 8,
+        name: "FINAL APPROACH",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^...^^dddd^^...^",
+            "^...^^dddd^^...^",
+            "^...^^....^^...^",
+            "^....^^..^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: Some(8),
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 4,
+        y: 0,
+        biome_id: 8,
+        name: "THRONE NICHE",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^...^^cccc^^...^",
+            "^...^^....^^...^",
+            "^...^^....^^...^",
+            "^....^^^^^^....^",
+            "^......==......^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: Some(CaveKind::CrystalOfSeeing),
+        dungeon: None,
+        enemies: &[],
+    },
+    OverworldScreenDef {
+        x: 2,
+        y: 2,
+        biome_id: 8,
+        name: "PILGRIM'S ROAD",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 1,
+        y: 3,
+        biome_id: 8,
+        name: "LAST CAMP",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..............^",
+            "^..^^^^....^^^^^",
+            "^..^..^....^..^^",
+            "^..^^^^.cc.^^^^^",
+            "^......====.....^",
+            "^..____====____.^",
+            "^......====.....^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: Some(CaveKind::DragonCodex),
+        dungeon: None,
+        enemies: &[],
+    },
+    OverworldScreenDef {
+        x: 4,
+        y: 2,
+        biome_id: 8,
+        name: "MEMORY ALCOVES",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^..^^..^^..^^..^",
+            "^..^^..^^..^^..^",
+            "^......==......^",
+            "^..^^..==..^^..^",
+            "^..^^..==..^^..^",
+            "^......==......^",
+            "^..^^..^^..^^..^",
+            "^..^^..^^..^^..^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 3,
+        y: 2,
+        biome_id: 8,
+        name: "THRESHOLD STONE",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^....^....^....^",
+            "^....^.==.^....^",
+            "^....^.==.^....^",
+            "^....^....^....^",
+            "^....^^^^^^....^",
+            "^......==......^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 3,
+        y: 1,
+        biome_id: 8,
+        name: "INNER ROAD",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^....^^==^^....^",
+            "^..............^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+    OverworldScreenDef {
+        x: 4,
+        y: 1,
+        biome_id: 8,
+        name: "VALLEY END",
+        tiles: &[
+            "^^^^^^^^^^^^^^^^",
+            "^....^^^^^^....^",
+            "^...^^....^^...^",
+            "^...^......^...^",
+            "^...^..==..^...^",
+            "^...^..==..^...^",
+            "^...^......^...^",
+            "^...^^....^^...^",
+            "^....^^^^^^....^",
+            "^..............^",
+            "^^^^^^^^^^^^^^^^",
+        ],
+        cave: None,
+        dungeon: None,
+        enemies: DRAGON_APPROACH_ENEMIES,
+    },
+];
+
+const LEVEL7_ROOMS: &[DungeonRoomDef] = &[
+    DungeonRoomDef {
+        x: 1,
+        y: 3,
+        tiles: &[
+            "#######  #######",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "##......$.....##",
+            "##....^..^....##",
+            "##....^^^^....##",
+            "##............##",
+            "##............##",
+            "#######  #######",
+            "#######ss#######",
+        ],
+        enemies: &[],
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 1,
+        y: 2,
+        tiles: &[
+            "#######  #######",
+            "##~~~~....~~~~##",
+            "##~~........~~##",
+            "##~......$...~##",
+            "o..............o",
+            "o..............o",
+            "o..............o",
+            "##~..........~##",
+            "##~~~~....~~~~##",
+            "#######  #######",
+            "#######  #######",
+        ],
+        enemies: CELESTIAL_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Key,
+            tile_x: 8,
+            tile_y: 3,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 0,
+        y: 2,
+        tiles: &[
+            "################",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "##......$......o",
+            "##....^..^.....o",
+            "##....^^^^.....o",
+            "##............##",
+            "##............##",
+            "################",
+            "################",
+        ],
+        enemies: CELESTIAL_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 2,
+        tiles: &[
+            "################",
+            "##............##",
+            "##~~~~....~~~~##",
+            "##~~......$.~~##",
+            "o..............##",
+            "o..............##",
+            "o..............##",
+            "##~~........~~##",
+            "##~~~~....~~~~##",
+            "################",
+            "################",
+        ],
+        enemies: CELESTIAL_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Key,
+            tile_x: 10,
+            tile_y: 3,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 1,
+        y: 1,
+        tiles: &[
+            "#######  #######",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "o......$.....lo",
+            "o....^..^....lo",
+            "o....^^^^....lo",
+            "##............##",
+            "##............##",
+            "#######  #######",
+            "#######  #######",
+        ],
+        enemies: &[
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 5.0,
+                tile_y: 5.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Bat,
+                tile_x: 11.0,
+                tile_y: 4.0,
+            },
+        ],
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[
+            PropDef {
+                kind: PropKind::PressurePlate,
+                tile_x: 8,
+                tile_y: 5,
+                target_tile_x: None,
+                target_tile_y: None,
+            },
+            PropDef {
+                kind: PropKind::Boulder,
+                tile_x: 5,
+                tile_y: 6,
+                target_tile_x: None,
+                target_tile_y: None,
+            },
+        ],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 1,
+        tiles: &[
+            "#######ll#######",
+            "##............##",
+            "##~~~~....~~~~##",
+            "##~~........~~##",
+            "o......$.....llo",
+            "o~~~~~~~~~~~~llo",
+            "o............llo",
+            "##~~........~~##",
+            "##~~~~....~~~~##",
+            "#######kk#######",
+            "#######  #######",
+        ],
+        enemies: &[
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 5.0,
+                tile_y: 4.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 11.0,
+                tile_y: 4.0,
+            },
+        ],
+        items: &[],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[ScreenItemDef {
+            pickup_type: PickupType::BossKey,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 0,
+        tiles: &[
+            "################",
+            "##............##",
+            "##....^^^^....##",
+            "##....^ss^....##",
+            "##......$.....##",
+            "##............##",
+            "##....^^^^....##",
+            "##....^ss^....##",
+            "##............##",
+            "##............##",
+            "#######kk#######",
+        ],
+        enemies: &[SpawnDef {
+            enemy_type: EnemyType::Boss,
+            tile_x: 8.0,
+            tile_y: 4.0,
+        }],
+        items: &[],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[ScreenItemDef {
+            pickup_type: PickupType::DragonPiece,
+            tile_x: 8,
+            tile_y: 7,
+        }],
+        boss_key_tile: None,
+    },
+];
+
+const LEVEL8_ROOMS: &[DungeonRoomDef] = &[
+    DungeonRoomDef {
+        x: 1,
+        y: 3,
+        tiles: &[
+            "#######  #######",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "##......$.....##",
+            "##....^..^....##",
+            "##....^^^^....##",
+            "##............##",
+            "##............##",
+            "#######  #######",
+            "#######ss#######",
+        ],
+        enemies: &[],
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 1,
+        y: 2,
+        tiles: &[
+            "#######  #######",
+            "##~~~~....~~~~##",
+            "##~~........~~##",
+            "##~......$...~##",
+            "o..............o",
+            "o~~~~~~~~~~~~~~o",
+            "o..............o",
+            "##~..........~##",
+            "##~~~~....~~~~##",
+            "#######  #######",
+            "#######  #######",
+        ],
+        enemies: DRAGON_APPROACH_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Key,
+            tile_x: 8,
+            tile_y: 3,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 0,
+        y: 2,
+        tiles: &[
+            "################",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "##......$......o",
+            "##....^..^.....o",
+            "##....^^^^.....o",
+            "##............##",
+            "##............##",
+            "################",
+            "################",
+        ],
+        enemies: DRAGON_APPROACH_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 2,
+        tiles: &[
+            "################",
+            "##............##",
+            "##....^^^^....##",
+            "##....^..^....##",
+            "o......$.....##",
+            "o....^..^....##",
+            "o....^^^^....##",
+            "##............##",
+            "##............##",
+            "################",
+            "################",
+        ],
+        enemies: DRAGON_APPROACH_ENEMIES,
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Key,
+            tile_x: 7,
+            tile_y: 4,
+        }],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 1,
+        y: 1,
+        tiles: &[
+            "#######  #######",
+            "##............##",
+            "##~~~~....~~~~##",
+            "##~~........~~##",
+            "o......$.....lo",
+            "o~~~~~~~~~~~~lo",
+            "o......$.....lo",
+            "##~~........~~##",
+            "##~~~~....~~~~##",
+            "#######  #######",
+            "#######  #######",
+        ],
+        enemies: &[
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 5.0,
+                tile_y: 4.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 11.0,
+                tile_y: 6.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Bat,
+                tile_x: 8.0,
+                tile_y: 2.0,
+            },
+        ],
+        items: &[ScreenItemDef {
+            pickup_type: PickupType::Gem,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        props: &[
+            PropDef {
+                kind: PropKind::PressurePlate,
+                tile_x: 8,
+                tile_y: 5,
+                target_tile_x: None,
+                target_tile_y: None,
+            },
+            PropDef {
+                kind: PropKind::Boulder,
+                tile_x: 5,
+                tile_y: 6,
+                target_tile_x: None,
+                target_tile_y: None,
+            },
+            PropDef {
+                kind: PropKind::Boulder,
+                tile_x: 10,
+                tile_y: 6,
+                target_tile_x: None,
+                target_tile_y: None,
+            },
+        ],
+        map_visible: true,
+        room_clear_rewards: &[],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 1,
+        tiles: &[
+            "#######ll#######",
+            "##............##",
+            "##~~~~....~~~~##",
+            "##~~........~~##",
+            "o............llo",
+            "o~~~~~~~~~~~~llo",
+            "o............llo",
+            "##~~........~~##",
+            "##~~~~....~~~~##",
+            "#######kk#######",
+            "#######  #######",
+        ],
+        enemies: &[
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 4.0,
+                tile_y: 4.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Darknut,
+                tile_x: 11.0,
+                tile_y: 4.0,
+            },
+            SpawnDef {
+                enemy_type: EnemyType::Bat,
+                tile_x: 8.0,
+                tile_y: 3.0,
+            },
+        ],
+        items: &[],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[ScreenItemDef {
+            pickup_type: PickupType::BossKey,
+            tile_x: 8,
+            tile_y: 4,
+        }],
+        boss_key_tile: None,
+    },
+    DungeonRoomDef {
+        x: 2,
+        y: 0,
+        tiles: &[
+            "################",
+            "##............##",
+            "##....^^^^....##",
+            "##....^ss^....##",
+            "##......$.....##",
+            "##............##",
+            "##....^^^^....##",
+            "##....^ss^....##",
+            "##............##",
+            "##............##",
+            "#######kk#######",
+        ],
+        enemies: &[SpawnDef {
+            enemy_type: EnemyType::Boss,
+            tile_x: 8.0,
+            tile_y: 4.0,
+        }],
+        items: &[],
+        props: &[],
+        map_visible: true,
+        room_clear_rewards: &[ScreenItemDef {
+            pickup_type: PickupType::DragonPiece,
+            tile_x: 8,
+            tile_y: 7,
+        }],
+        boss_key_tile: None,
+    },
+];
+
 const AUTHORED_DUNGEONS: &[DungeonDef] = &[
     DungeonDef {
         id: 1,
@@ -4779,6 +5743,18 @@ const AUTHORED_DUNGEONS: &[DungeonDef] = &[
         entry: (1, 3),
         rooms: LEVEL6_ROOMS,
     },
+    DungeonDef {
+        id: 7,
+        name: "AETHERIAN SPIRE",
+        entry: (1, 3),
+        rooms: LEVEL7_ROOMS,
+    },
+    DungeonDef {
+        id: 8,
+        name: "DRAGON'S ETERNAL THRONE",
+        entry: (1, 3),
+        rooms: LEVEL8_ROOMS,
+    },
 ];
 
 fn authored_overworld_screen(x: i32, y: i32) -> Option<&'static OverworldScreenDef> {
@@ -4789,6 +5765,8 @@ fn authored_overworld_screen(x: i32, y: i32) -> Option<&'static OverworldScreenD
         .chain(SUNKEN_COAST_SCREENS.iter())
         .chain(GRIMFORGE_APPROACHES_SCREENS.iter())
         .chain(VOID_WASTES_SCREENS.iter())
+        .chain(CELESTIAL_PLATEAU_SCREENS.iter())
+        .chain(DRAGONS_APPROACH_SCREENS.iter())
         .find(|screen| screen.x == x && screen.y == y)
 }
 
@@ -4873,22 +5851,28 @@ mod tests {
 
     #[test]
     fn mosshaven_overrides_and_dungeon_metadata_exist() {
-        assert_eq!(overworld_start(), (3, 7));
-        assert_eq!(location_name(2, 5, false, 0), "THE FEN");
-        assert_eq!(dungeon_at(2, 5), 1);
+        assert_eq!(overworld_start(), (4, 14));
+        assert_eq!(location_name(2, 12, false, 0), "THE FEN");
+        assert_eq!(dungeon_at(2, 12), 1);
         assert_eq!(location_name(0, 0, true, 1), "MOSSHAVEN CAVE");
-        assert_eq!(location_name(5, 3, false, 0), "ENGINEER'S TOWER");
-        assert_eq!(dungeon_at(6, 2), 3);
+        assert_eq!(location_name(3, 10, false, 0), "ENGINEER'S TOWER");
+        assert_eq!(dungeon_at(4, 8), 3);
         assert_eq!(location_name(3, 6, true, 3), "IRONCLAD VAULT");
-        assert_eq!(location_name(9, 5, false, 0), "LIGHTHOUSE ISLE");
-        assert_eq!(dungeon_at(10, 6), 4);
+        assert_eq!(location_name(9, 6, false, 0), "LIGHTHOUSE ISLE");
+        assert_eq!(dungeon_at(12, 8), 4);
         assert_eq!(location_name(1, 6, true, 4), "SUNKEN CITADEL");
-        assert_eq!(location_name(12, 6, false, 0), "EMBER GARDEN");
-        assert_eq!(dungeon_at(13, 5), 5);
+        assert_eq!(location_name(9, 4, false, 0), "EMBER GARDEN");
+        assert_eq!(dungeon_at(10, 3), 5);
         assert_eq!(location_name(1, 3, true, 5), "GRIMFORGE DEPTHS");
-        assert_eq!(location_name(12, 9, false, 0), "MIRROR POOL");
-        assert_eq!(dungeon_at(11, 8), 6);
+        assert_eq!(location_name(5, 5, false, 0), "MIRROR POOL");
+        assert_eq!(dungeon_at(2, 4), 6);
         assert_eq!(location_name(1, 3, true, 6), "FRACTURED SANCTUM");
+        assert_eq!(location_name(9, 1, false, 0), "MERCHANT'S CIRCUIT");
+        assert_eq!(dungeon_at(8, 2), 7);
+        assert_eq!(location_name(1, 3, true, 7), "AETHERIAN SPIRE");
+        assert_eq!(location_name(1, 3, false, 0), "LAST CAMP");
+        assert_eq!(dungeon_at(2, 0), 8);
+        assert_eq!(location_name(1, 3, true, 8), "DRAGON'S ETERNAL THRONE");
 
         let rooms = dungeon_map_rooms(1);
         assert!(rooms.contains("1,5"));
@@ -4911,6 +5895,14 @@ mod tests {
         let sanctum_rooms = dungeon_map_rooms(6);
         assert!(sanctum_rooms.contains("1,3"));
         assert!(sanctum_rooms.contains("2,0"));
+
+        let spire_rooms = dungeon_map_rooms(7);
+        assert!(spire_rooms.contains("1,3"));
+        assert!(spire_rooms.contains("2,0"));
+
+        let throne_rooms = dungeon_map_rooms(8);
+        assert!(throne_rooms.contains("1,3"));
+        assert!(throne_rooms.contains("2,0"));
     }
 
     #[test]

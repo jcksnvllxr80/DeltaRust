@@ -528,6 +528,40 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
                 &frame_const::PALE_STONE
             }
         }),
+        Some(7) => Some(match tile {
+            TileType::Grass => &frame_const::WHITE_PLAIN,
+            TileType::Tree | TileType::Wall => &frame_const::PLATEAU_EDGE,
+            TileType::Water => &frame_const::SKY_MOAT,
+            TileType::Rock => &frame_const::DRAGON_CARVING,
+            TileType::Sand | TileType::Bush => &frame_const::WHITE_PLAIN_ALT,
+            TileType::Path | TileType::Bridge => &frame_const::STAR_MAP_PLAZA,
+            TileType::Cave => &frame_const::MERCHANT_LANTERN,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::SPIRE_ARCHWAY
+            }
+            TileType::Cracked => &frame_const::NIGHT_SKY,
+            TileType::Stairs => &frame_const::SPIRE_BASE,
+            TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
+                &frame_const::WHITE_PLAIN
+            }
+        }),
+        Some(8) => Some(match tile {
+            TileType::Grass => &frame_const::VALLEY_MOUTH_OPEN,
+            TileType::Tree | TileType::Wall => &frame_const::VALLEY_WALL_CARVINGS,
+            TileType::Water => &frame_const::PILGRIMS_ROAD,
+            TileType::Rock => &frame_const::THRESHOLD_STONE,
+            TileType::Sand | TileType::Bush => &frame_const::CARVED_NAMES,
+            TileType::Path | TileType::Bridge => &frame_const::PILGRIMS_ROAD,
+            TileType::Cave => &frame_const::LAST_CAMP,
+            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+                &frame_const::THRONE_ENTRANCE
+            }
+            TileType::Cracked => &frame_const::MEMORY_ALCOVE,
+            TileType::Stairs => &frame_const::FINAL_APPROACH,
+            TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
+                &frame_const::VALLEY_MOUTH
+            }
+        }),
         _ => None,
     }
 }
@@ -569,6 +603,20 @@ fn themed_enemy_animation(biome_id: Option<i32>, enemy_type: EnemyType) -> Optio
             EnemyType::Darknut => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
         }),
+        Some(7) => Some(match enemy_type {
+            EnemyType::Slime => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(18, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+        }),
+        Some(8) => Some(match enemy_type {
+            EnemyType::Slime => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Octorok => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Bat => anim(12, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Boss => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+        }),
         _ => None,
     }
 }
@@ -597,6 +645,16 @@ fn themed_pickup_frame(biome_id: Option<i32>, pickup: PickupType) -> Option<&'st
         Some(6) => match pickup {
             PickupType::Gem => Some(&frame_const::VOID_GOLD_POUCH),
             PickupType::Key => Some(&frame_const::VOID_COMPASS_MAP),
+            _ => None,
+        },
+        Some(7) => match pickup {
+            PickupType::Gem => Some(&frame_const::CELESTIAL_GOLD),
+            PickupType::Key => Some(&frame_const::MOON_ESSENCE),
+            _ => None,
+        },
+        Some(8) => match pickup {
+            PickupType::Gem => Some(&frame_const::RARE_HEALING_HERB),
+            PickupType::Key => Some(&frame_const::CRYSTAL_OF_SEEING),
             _ => None,
         },
         _ => None,
@@ -663,6 +721,30 @@ mod frame_const {
     pub static BOUNDARY_EDGE: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
     pub static VOID_COMPASS_MAP: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
     pub static VOID_GOLD_POUCH: FrameRect = FrameRect { x: 16.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static WHITE_PLAIN: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SPIRE_BASE: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SPIRE_ARCHWAY: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static SKY_MOAT: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static STAR_MAP_PLAZA: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MERCHANT_LANTERN: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static NIGHT_SKY: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static PLATEAU_EDGE: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static DRAGON_CARVING: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static WHITE_PLAIN_ALT: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MOON_ESSENCE: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static CELESTIAL_GOLD: FrameRect = FrameRect { x: 32.0, y: 16.0, w: 16.0, h: 16.0 };
+    pub static VALLEY_MOUTH: FrameRect = FrameRect { x: 0.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static PILGRIMS_ROAD: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static MEMORY_ALCOVE: FrameRect = FrameRect { x: 32.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static THRESHOLD_STONE: FrameRect = FrameRect { x: 48.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static FINAL_APPROACH: FrameRect = FrameRect { x: 64.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static THRONE_ENTRANCE: FrameRect = FrameRect { x: 80.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VALLEY_WALL_CARVINGS: FrameRect = FrameRect { x: 96.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static LAST_CAMP: FrameRect = FrameRect { x: 112.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static CARVED_NAMES: FrameRect = FrameRect { x: 128.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static VALLEY_MOUTH_OPEN: FrameRect = FrameRect { x: 144.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static CRYSTAL_OF_SEEING: FrameRect = FrameRect { x: 16.0, y: 0.0, w: 16.0, h: 16.0 };
+    pub static RARE_HEALING_HERB: FrameRect = FrameRect { x: 0.0, y: 16.0, w: 16.0, h: 16.0 };
 }
 
 fn draw_centered_frame(
