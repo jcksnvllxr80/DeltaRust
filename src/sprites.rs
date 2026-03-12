@@ -186,6 +186,19 @@ impl Sprites {
         y: f32,
         color: Color,
     ) -> bool {
+        if matches!(
+            tile,
+            TileType::HouseRoof
+                | TileType::HouseRoofLeft
+                | TileType::HouseRoofRight
+                | TileType::HouseWall
+                | TileType::HouseWindow
+                | TileType::HouseDoor
+                | TileType::WoodFloor
+                | TileType::HouseChair
+        ) {
+            return false;
+        }
         let themed = biome_id
             .and_then(|id| self.biome_sheets.get(&id))
             .and_then(|set| {
@@ -472,6 +485,13 @@ fn base_tile_frame(layout: &SpriteLayout, tile: TileType) -> &FrameRect {
         TileType::Goal => &layout.tiles.goal,
         TileType::BossDoor => &layout.tiles.boss_door,
         TileType::FloorAlt => &layout.tiles.floor_alt,
+        TileType::HouseRoof | TileType::HouseRoofLeft | TileType::HouseRoofRight => {
+            &layout.tiles.rock
+        }
+        TileType::HouseWall | TileType::HouseWindow => &layout.tiles.wall,
+        TileType::HouseDoor => &layout.tiles.door,
+        TileType::WoodFloor => &layout.tiles.floor_alt,
+        TileType::HouseChair => &layout.tiles.wall,
     }
 }
 
@@ -504,11 +524,19 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Cave
             | TileType::Dungeon
             | TileType::Door
+            | TileType::HouseDoor
             | TileType::DoorLocked
             | TileType::BossDoor => &frame_const::RUIN_DOORWAY,
             TileType::Cracked => &frame_const::CRACKED_FLAGSTONE,
             TileType::Bridge | TileType::Stairs => &frame_const::BELLTOWER,
             TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::RUIN_FLOOR,
+            TileType::WoodFloor => &frame_const::RUIN_FLOOR,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::RUIN_WALL,
         }),
         Some(3) => Some(match tile {
             TileType::Grass => &frame_const::SPARSE_GRASS,
@@ -517,12 +545,23 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Rock | TileType::Sand | TileType::Bush => &frame_const::PIPE_FIELD,
             TileType::Path | TileType::FloorAlt => &frame_const::IRON_PLATE_ROAD,
             TileType::Cave => &frame_const::ENGINEER_TOWER,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::VAULT_DOOR
             }
             TileType::Cracked => &frame_const::IRON_ROCK_ALT,
             TileType::Bridge | TileType::Stairs => &frame_const::GREAT_AQUEDUCT,
             TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::IRON_ROCK_ALT,
+            TileType::WoodFloor => &frame_const::IRON_PLATE_ROAD,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::IRON_ROCK,
         }),
         Some(4) => Some(match tile {
             TileType::Grass => &frame_const::BEACH_SAND,
@@ -532,7 +571,11 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Sand | TileType::Bush => &frame_const::DOCK_VILLAGE,
             TileType::Path | TileType::Bridge => &frame_const::STONE_CAUSEWAY,
             TileType::Cave => &frame_const::LIGHTHOUSE,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::TIDAL_GATE
             }
             TileType::Cracked => &frame_const::RUIN_ROOFTOP,
@@ -540,6 +583,13 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
                 &frame_const::SHALLOW_WATER
             }
+            TileType::WoodFloor => &frame_const::STONE_CAUSEWAY,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::DOCK_VILLAGE,
         }),
         Some(5) => Some(match tile {
             TileType::Grass => &frame_const::VOLCANIC_SCRUB,
@@ -549,7 +599,11 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Sand | TileType::Bush => &frame_const::EMBER_GARDEN,
             TileType::Path | TileType::Bridge => &frame_const::ASCENT_PATH,
             TileType::Cave => &frame_const::MOUNTAINEER_CAMP,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::FORGE_ENTRANCE
             }
             TileType::Cracked => &frame_const::CALDERA_VIEW,
@@ -557,6 +611,13 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
                 &frame_const::HARDENED_LAVA
             }
+            TileType::WoodFloor => &frame_const::ASCENT_PATH,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::MOUNTAINEER_CAMP,
         }),
         Some(6) => Some(match tile {
             TileType::Grass => &frame_const::PALE_STONE,
@@ -566,7 +627,11 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Sand | TileType::Bush => &frame_const::DEAD_SOIL,
             TileType::Path | TileType::Bridge => &frame_const::PALE_ROAD,
             TileType::Cave => &frame_const::STABLE_RIFT,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::SANCTUM_ENTRANCE
             }
             TileType::Cracked => &frame_const::VOID_SHIMMER,
@@ -574,6 +639,13 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
                 &frame_const::PALE_STONE
             }
+            TileType::WoodFloor => &frame_const::PALE_ROAD,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::BOUNDARY_EDGE,
         }),
         Some(7) => Some(match tile {
             TileType::Grass => &frame_const::WHITE_PLAIN,
@@ -583,7 +655,11 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Sand | TileType::Bush => &frame_const::WHITE_PLAIN_ALT,
             TileType::Path | TileType::Bridge => &frame_const::STAR_MAP_PLAZA,
             TileType::Cave => &frame_const::MERCHANT_LANTERN,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::SPIRE_ARCHWAY
             }
             TileType::Cracked => &frame_const::NIGHT_SKY,
@@ -591,6 +667,13 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
                 &frame_const::WHITE_PLAIN
             }
+            TileType::WoodFloor => &frame_const::STAR_MAP_PLAZA,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::PLATEAU_EDGE,
         }),
         Some(8) => Some(match tile {
             TileType::Grass => &frame_const::VALLEY_MOUTH_OPEN,
@@ -600,7 +683,11 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Sand | TileType::Bush => &frame_const::CARVED_NAMES,
             TileType::Path | TileType::Bridge => &frame_const::PILGRIMS_ROAD,
             TileType::Cave => &frame_const::LAST_CAMP,
-            TileType::Dungeon | TileType::Door | TileType::DoorLocked | TileType::BossDoor => {
+            TileType::Dungeon
+            | TileType::Door
+            | TileType::HouseDoor
+            | TileType::DoorLocked
+            | TileType::BossDoor => {
                 &frame_const::THRONE_ENTRANCE
             }
             TileType::Cracked => &frame_const::MEMORY_ALCOVE,
@@ -608,6 +695,13 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
                 &frame_const::VALLEY_MOUTH
             }
+            TileType::WoodFloor => &frame_const::PILGRIMS_ROAD,
+            TileType::HouseRoof
+            | TileType::HouseRoofLeft
+            | TileType::HouseRoofRight
+            | TileType::HouseWall
+            | TileType::HouseWindow
+            | TileType::HouseChair => &frame_const::VALLEY_WALL_CARVINGS,
         }),
         _ => None,
     }

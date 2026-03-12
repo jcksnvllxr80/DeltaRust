@@ -48,6 +48,14 @@ pub enum TileType {
     Goal,
     BossDoor,
     FloorAlt,
+    HouseRoof,
+    HouseRoofLeft,
+    HouseRoofRight,
+    HouseWall,
+    HouseWindow,
+    HouseDoor,
+    WoodFloor,
+    HouseChair,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,6 +117,66 @@ pub enum PlayerState {
     Hurt,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EquippedItem {
+    None,
+    Bombs,
+    Hammer,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InventoryItem {
+    Sword,
+    Bombs,
+    Keys,
+    BossKey,
+    Ladder,
+    Hammer,
+    Raft,
+    StrongArmGlove,
+    PortalTool,
+    AncientKey,
+    TideChart,
+    EmberCrystal,
+    VoidCompass,
+    StarSigil,
+    DragonCodex,
+    CrystalOfSeeing,
+    Gems,
+    DragonPieces,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InventoryEntry {
+    pub item: InventoryItem,
+    pub label: &'static str,
+    pub description: &'static str,
+    pub owned: bool,
+    pub count: Option<i32>,
+    pub equipable: bool,
+}
+
+pub const INVENTORY_ITEMS: [InventoryItem; 18] = [
+    InventoryItem::Sword,
+    InventoryItem::Bombs,
+    InventoryItem::Keys,
+    InventoryItem::BossKey,
+    InventoryItem::Ladder,
+    InventoryItem::Hammer,
+    InventoryItem::Raft,
+    InventoryItem::StrongArmGlove,
+    InventoryItem::PortalTool,
+    InventoryItem::AncientKey,
+    InventoryItem::TideChart,
+    InventoryItem::EmberCrystal,
+    InventoryItem::VoidCompass,
+    InventoryItem::StarSigil,
+    InventoryItem::DragonCodex,
+    InventoryItem::CrystalOfSeeing,
+    InventoryItem::Gems,
+    InventoryItem::DragonPieces,
+];
+
 #[derive(Clone)]
 pub struct Transition {
     pub dir: Option<Dir>,
@@ -167,6 +235,7 @@ pub struct Player {
     pub has_raft: bool,
     pub has_strong_arm_glove: bool,
     pub has_portal_tool: bool,
+    pub equipped_item: EquippedItem,
     pub walk_frame: i32,
     pub walk_timer: i32,
     pub last_axis: Option<char>,
@@ -206,9 +275,167 @@ impl Player {
             has_raft: false,
             has_strong_arm_glove: false,
             has_portal_tool: false,
+            equipped_item: EquippedItem::None,
             walk_frame: 0,
             walk_timer: 0,
             last_axis: None,
+        }
+    }
+
+    pub fn inventory_entries(&self) -> Vec<InventoryEntry> {
+        INVENTORY_ITEMS
+            .iter()
+            .copied()
+            .map(|item| self.inventory_entry(item))
+            .collect()
+    }
+
+    pub fn inventory_entry(&self, item: InventoryItem) -> InventoryEntry {
+        match item {
+            InventoryItem::Sword => InventoryEntry {
+                item,
+                label: "Sword",
+                description: "Your basic weapon. Z / Space swings it instantly.",
+                owned: self.has_sword,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::Bombs => InventoryEntry {
+                item,
+                label: "Bombs",
+                description: "Equip to X. Explodes cracked walls and damages clustered foes.",
+                owned: self.has_bombs,
+                count: Some(self.bomb_count),
+                equipable: true,
+            },
+            InventoryItem::Keys => InventoryEntry {
+                item,
+                label: "Keys",
+                description: "Dungeon keys for locked doors on the current floor.",
+                owned: self.keys > 0,
+                count: Some(self.keys),
+                equipable: false,
+            },
+            InventoryItem::BossKey => InventoryEntry {
+                item,
+                label: "Boss Key",
+                description: "Unlocks the large boss door in the current dungeon.",
+                owned: self.has_boss_key,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::Ladder => InventoryEntry {
+                item,
+                label: "Ladder",
+                description: "Use at ladder markers to climb between authored height changes.",
+                owned: self.has_ladder,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::Hammer => InventoryEntry {
+                item,
+                label: "Hammer",
+                description: "Equip to X. Smashes cracked tiles directly in front of you.",
+                owned: self.has_hammer,
+                count: None,
+                equipable: true,
+            },
+            InventoryItem::Raft => InventoryEntry {
+                item,
+                label: "Raft",
+                description: "Lets you travel safely across water tiles.",
+                owned: self.has_raft,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::StrongArmGlove => InventoryEntry {
+                item,
+                label: "Strong Glove",
+                description: "Required for the heaviest forge and summit mechanisms.",
+                owned: self.has_strong_arm_glove,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::PortalTool => InventoryEntry {
+                item,
+                label: "Portal Tool",
+                description: "An attunement focus used to access later rift structures.",
+                owned: self.has_portal_tool,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::AncientKey => InventoryEntry {
+                item,
+                label: "Ancient Key",
+                description: "Opens the Iron Highlands vault approach.",
+                owned: self.has_ancient_key,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::TideChart => InventoryEntry {
+                item,
+                label: "Tide Chart",
+                description: "Marks the safe timing for the Sunken Coast routes.",
+                owned: self.has_tide_chart,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::EmberCrystal => InventoryEntry {
+                item,
+                label: "Ember Crystal",
+                description: "A heat ward needed to enter the Grimforge depths.",
+                owned: self.has_ember_crystal,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::VoidCompass => InventoryEntry {
+                item,
+                label: "Void Compass",
+                description: "Stabilizes your route through the fractured sanctum.",
+                owned: self.has_void_compass,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::StarSigil => InventoryEntry {
+                item,
+                label: "Star Sigil",
+                description: "The merchant's seal required for the Aetherian ascent.",
+                owned: self.has_star_sigil,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::DragonCodex => InventoryEntry {
+                item,
+                label: "Dragon Codex",
+                description: "Ancient lore needed to face the final approach.",
+                owned: self.has_dragon_codex,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::CrystalOfSeeing => InventoryEntry {
+                item,
+                label: "Crystal of Seeing",
+                description: "Reveals the path hidden in the last ascent.",
+                owned: self.has_crystal_of_seeing,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::Gems => InventoryEntry {
+                item,
+                label: "Gems",
+                description: "Currency used by merchants across the overworld.",
+                owned: true,
+                count: Some(self.gems),
+                equipable: false,
+            },
+            InventoryItem::DragonPieces => InventoryEntry {
+                item,
+                label: "Dragon Pieces",
+                description: "Collect all seven to unlock the final confrontation.",
+                owned: self.dragon_pieces > 0,
+                count: Some(self.dragon_pieces),
+                equipable: false,
+            },
         }
     }
 

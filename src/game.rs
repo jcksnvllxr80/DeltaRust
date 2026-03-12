@@ -5,8 +5,9 @@ use crate::constants::{
     PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, NpcKind, Pickup,
-    PickupType, Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
+    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState,
+    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind,
+    TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -39,6 +40,14 @@ pub struct Game {
     pub sprites: Sprites,
     pub appearance: CharacterAppearance,
     pub creator: CharacterCreator,
+    pub inventory_tab: InventoryTab,
+    pub inventory_selection: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InventoryTab {
+    Inventory,
+    Map,
 }
 
 impl Game {
@@ -65,6 +74,8 @@ impl Game {
             sprites: Sprites::load(&appearance).await,
             appearance: appearance.clone(),
             creator: CharacterCreator::new(appearance),
+            inventory_tab: InventoryTab::Inventory,
+            inventory_selection: 0,
         };
         game.spawn_for_screen();
         game
@@ -118,7 +129,13 @@ impl Game {
             }
             GameState::Playing => self.draw_game(),
             GameState::Inventory => {
-                render::draw_inventory(&self.sprites, &self.world.snapshot(), &self.player)
+                render::draw_inventory(
+                    &self.sprites,
+                    &self.world.snapshot(),
+                    &self.player,
+                    self.inventory_tab == InventoryTab::Map,
+                    self.inventory_selection,
+                )
             }
             GameState::Transition => render::draw_transition(
                 &self.sprites,
@@ -168,6 +185,8 @@ impl Game {
         self.audio.play_music(MusicTrack::Overworld);
         self.state = GameState::Playing;
         self.frame = 0;
+        self.inventory_tab = InventoryTab::Inventory;
+        self.inventory_selection = 0;
     }
 
     fn begin_character_create(&mut self) {
@@ -218,6 +237,8 @@ impl Game {
 
     fn update_playing(&mut self) {
         if inventory_pressed() {
+            self.inventory_tab = InventoryTab::Inventory;
+            self.inventory_selection = 0;
             self.state = GameState::Inventory;
             return;
         }
@@ -274,9 +295,107 @@ impl Game {
     }
 
     fn update_inventory(&mut self) {
-        if inventory_pressed() || is_key_pressed(KeyCode::Escape) || start_pressed() {
+        if inventory_pressed() || is_key_pressed(KeyCode::Escape) {
             self.state = GameState::Playing;
+            return;
         }
+        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E) {
+            self.inventory_tab = match self.inventory_tab {
+                InventoryTab::Inventory => InventoryTab::Map,
+                InventoryTab::Map => InventoryTab::Inventory,
+            };
+            return;
+        }
+        if self.inventory_tab == InventoryTab::Map {
+            if start_pressed() {
+                self.inventory_tab = InventoryTab::Inventory;
+            }
+            return;
+        }
+        let entry_count = self.player.inventory_entries().len();
+        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+            self.inventory_selection = self.inventory_selection.saturating_sub(1);
+        }
+        if (is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S))
+            && self.inventory_selection + 1 < entry_count
+        {
+            self.inventory_selection += 1;
+        }
+        if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
+            self.toggle_selected_inventory_item();
+        }
+    }
+
+    fn toggle_selected_inventory_item(&mut self) {
+        let Some(entry) = self
+            .player
+            .inventory_entries()
+            .get(self.inventory_selection)
+            .copied()
+        else {
+            return;
+        };
+        if !entry.owned || !entry.equipable {
+            return;
+        }
+        self.player.equipped_item = match entry.item {
+            InventoryItem::Bombs => {
+                if self.player.equipped_item == EquippedItem::Bombs {
+                    EquippedItem::None
+                } else {
+                    EquippedItem::Bombs
+                }
+            }
+            InventoryItem::Hammer => {
+                if self.player.equipped_item == EquippedItem::Hammer {
+                    EquippedItem::None
+                } else {
+                    EquippedItem::Hammer
+                }
+            }
+            _ => self.player.equipped_item,
+        };
+    }
+
+    fn try_use_equipped_item(&mut self) {
+        match self.player.equipped_item {
+            EquippedItem::None => {}
+            EquippedItem::Bombs => {
+                if self.player.has_bombs && self.player.bomb_count > 0 {
+                    self.player.bomb_count -= 1;
+                    let mut bx = self.player.x + px(2.0);
+                    let mut by = self.player.y + px(2.0);
+                    match self.player.dir {
+                        Dir::Up => by -= TILE,
+                        Dir::Down => by += TILE,
+                        Dir::Left => bx -= TILE,
+                        Dir::Right => bx += TILE,
+                    }
+                    self.spawn_bomb(bx, by);
+                }
+            }
+            EquippedItem::Hammer => self.try_use_hammer(),
+        }
+    }
+
+    fn try_use_hammer(&mut self) {
+        if !self.player.has_hammer {
+            return;
+        }
+        let (front_x, front_y, tile) = self.front_tile();
+        if tile != TileType::Cracked {
+            return;
+        }
+        self.world.destroy_tile(
+            front_x as usize,
+            front_y as usize,
+            if self.world.in_dungeon || self.world.in_interior {
+                TileType::Floor
+            } else {
+                TileType::Path
+            },
+        );
+        self.audio.pickup();
     }
 
     fn update_transition(&mut self) {
@@ -365,17 +484,8 @@ impl Game {
             self.audio.sword();
             return None;
         }
-        if is_key_pressed(KeyCode::X) && self.player.has_bombs && self.player.bomb_count > 0 {
-            self.player.bomb_count -= 1;
-            let mut bx = self.player.x + px(2.0);
-            let mut by = self.player.y + px(2.0);
-            match self.player.dir {
-                Dir::Up => by -= TILE,
-                Dir::Down => by += TILE,
-                Dir::Left => bx -= TILE,
-                Dir::Right => bx += TILE,
-            }
-            self.spawn_bomb(bx, by);
+        if is_key_pressed(KeyCode::X) {
+            self.try_use_equipped_item();
         }
         let mut dx = 0.0;
         let mut dy = 0.0;
@@ -457,6 +567,26 @@ impl Game {
     fn check_tile_interaction(&self) -> Option<&'static str> {
         let cx = ((self.player.x + 8.0) / TILE).floor() as i32;
         let cy = ((self.player.y + 8.0) / TILE).floor() as i32;
+        let (fx, fy, front_tile) = self.front_tile();
+
+        match front_tile {
+            TileType::HouseDoor if self.world.in_interior => return Some("exit_interior"),
+            TileType::HouseDoor
+                if !self.world.in_dungeon
+                    && !self.world.in_interior
+                    && world_data::interior_entrance_at(
+                        self.world.screen_x,
+                        self.world.screen_y,
+                        fx,
+                        fy,
+                    )
+                    .is_some() =>
+            {
+                return Some("enter_interior");
+            }
+            _ => {}
+        }
+
         match self.world.get_tile(cx, cy) {
             TileType::Dungeon => Some("enter_dungeon"),
             TileType::Stairs => Some("exit_dungeon"),
@@ -602,6 +732,13 @@ impl Game {
                         | TileType::Rock
                         | TileType::Cracked
                         | TileType::Wall
+                        | TileType::HouseRoof
+                        | TileType::HouseRoofLeft
+                        | TileType::HouseRoofRight
+                        | TileType::HouseWall
+                        | TileType::HouseWindow
+                        | TileType::HouseDoor
+                        | TileType::HouseChair
                         | TileType::DoorLocked
                         | TileType::BossDoor
                         | TileType::Chest
@@ -886,6 +1023,13 @@ impl Game {
                 | TileType::Rock
                 | TileType::Cracked
                 | TileType::Wall
+                | TileType::HouseRoof
+                | TileType::HouseRoofLeft
+                | TileType::HouseRoofRight
+                | TileType::HouseWall
+                | TileType::HouseWindow
+                | TileType::HouseDoor
+                | TileType::HouseChair
                 | TileType::DoorLocked
                 | TileType::BossDoor
                 | TileType::Chest
@@ -906,8 +1050,7 @@ impl Game {
     }
 
     fn enter_interior(&mut self) {
-        let tile_x = ((self.player.x + 8.0) / TILE).floor() as i32;
-        let tile_y = ((self.player.y + 8.0) / TILE).floor() as i32;
+        let (tile_x, tile_y, _) = self.front_tile();
         let Some(interior_id) = world_data::interior_entrance_at(
             self.world.screen_x,
             self.world.screen_y,
@@ -1072,6 +1215,7 @@ impl Game {
                     if !self.player.has_bombs {
                         self.player.has_bombs = true;
                         self.player.bomb_count = 8;
+                        self.player.equipped_item = EquippedItem::Bombs;
                         self.show_message("You found BOMBS!\nPress X to use.");
                     } else {
                         self.player.bomb_count =
@@ -1377,6 +1521,7 @@ impl Game {
             PickupType::Bombs => {
                 self.player.has_bombs = true;
                 self.player.bomb_count = 8;
+                self.player.equipped_item = EquippedItem::Bombs;
                 self.show_message("You found BOMBS!\nPress X to use.");
             }
             PickupType::Gem => {
@@ -1388,6 +1533,9 @@ impl Game {
             }
             PickupType::Hammer => {
                 self.player.has_hammer = true;
+                if self.player.equipped_item == EquippedItem::None {
+                    self.player.equipped_item = EquippedItem::Hammer;
+                }
                 self.show_message("You found the HAMMER!");
             }
             PickupType::Raft => {
@@ -1598,6 +1746,9 @@ impl Game {
                 if !self.player.has_hammer {
                     if self.spend_gems(24) {
                         self.player.has_hammer = true;
+                        if self.player.equipped_item == EquippedItem::None {
+                            self.player.equipped_item = EquippedItem::Hammer;
+                        }
                         self.show_message(
                             "Maren sells you a HAMMER.\nIt feels heavy and reliable.",
                         );

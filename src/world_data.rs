@@ -189,17 +189,17 @@ fn npc(kind: NpcKind, tile_x: i32, tile_y: i32) -> WorldProp {
 }
 
 const HOUSE_INTERIOR_TILES: &[&str] = &[
-    "################",
-    "##ffffffffffff##",
-    "##f          f##",
-    "##f   ff     f##",
-    "##f          f##",
-    "##f    ff    f##",
-    "##f          f##",
-    "##f   ffff   f##",
-    "##f          f##",
-    "#######oo#######",
-    "################",
+    "hhhhhhhhhhhhhhhh",
+    "hwwuuuuuuuuuuwwh",
+    "hwuuuuuuuuuuuuwh",
+    "hwuuruuuuuuruuwh",
+    "hwuuuuuuuuuuuuwh",
+    "hwuuuuuuuuuuuuwh",
+    "hwuuuuuuuuuuuuwh",
+    "hwuuruuuuuuruuwh",
+    "hwuuuuuuuuuuuuwh",
+    "hhhhhhhqhhhhhhhh",
+    "hhhhhhhhhhhhhhhh",
 ];
 
 const CAVE_INTERIOR_TILES: &[&str] = &[
@@ -469,6 +469,11 @@ pub fn char_to_tile(ch: char) -> TileType {
         'G' => TileType::Goal,
         'k' => TileType::BossDoor,
         'f' => TileType::FloorAlt,
+        'h' => TileType::HouseWall,
+        'w' => TileType::HouseWindow,
+        'q' => TileType::HouseDoor,
+        'u' => TileType::WoodFloor,
+        'r' => TileType::HouseChair,
         _ => TileType::Grass,
     }
 }
@@ -519,8 +524,11 @@ pub fn interior_exit_overworld_tile(id: &str) -> Option<(i32, i32)> {
     })
 }
 
-pub fn interior_spawn_tile(_id: &str) -> (i32, i32) {
-    (7, 7)
+pub fn interior_spawn_tile(id: &str) -> (i32, i32) {
+    match interior_by_id(id).map(|interior| interior.style) {
+        Some(InteriorStyle::Cave) => (7, 8),
+        _ => (7, 7),
+    }
 }
 
 pub fn interior_auto_cave_reward(id: &str) -> Option<CaveKind> {
@@ -541,23 +549,29 @@ fn overlay_house_entrance(tiles: &mut TileGrid, door_x: i32, door_y: i32) {
     let right = (door_col + 3).min(COLS - 2);
     let top = door_row.saturating_sub(4).max(1);
 
+    tiles[top][left] = TileType::HouseRoofLeft;
+    tiles[top][right] = TileType::HouseRoofRight;
+    for col in (left + 1)..right {
+        tiles[top][col] = TileType::HouseRoof;
+    }
+
+    tiles[top + 1][left] = TileType::HouseRoofLeft;
+    tiles[top + 1][right] = TileType::HouseRoofRight;
+    for col in (left + 1)..right {
+        tiles[top + 1][col] = TileType::HouseRoof;
+    }
+
     for col in left..=right {
-        tiles[top][col] = TileType::Rock;
+        tiles[top + 2][col] = TileType::HouseWall;
+        tiles[top + 3][col] = TileType::HouseWall;
+        tiles[door_row][col] = TileType::HouseWall;
     }
-    for col in left.saturating_sub(1)..=(right + 1).min(COLS - 2) {
-        tiles[(top + 1).min(ROWS - 2)][col] = TileType::Rock;
-    }
-    for row in (top + 2)..door_row {
-        for col in left..=right {
-            tiles[row][col] = TileType::Wall;
-        }
-    }
-    tiles[(top + 2).min(ROWS - 2)][left + 1] = TileType::Rock;
-    tiles[(top + 2).min(ROWS - 2)][right.saturating_sub(1)] = TileType::Rock;
-    for col in left..=right {
-        tiles[door_row][col] = TileType::Wall;
-    }
-    tiles[door_row][door_col] = TileType::Door;
+
+    tiles[top + 2][left + 1] = TileType::HouseWindow;
+    tiles[top + 2][right - 1] = TileType::HouseWindow;
+    tiles[top + 3][left + 1] = TileType::HouseWindow;
+    tiles[top + 3][right - 1] = TileType::HouseWindow;
+    tiles[door_row][door_col] = TileType::HouseDoor;
     for row in (door_row + 1)..ROWS {
         tiles[row][door_col] = TileType::Path;
     }

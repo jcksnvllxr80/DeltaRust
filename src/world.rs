@@ -121,6 +121,13 @@ impl World {
                 | TileType::Rock
                 | TileType::Cracked
                 | TileType::Wall
+                | TileType::HouseRoof
+                | TileType::HouseRoofLeft
+                | TileType::HouseRoofRight
+                | TileType::HouseWall
+                | TileType::HouseWindow
+                | TileType::HouseDoor
+                | TileType::HouseChair
                 | TileType::DoorLocked
                 | TileType::BossDoor
                 | TileType::Chest

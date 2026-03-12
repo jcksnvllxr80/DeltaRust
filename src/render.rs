@@ -1,8 +1,9 @@
 use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
-    Projectile, PropKind, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
+    Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, InventoryEntry, InventoryItem,
+    Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType,
+    Transition, WorldProp, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
 use crate::world_data;
@@ -50,18 +51,23 @@ pub fn draw_game(
     draw_hud(sprites, player, world);
 }
 
-pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player) {
+pub fn draw_inventory(
+    sprites: &Sprites,
+    world: &WorldSnapshot,
+    player: &Player,
+    show_map_tab: bool,
+    inventory_selection: usize,
+) {
     clear_background(color_u8!(13, 16, 24, 255));
 
     let outer_x = px(16.0);
     let outer_y = px(14.0);
     let outer_w = GAME_W - px(32.0);
     let outer_h = GAME_H + HUD_H - px(28.0);
-    let side_w = px(140.0);
-    let map_x = outer_x + side_w + px(18.0);
-    let map_y = outer_y + px(42.0);
-    let map_w = outer_w - side_w - px(34.0);
-    let map_h = outer_h - px(58.0);
+    let content_x = outer_x + px(12.0);
+    let content_y = outer_y + px(52.0);
+    let content_w = outer_w - px(24.0);
+    let content_h = outer_h - px(64.0);
 
     draw_rectangle(
         outer_x,
@@ -78,36 +84,30 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         px(2.0),
         color_u8!(197, 170, 119, 255),
     );
-    draw_rectangle(
-        outer_x + px(8.0),
-        outer_y + px(36.0),
-        side_w,
-        outer_h - px(44.0),
-        color_u8!(31, 38, 51, 255),
-    );
-    draw_rectangle(map_x, map_y, map_w, map_h, color_u8!(18, 22, 30, 255));
-    draw_rectangle_lines(
-        map_x,
-        map_y,
-        map_w,
-        map_h,
-        px(1.0),
-        color_u8!(90, 103, 124, 255),
-    );
-
+    draw_text("PAUSE", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
     draw_text(
-        "INVENTORY",
-        outer_x + px(12.0),
-        outer_y + px(22.0),
-        px(22.0),
-        WHITE,
-    );
-    draw_text(
-        "I / TAB / ESC to close",
-        outer_x + outer_w - px(150.0),
+        "I / ESC close   TAB switch tab",
+        outer_x + outer_w - px(210.0),
         outer_y + px(22.0),
         px(12.0),
         LIGHTGRAY,
+    );
+
+    draw_inventory_tab(
+        outer_x + px(12.0),
+        outer_y + px(30.0),
+        px(100.0),
+        px(22.0),
+        "INVENTORY",
+        !show_map_tab,
+    );
+    draw_inventory_tab(
+        outer_x + px(118.0),
+        outer_y + px(30.0),
+        px(80.0),
+        px(22.0),
+        "MAP",
+        show_map_tab,
     );
 
     let location = world_data::location_name(
@@ -125,219 +125,245 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         px(14.0),
         color_u8!(214, 214, 214, 255),
     );
-    draw_text(
-        "GEAR",
-        outer_x + px(14.0),
-        outer_y + px(88.0),
-        px(14.0),
-        color_u8!(197, 170, 119, 255),
-    );
-
-    let mut line_y = outer_y + px(112.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Sword",
-        player.has_sword,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Gems",
-        true,
-        Some(player.gems),
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Pieces",
-        player.dragon_pieces > 0,
-        Some(player.dragon_pieces),
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Ancient Key",
-        player.has_ancient_key,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Tide Chart",
-        player.has_tide_chart,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Ember Crystal",
-        player.has_ember_crystal,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Void Compass",
-        player.has_void_compass,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Star Sigil",
-        player.has_star_sigil,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Dragon Codex",
-        player.has_dragon_codex,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Crystal of Seeing",
-        player.has_crystal_of_seeing,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Bombs",
-        player.has_bombs,
-        Some(player.bomb_count),
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Keys",
-        player.keys > 0,
-        Some(player.keys),
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Boss Key",
-        player.has_boss_key,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Ladder",
-        player.has_ladder,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Hammer",
-        player.has_hammer,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Raft",
-        player.has_raft,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Strong Glove",
-        player.has_strong_arm_glove,
-        None,
-    );
-    line_y += px(28.0);
-    draw_inventory_stat(
-        sprites,
-        player,
-        outer_x + px(16.0),
-        line_y,
-        "Portal Tool",
-        player.has_portal_tool,
-        None,
-    );
-
-    draw_text(
-        "MAP",
-        map_x + px(10.0),
-        map_y - px(10.0),
-        px(14.0),
-        color_u8!(197, 170, 119, 255),
-    );
-    if world.in_dungeon {
-        draw_dungeon_map_panel(
-            world,
-            map_x + px(16.0),
-            map_y + px(20.0),
-            map_w - px(32.0),
-            map_h - px(36.0),
+    if show_map_tab {
+        draw_rectangle(content_x, content_y, content_w, content_h, color_u8!(18, 22, 30, 255));
+        draw_rectangle_lines(
+            content_x,
+            content_y,
+            content_w,
+            content_h,
+            px(1.0),
+            color_u8!(90, 103, 124, 255),
         );
+        if world.in_dungeon {
+            draw_dungeon_map_panel(
+                world,
+                content_x + px(18.0),
+                content_y + px(24.0),
+                content_w - px(36.0),
+                content_h - px(40.0),
+            );
+        } else {
+            draw_overworld_map_panel(
+                world,
+                content_x + px(18.0),
+                content_y + px(24.0),
+                content_w - px(36.0),
+                content_h - px(40.0),
+            );
+        }
     } else {
-        draw_overworld_map_panel(
-            world,
-            map_x + px(16.0),
-            map_y + px(20.0),
-            map_w - px(32.0),
-            map_h - px(36.0),
+        let list_w = px(210.0);
+        let details_x = content_x + list_w + px(12.0);
+        let details_w = content_w - list_w - px(12.0);
+        let entries = player.inventory_entries();
+        let selected = entries
+            .get(inventory_selection.min(entries.len().saturating_sub(1)))
+            .copied()
+            .unwrap_or(player.inventory_entry(InventoryItem::Sword));
+
+        draw_rectangle(content_x, content_y, list_w, content_h, color_u8!(31, 38, 51, 255));
+        draw_rectangle_lines(
+            content_x,
+            content_y,
+            list_w,
+            content_h,
+            px(1.0),
+            color_u8!(90, 103, 124, 255),
+        );
+        draw_rectangle(details_x, content_y, details_w, content_h, color_u8!(18, 22, 30, 255));
+        draw_rectangle_lines(
+            details_x,
+            content_y,
+            details_w,
+            content_h,
+            px(1.0),
+            color_u8!(90, 103, 124, 255),
+        );
+
+        draw_text(
+            "ITEMS",
+            content_x + px(10.0),
+            content_y + px(18.0),
+            px(14.0),
+            color_u8!(197, 170, 119, 255),
+        );
+        let mut line_y = content_y + px(38.0);
+        for (index, entry) in entries.iter().enumerate() {
+            draw_inventory_entry_row(
+                sprites,
+                player,
+                content_x + px(8.0),
+                line_y,
+                list_w - px(16.0),
+                entry,
+                index == inventory_selection,
+            );
+            line_y += px(19.0);
+        }
+
+        draw_text(
+            "DETAILS",
+            details_x + px(12.0),
+            content_y + px(18.0),
+            px(14.0),
+            color_u8!(197, 170, 119, 255),
+        );
+        draw_inventory_detail_panel(
+            sprites,
+            player,
+            details_x + px(12.0),
+            content_y + px(34.0),
+            details_w - px(24.0),
+            selected,
         );
     }
+}
+
+fn draw_inventory_tab(x: f32, y: f32, w: f32, h: f32, label: &str, active: bool) {
+    let fill = if active {
+        color_u8!(58, 69, 89, 255)
+    } else {
+        color_u8!(28, 34, 46, 255)
+    };
+    draw_rectangle(x, y, w, h, fill);
+    draw_rectangle_lines(x, y, w, h, px(1.0), color_u8!(123, 132, 147, 255));
+    draw_text(
+        label,
+        x + px(10.0),
+        y + px(15.0),
+        px(12.0),
+        if active { WHITE } else { LIGHTGRAY },
+    );
+}
+
+fn draw_inventory_entry_row(
+    sprites: &Sprites,
+    player: &Player,
+    x: f32,
+    y: f32,
+    w: f32,
+    entry: &InventoryEntry,
+    selected: bool,
+) {
+    if selected {
+        draw_rectangle(x, y - px(13.0), w, px(18.0), color_u8!(61, 73, 96, 255));
+    }
+    draw_inventory_stat(
+        sprites,
+        player,
+        x + px(4.0),
+        y,
+        entry.label,
+        entry.owned,
+        entry.count,
+    );
+    if entry.equipable && entry.owned {
+        let equipped = match entry.item {
+            InventoryItem::Bombs => player.equipped_item == EquippedItem::Bombs,
+            InventoryItem::Hammer => player.equipped_item == EquippedItem::Hammer,
+            _ => false,
+        };
+        draw_text(
+            if equipped { "X" } else { "-" },
+            x + w - px(14.0),
+            y,
+            px(14.0),
+            if equipped { color_u8!(255, 215, 120, 255) } else { GRAY },
+        );
+    }
+}
+
+fn draw_inventory_detail_panel(
+    sprites: &Sprites,
+    player: &Player,
+    x: f32,
+    y: f32,
+    _w: f32,
+    entry: InventoryEntry,
+) {
+    draw_inventory_stat(sprites, player, x, y + px(12.0), entry.label, entry.owned, entry.count);
+    let status = if entry.equipable {
+        let equipped = match entry.item {
+            InventoryItem::Bombs => player.equipped_item == EquippedItem::Bombs,
+            InventoryItem::Hammer => player.equipped_item == EquippedItem::Hammer,
+            _ => false,
+        };
+        if !entry.owned {
+            "Locked".to_string()
+        } else if equipped {
+            "Equipped to X".to_string()
+        } else {
+            "Press Enter/Z/Space to equip".to_string()
+        }
+    } else if entry.owned {
+        "Passive / always available".to_string()
+    } else {
+        "Not acquired yet".to_string()
+    };
+    draw_text(&status, x, y + px(42.0), px(12.0), color_u8!(196, 196, 196, 255));
+
+    let wrapped = wrap_text(entry.description, 32);
+    for (i, line) in wrapped.iter().enumerate() {
+        draw_text(
+            line,
+            x,
+            y + px(72.0) + i as f32 * px(14.0),
+            px(12.0),
+            LIGHTGRAY,
+        );
+    }
+
+    draw_text(
+        &format!("Quick slot: {}", equipped_item_label(player.equipped_item)),
+        x,
+        y + px(150.0),
+        px(12.0),
+        color_u8!(255, 215, 120, 255),
+    );
+    draw_text(
+        &format!("HP {} / {}", player.hp, player.max_hp),
+        x,
+        y + px(174.0),
+        px(12.0),
+        WHITE,
+    );
+    draw_text(
+        &format!("Gems {}   Keys {}", player.gems, player.keys),
+        x,
+        y + px(192.0),
+        px(12.0),
+        WHITE,
+    );
+}
+
+fn equipped_item_label(item: EquippedItem) -> &'static str {
+    match item {
+        EquippedItem::None => "None",
+        EquippedItem::Bombs => "Bombs",
+        EquippedItem::Hammer => "Hammer",
+    }
+}
+
+fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        let pending_len = current.len() + if current.is_empty() { 0 } else { 1 } + word.len();
+        if pending_len > max_chars && !current.is_empty() {
+            lines.push(current);
+            current = word.to_string();
+        } else {
+            if !current.is_empty() {
+                current.push(' ');
+            }
+            current.push_str(word);
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
 }
 
 fn draw_dragon(x: f32, y: f32, scale: f32) {
@@ -802,6 +828,9 @@ fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32, theme_id: O
             if !sprites.draw_tile(theme_id, underlay, x, y, WHITE) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(underlay));
             }
+            if draw_house_tile(*tile, x, y) {
+                continue;
+            }
             if !sprites.draw_tile(theme_id, *tile, x, y, tile_tint(*tile)) {
                 draw_rectangle(x, y, TILE, TILE, tile_color(*tile));
             }
@@ -811,6 +840,123 @@ fn draw_tiles(sprites: &Sprites, tiles: &TileGrid, ox: f32, oy: f32, theme_id: O
                 _ => {}
             }
         }
+    }
+}
+
+fn draw_house_tile(tile: TileType, x: f32, y: f32) -> bool {
+    let roof = color_u8!(145, 62, 48, 255);
+    let roof_shadow = color_u8!(102, 39, 32, 255);
+    let trim = color_u8!(232, 207, 150, 255);
+    let plaster = color_u8!(214, 192, 143, 255);
+    let timber = color_u8!(111, 74, 46, 255);
+    let window = color_u8!(122, 186, 215, 255);
+    let window_glow = color_u8!(214, 235, 242, 255);
+    let door_dark = color_u8!(67, 44, 28, 255);
+    let door_light = color_u8!(139, 93, 53, 255);
+    let floor_dark = color_u8!(106, 73, 44, 255);
+    let floor_light = color_u8!(145, 99, 60, 255);
+    let chair_wood = color_u8!(120, 78, 46, 255);
+    let chair_shadow = color_u8!(74, 47, 29, 255);
+
+    match tile {
+        TileType::HouseRoof => {
+            draw_rectangle(x, y, TILE, TILE, roof);
+            draw_rectangle(x, y + px(2.0), TILE, px(4.0), roof_shadow);
+            draw_rectangle(x, y + TILE - px(4.0), TILE, px(3.0), trim);
+            true
+        }
+        TileType::HouseRoofLeft => {
+            draw_rectangle(x + px(4.0), y, TILE - px(4.0), TILE, roof);
+            draw_triangle(
+                vec2(x + px(4.0), y),
+                vec2(x + px(4.0), y + TILE),
+                vec2(x, y + TILE),
+                roof_shadow,
+            );
+            draw_rectangle(x + px(4.0), y + TILE - px(4.0), TILE - px(4.0), px(3.0), trim);
+            true
+        }
+        TileType::HouseRoofRight => {
+            draw_rectangle(x, y, TILE - px(4.0), TILE, roof);
+            draw_triangle(
+                vec2(x + TILE - px(4.0), y),
+                vec2(x + TILE, y + TILE),
+                vec2(x + TILE - px(4.0), y + TILE),
+                roof_shadow,
+            );
+            draw_rectangle(x, y + TILE - px(4.0), TILE - px(4.0), px(3.0), trim);
+            true
+        }
+        TileType::HouseWall => {
+            draw_rectangle(x, y, TILE, TILE, plaster);
+            draw_rectangle(x, y, TILE, px(3.0), timber);
+            draw_rectangle(x, y + TILE - px(3.0), TILE, px(3.0), timber);
+            draw_rectangle(x + px(3.0), y, px(3.0), TILE, timber);
+            draw_rectangle(x + TILE - px(6.0), y, px(3.0), TILE, timber);
+            true
+        }
+        TileType::HouseWindow => {
+            draw_rectangle(x, y, TILE, TILE, plaster);
+            draw_rectangle(x, y, TILE, px(3.0), timber);
+            draw_rectangle(x, y + TILE - px(3.0), TILE, px(3.0), timber);
+            draw_rectangle(x + px(3.0), y, px(3.0), TILE, timber);
+            draw_rectangle(x + TILE - px(6.0), y, px(3.0), TILE, timber);
+            draw_rectangle(x + px(5.0), y + px(5.0), TILE - px(10.0), TILE - px(10.0), window);
+            draw_line(
+                x + TILE / 2.0,
+                y + px(5.0),
+                x + TILE / 2.0,
+                y + TILE - px(5.0),
+                px(1.0),
+                window_glow,
+            );
+            draw_line(
+                x + px(5.0),
+                y + TILE / 2.0,
+                x + TILE - px(5.0),
+                y + TILE / 2.0,
+                px(1.0),
+                window_glow,
+            );
+            true
+        }
+        TileType::HouseDoor => {
+            draw_rectangle(x, y, TILE, TILE, plaster);
+            draw_rectangle(x, y, TILE, px(3.0), timber);
+            draw_rectangle(x + px(2.0), y + px(3.0), TILE - px(4.0), TILE - px(3.0), door_dark);
+            draw_rectangle(x + px(4.0), y + px(5.0), TILE - px(8.0), TILE - px(7.0), door_light);
+            draw_circle(x + TILE - px(6.0), y + TILE / 2.0, px(1.4), trim);
+            true
+        }
+        TileType::WoodFloor => {
+            draw_rectangle(x, y, TILE, TILE, floor_light);
+            draw_rectangle(x, y, TILE, px(2.0), floor_dark);
+            draw_rectangle(x, y + px(6.0), TILE, px(2.0), floor_dark);
+            draw_rectangle(x, y + px(12.0), TILE, px(2.0), floor_dark);
+            draw_rectangle(x + TILE / 2.0 - px(1.0), y, px(2.0), TILE, floor_dark);
+            true
+        }
+        TileType::HouseChair => {
+            draw_house_tile(TileType::WoodFloor, x, y);
+            draw_rectangle(x + px(5.0), y + px(4.0), TILE - px(10.0), px(4.0), chair_wood);
+            draw_rectangle(x + px(5.0), y + px(8.0), px(3.0), TILE - px(12.0), chair_shadow);
+            draw_rectangle(
+                x + TILE - px(8.0),
+                y + px(8.0),
+                px(3.0),
+                TILE - px(12.0),
+                chair_shadow,
+            );
+            draw_rectangle(
+                x + px(4.0),
+                y + TILE - px(8.0),
+                TILE - px(8.0),
+                px(3.0),
+                chair_wood,
+            );
+            true
+        }
+        _ => false,
     }
 }
 
@@ -892,6 +1038,13 @@ fn tile_base(tile: TileType) -> Option<TileType> {
         TileType::Tree | TileType::Bush | TileType::Rock | TileType::Cave | TileType::Dungeon => {
             Some(TileType::Grass)
         }
+        TileType::HouseRoof
+        | TileType::HouseRoofLeft
+        | TileType::HouseRoofRight
+        | TileType::HouseWall
+        | TileType::HouseWindow => Some(TileType::Grass),
+        TileType::HouseDoor => Some(TileType::Path),
+        TileType::HouseChair => Some(TileType::WoodFloor),
         TileType::Bridge => Some(TileType::Water),
         _ => None,
     }
@@ -906,6 +1059,13 @@ fn tile_tint(tile: TileType) -> Color {
         TileType::Stairs => color_u8!(119, 119, 153, 255),
         TileType::DoorLocked => color_u8!(200, 170, 50, 255),
         TileType::BossDoor => color_u8!(200, 40, 40, 255),
+        TileType::HouseRoof
+        | TileType::HouseRoofLeft
+        | TileType::HouseRoofRight
+        | TileType::HouseWall
+        | TileType::HouseWindow
+        | TileType::HouseDoor => WHITE,
+        TileType::WoodFloor | TileType::HouseChair => WHITE,
         _ => WHITE,
     }
 }
@@ -932,6 +1092,14 @@ fn tile_color(tile: TileType) -> Color {
         TileType::Goal => color_u8!(255, 221, 34, 255),
         TileType::BossDoor => color_u8!(170, 34, 51, 255),
         TileType::FloorAlt => color_u8!(102, 102, 136, 255),
+        TileType::HouseRoof | TileType::HouseRoofLeft | TileType::HouseRoofRight => {
+            color_u8!(145, 62, 48, 255)
+        }
+        TileType::HouseWall => color_u8!(214, 192, 143, 255),
+        TileType::HouseWindow => color_u8!(122, 186, 215, 255),
+        TileType::HouseDoor => color_u8!(111, 74, 46, 255),
+        TileType::WoodFloor => color_u8!(145, 99, 60, 255),
+        TileType::HouseChair => color_u8!(120, 78, 46, 255),
     }
 }
 
