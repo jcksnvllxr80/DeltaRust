@@ -125,7 +125,7 @@ struct InteriorDef {
     style: InteriorStyle,
     tiles: &'static [&'static str],
     props: &'static [PropDef],
-    auto_cave_reward: Option<CaveKind>,
+    reward_pickup: Option<PickupType>,
 }
 
 #[derive(Clone, Copy)]
@@ -291,7 +291,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: ELARA_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "maren_house",
@@ -303,7 +303,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: MAREN_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "corvin_house",
@@ -315,7 +315,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: CORVIN_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "aldric_house",
@@ -327,7 +327,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: ALDRIC_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "sael_house",
@@ -339,7 +339,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: SAEL_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "dax_house",
@@ -351,7 +351,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: DAX_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "merchant_lantern_house",
@@ -363,7 +363,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: CELESTIAL_MERCHANT_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "wren_house",
@@ -375,7 +375,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::House,
         tiles: HOUSE_INTERIOR_TILES,
         props: WREN_HOUSE_PROPS,
-        auto_cave_reward: None,
+        reward_pickup: None,
     },
     InteriorDef {
         id: "sword_cave",
@@ -387,7 +387,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::Cave,
         tiles: CAVE_INTERIOR_TILES,
         props: &[],
-        auto_cave_reward: Some(CaveKind::Sword),
+        reward_pickup: Some(PickupType::Sword),
     },
     InteriorDef {
         id: "threshold_stone_cave",
@@ -399,7 +399,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::Cave,
         tiles: CAVE_INTERIOR_TILES,
         props: &[],
-        auto_cave_reward: Some(CaveKind::CrystalOfSeeing),
+        reward_pickup: Some(PickupType::CrystalOfSeeing),
     },
     InteriorDef {
         id: "rift_cave",
@@ -411,7 +411,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::Cave,
         tiles: CAVE_INTERIOR_TILES,
         props: &[],
-        auto_cave_reward: Some(CaveKind::VoidCompass),
+        reward_pickup: Some(PickupType::VoidCompass),
     },
     InteriorDef {
         id: "ember_cave",
@@ -423,7 +423,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::Cave,
         tiles: CAVE_INTERIOR_TILES,
         props: &[],
-        auto_cave_reward: Some(CaveKind::EmberCrystal),
+        reward_pickup: Some(PickupType::EmberCrystal),
     },
     InteriorDef {
         id: "lighthouse_cave",
@@ -435,7 +435,7 @@ const INTERIORS: &[InteriorDef] = &[
         style: InteriorStyle::Cave,
         tiles: CAVE_INTERIOR_TILES,
         props: &[],
-        auto_cave_reward: Some(CaveKind::TideChart),
+        reward_pickup: Some(PickupType::TideChart),
     },
 ];
 
@@ -531,8 +531,8 @@ pub fn interior_spawn_tile(id: &str) -> (i32, i32) {
     }
 }
 
-pub fn interior_auto_cave_reward(id: &str) -> Option<CaveKind> {
-    interior_by_id(id).and_then(|interior| interior.auto_cave_reward)
+pub fn interior_reward_pickup(id: &str) -> Option<PickupType> {
+    interior_by_id(id).and_then(|interior| interior.reward_pickup)
 }
 
 pub fn build_interiors() -> HashMap<String, TileGrid> {
@@ -7191,9 +7191,16 @@ pub fn screen_items(
     in_dungeon: bool,
     dungeon_id: i32,
     in_interior: bool,
-    _interior_id: &str,
+    interior_id: &str,
 ) -> Vec<ItemDef> {
     if in_interior {
+        if let Some(pickup_type) = interior_reward_pickup(interior_id) {
+            return vec![ItemDef {
+                pickup_type,
+                tile_x: 8,
+                tile_y: 4,
+            }];
+        }
         return vec![];
     }
     if in_dungeon {

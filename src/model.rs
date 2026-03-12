@@ -82,6 +82,11 @@ pub enum PickupType {
     StrongArmGlove,
     PortalTool,
     DragonPiece,
+    Sword,
+    TideChart,
+    EmberCrystal,
+    VoidCompass,
+    CrystalOfSeeing,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -491,6 +496,7 @@ pub struct Pickup {
     pub w: f32,
     pub h: f32,
     pub pickup_type: PickupType,
+    pub key: Option<String>,
     pub timer: i32,
     pub collected: bool,
 }

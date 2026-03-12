@@ -509,7 +509,12 @@ fn base_pickup_frame(layout: &SpriteLayout, pickup: PickupType) -> Option<&Frame
         | PickupType::Raft
         | PickupType::StrongArmGlove
         | PickupType::PortalTool
-        | PickupType::DragonPiece => return None,
+        | PickupType::DragonPiece
+        | PickupType::Sword
+        | PickupType::TideChart
+        | PickupType::EmberCrystal
+        | PickupType::VoidCompass
+        | PickupType::CrystalOfSeeing => return None,
     })
 }
 

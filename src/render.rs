@@ -1465,6 +1465,11 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::StrongArmGlove => color_u8!(168, 118, 64, 255),
                 PickupType::PortalTool => color_u8!(126, 84, 178, 255),
                 PickupType::DragonPiece => color_u8!(226, 194, 92, 255),
+                PickupType::Sword => color_u8!(210, 224, 232, 255),
+                PickupType::TideChart => color_u8!(112, 170, 214, 255),
+                PickupType::EmberCrystal => color_u8!(231, 110, 62, 255),
+                PickupType::VoidCompass => color_u8!(188, 146, 230, 255),
+                PickupType::CrystalOfSeeing => color_u8!(182, 241, 255, 255),
             };
             match pickup.pickup_type {
                 PickupType::Gem => draw_gem_icon(x, y, draw_w / px(16.0), SKYBLUE),
@@ -1482,6 +1487,11 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::DragonPiece => {
                     draw_dragon_piece_icon(x + px(3.0), y + px(2.0), draw_w / px(16.0))
                 }
+                PickupType::Sword => draw_hammer_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::TideChart => draw_rectangle(x + px(3.0), y + px(3.0), draw_w - px(6.0), draw_h - px(6.0), color),
+                PickupType::EmberCrystal => draw_gem_icon(x, y, draw_w / px(16.0), color),
+                PickupType::VoidCompass => draw_portal_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::CrystalOfSeeing => draw_gem_icon(x, y, draw_w / px(16.0), color),
                 _ => draw_rectangle(x, y, draw_w, draw_h, color),
             }
         }

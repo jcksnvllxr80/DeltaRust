@@ -571,6 +571,19 @@ impl Game {
 
         match front_tile {
             TileType::HouseDoor if self.world.in_interior => return Some("exit_interior"),
+            TileType::Cave
+                if !self.world.in_dungeon
+                    && !self.world.in_interior
+                    && world_data::interior_entrance_at(
+                        self.world.screen_x,
+                        self.world.screen_y,
+                        fx,
+                        fy,
+                    )
+                    .is_some() =>
+            {
+                return Some("enter_interior");
+            }
             TileType::HouseDoor
                 if !self.world.in_dungeon
                     && !self.world.in_interior
@@ -905,7 +918,13 @@ impl Game {
                 self.player.dragon_pieces += 1;
                 self.show_message("Dragon piece claimed!");
             }
-            PickupType::BossKey | PickupType::Heart => {}
+            PickupType::BossKey
+            | PickupType::Heart
+            | PickupType::Sword
+            | PickupType::TideChart
+            | PickupType::EmberCrystal
+            | PickupType::VoidCompass
+            | PickupType::CrystalOfSeeing => {}
         }
         if matches!(item_type, PickupType::Gem | PickupType::DragonPiece) {
             self.audio.currency();
@@ -1050,13 +1069,24 @@ impl Game {
     }
 
     fn enter_interior(&mut self) {
-        let (tile_x, tile_y, _) = self.front_tile();
-        let Some(interior_id) = world_data::interior_entrance_at(
+        let (front_x, front_y, _) = self.front_tile();
+        let current_x = ((self.player.x + 8.0) / TILE).floor() as i32;
+        let current_y = ((self.player.y + 8.0) / TILE).floor() as i32;
+        let interior_id = world_data::interior_entrance_at(
             self.world.screen_x,
             self.world.screen_y,
-            tile_x,
-            tile_y,
-        ) else {
+            front_x,
+            front_y,
+        )
+        .or_else(|| {
+            world_data::interior_entrance_at(
+                self.world.screen_x,
+                self.world.screen_y,
+                current_x,
+                current_y,
+            )
+        });
+        let Some(interior_id) = interior_id else {
             return;
         };
         self.world.enter_interior(interior_id);
@@ -1067,9 +1097,6 @@ impl Game {
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
-        if let Some(cave_kind) = world_data::interior_auto_cave_reward(interior_id) {
-            self.handle_cave_kind(cave_kind);
-        }
     }
 
     fn exit_interior(&mut self) {
@@ -1266,10 +1293,7 @@ impl Game {
     fn update_items(&mut self) {
         for pickup in &mut self.pickups {
             pickup.timer += 1;
-            if pickup.pickup_type != PickupType::Key
-                && pickup.pickup_type != PickupType::BossKey
-                && pickup.timer > 600
-            {
+            if pickup_times_out(pickup.pickup_type) && pickup.timer > 600 {
                 pickup.collected = true;
             }
         }
@@ -1400,7 +1424,7 @@ impl Game {
     }
 
     fn player_take_damage(&mut self, amount: i32, from_dir: Dir) {
-        if self.player.invuln_timer > 0 {
+        if self.world.dev_mode || self.player.invuln_timer > 0 {
             return;
         }
         self.player.hp -= amount;
@@ -1480,26 +1504,33 @@ impl Game {
             px(10.0),
             px(12.0),
         );
-        let collected: Vec<PickupType> = self
+        let collected: Vec<(usize, PickupType, Option<String>)> = self
             .pickups
-            .iter_mut()
-            .filter_map(|pickup| {
+            .iter()
+            .enumerate()
+            .filter_map(|(index, pickup)| {
                 if !pickup.collected
                     && player_rect.overlaps(&Rect::new(pickup.x, pickup.y, pickup.w, pickup.h))
                 {
-                    pickup.collected = true;
-                    Some(pickup.pickup_type)
+                    Some((index, pickup.pickup_type, pickup.key.clone()))
                 } else {
                     None
                 }
             })
             .collect();
-        for pickup in collected {
-            self.collect_pickup(pickup);
+        for (index, pickup, key) in collected {
+            if self.collect_pickup(pickup) {
+                if let Some(key) = key {
+                    self.world.opened_chests.insert(key, vec![]);
+                }
+                if let Some(item) = self.pickups.get_mut(index) {
+                    item.collected = true;
+                }
+            }
         }
     }
 
-    fn collect_pickup(&mut self, pickup: PickupType) {
+    fn collect_pickup(&mut self, pickup: PickupType) -> bool {
         match pickup {
             PickupType::Heart => self.player.hp = (self.player.hp + 2).min(self.player.max_hp),
             PickupType::HeartContainer => {
@@ -1554,6 +1585,30 @@ impl Game {
                 self.player.dragon_pieces += 1;
                 self.show_message("You claimed a dragon piece!");
             }
+            PickupType::Sword => {
+                self.player.has_sword = true;
+                self.show_message("You found a sword!\nUse it to fight enemies.");
+            }
+            PickupType::TideChart => {
+                self.player.has_tide_chart = true;
+                self.show_message("You found the TIDE CHART!");
+            }
+            PickupType::EmberCrystal => {
+                if !self.player.has_strong_arm_glove {
+                    self.show_message("The crystal is too hot to touch.");
+                    return false;
+                }
+                self.player.has_ember_crystal = true;
+                self.show_message("You claimed the EMBER CRYSTAL!");
+            }
+            PickupType::VoidCompass => {
+                self.player.has_void_compass = true;
+                self.show_message("You found the VOID COMPASS!");
+            }
+            PickupType::CrystalOfSeeing => {
+                self.player.has_crystal_of_seeing = true;
+                self.show_message("You found the CRYSTAL OF SEEING!");
+            }
         }
         if matches!(
             pickup,
@@ -1563,6 +1618,7 @@ impl Game {
         } else {
             self.audio.pickup();
         }
+        true
     }
 
     fn spawn_for_screen(&mut self) {
@@ -1589,6 +1645,25 @@ impl Game {
     }
 
     fn load_screen_items(&mut self) {
+        if self.world.in_interior {
+            for item in self.world.get_screen_items() {
+                let key = self.screen_pickup_state_key(item.tile_x, item.tile_y);
+                if self.world.opened_chests.contains_key(&key) {
+                    continue;
+                }
+                if self.player_already_has_pickup(item.pickup_type) {
+                    self.world.opened_chests.insert(key, vec![]);
+                    continue;
+                }
+                self.spawn_pickup_with_key(
+                    item.tile_x as f32 * TILE,
+                    item.tile_y as f32 * TILE + px(4.0),
+                    item.pickup_type,
+                    key,
+                );
+            }
+            return;
+        }
         if self.world.in_dungeon && !self.player.has_boss_key {
             if let Some((tile_x, tile_y)) = world_data::boss_key_spawn_tile(
                 self.world.dungeon_id,
@@ -1875,15 +1950,50 @@ impl Game {
     }
 
     fn spawn_pickup(&mut self, x: f32, y: f32, pickup_type: PickupType) {
+        self.spawn_pickup_internal(x, y, pickup_type, None);
+    }
+
+    fn spawn_pickup_with_key(&mut self, x: f32, y: f32, pickup_type: PickupType, key: String) {
+        self.spawn_pickup_internal(x, y, pickup_type, Some(key));
+    }
+
+    fn spawn_pickup_internal(
+        &mut self,
+        x: f32,
+        y: f32,
+        pickup_type: PickupType,
+        key: Option<String>,
+    ) {
         self.pickups.push(Pickup {
             x,
             y,
             w: px(10.0),
             h: px(10.0),
             pickup_type,
+            key,
             timer: 0,
             collected: false,
         });
+    }
+
+    fn screen_pickup_state_key(&self, tile_x: usize, tile_y: usize) -> String {
+        format!(
+            "pickup:{}:{}:{}",
+            self.world.cleared_room_key(),
+            tile_x,
+            tile_y
+        )
+    }
+
+    fn player_already_has_pickup(&self, pickup_type: PickupType) -> bool {
+        match pickup_type {
+            PickupType::Sword => self.player.has_sword,
+            PickupType::TideChart => self.player.has_tide_chart,
+            PickupType::EmberCrystal => self.player.has_ember_crystal,
+            PickupType::VoidCompass => self.player.has_void_compass,
+            PickupType::CrystalOfSeeing => self.player.has_crystal_of_seeing,
+            _ => false,
+        }
     }
 
     fn spawn_bomb(&mut self, x: f32, y: f32) {
@@ -2115,4 +2225,8 @@ fn pickup_value(pickup: PickupType) -> i32 {
         PickupType::Gem => 5,
         _ => 0,
     }
+}
+
+fn pickup_times_out(pickup: PickupType) -> bool {
+    matches!(pickup, PickupType::Heart | PickupType::BombAmmo | PickupType::Gem)
 }
