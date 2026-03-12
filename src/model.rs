@@ -77,10 +77,28 @@ pub enum PickupType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NpcKind {
+    Elara,
+    Barnett,
+    Maren,
+    Oswin,
+    Corvin,
+    Petra,
+    Aldric,
+    Sael,
+    Dax,
+    Vel,
+    CelestialMerchant,
+    Senna,
+    Wren,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PropKind {
     Boulder,
     PressurePlate,
     LadderPoint,
+    Npc(NpcKind),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

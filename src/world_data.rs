@@ -1,5 +1,7 @@
 use crate::constants::{COLS, ROWS, TILE, WORLD_H, WORLD_W};
-use crate::model::{EnemySpawn, EnemyType, ItemDef, PickupType, PropKind, TileGrid, TileType, WorldProp};
+use crate::model::{
+    EnemySpawn, EnemyType, ItemDef, NpcKind, PickupType, PropKind, TileGrid, TileType, WorldProp,
+};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -141,6 +143,24 @@ fn prop_defs(props: &[PropDef]) -> Vec<WorldProp> {
             target_tile_y: prop.target_tile_y,
         })
         .collect()
+}
+
+fn item(pickup_type: PickupType, tile_x: usize, tile_y: usize) -> ItemDef {
+    ItemDef {
+        pickup_type,
+        tile_x,
+        tile_y,
+    }
+}
+
+fn npc(kind: NpcKind, tile_x: i32, tile_y: i32) -> WorldProp {
+    WorldProp {
+        kind: PropKind::Npc(kind),
+        tile_x,
+        tile_y,
+        target_tile_x: None,
+        target_tile_y: None,
+    }
 }
 
 pub fn screen_key(x: i32, y: i32) -> String {
@@ -940,6 +960,29 @@ fn seal_world_edges(tiles: &mut TileGrid, x: i32, y: i32, biome: OverworldBiome)
             for tile in row.iter_mut() {
                 *tile = wall;
             }
+        }
+    }
+
+    // Cap the standard transition lanes on true world boundaries so they
+    // visibly read as dead ends instead of looking like valid exits.
+    if x == 0 {
+        for row in 3..=7 {
+            tiles[row][3] = wall;
+        }
+    }
+    if x == WORLD_W - 1 {
+        for row in 3..=7 {
+            tiles[row][COLS - 4] = wall;
+        }
+    }
+    if y == 0 {
+        for col in 5..=10 {
+            tiles[3][col] = wall;
+        }
+    }
+    if y == WORLD_H - 1 {
+        for col in 5..=10 {
+            tiles[ROWS - 4][col] = wall;
         }
     }
 }
@@ -5806,6 +5849,8 @@ pub fn screen_props(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: 
         if let Some(room) = authored_dungeon_room(dungeon_id, screen_x, screen_y) {
             return prop_defs(room.props);
         }
+    } else {
+        return overworld_screen_props(screen_x, screen_y);
     }
     vec![]
 }
@@ -5922,6 +5967,31 @@ mod tests {
         assert!(boss_rewards
             .iter()
             .any(|item| item.pickup_type == PickupType::Ladder));
+    }
+
+    #[test]
+    fn overworld_npcs_and_gem_caches_are_authored() {
+        let meadow_props = screen_props(4, 14, false, 0);
+        assert!(meadow_props
+            .iter()
+            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Barnett))));
+
+        let circuit_props = screen_props(9, 1, false, 0);
+        assert!(circuit_props
+            .iter()
+            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::CelestialMerchant))));
+
+        let wren_props = screen_props(1, 3, false, 0);
+        assert!(wren_props
+            .iter()
+            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Wren))));
+
+        let fen_loot = screen_items(2, 12, false, 0);
+        assert!(fen_loot.len() >= 2);
+        assert!(fen_loot.iter().all(|item| item.pickup_type == PickupType::Gem));
+
+        let plaza_loot = screen_items(11, 2, false, 0);
+        assert!(plaza_loot.iter().any(|item| item.pickup_type == PickupType::Gem));
     }
 }
 
@@ -6559,7 +6629,46 @@ pub fn screen_items(
         }
         return dungeon_screen_items(dungeon_id, screen_x, screen_y);
     }
-    vec![]
+    overworld_screen_items(screen_x, screen_y)
+}
+
+fn overworld_screen_props(screen_x: i32, screen_y: i32) -> Vec<WorldProp> {
+    match (screen_x, screen_y) {
+        (4, 14) => vec![npc(NpcKind::Barnett, 6, 5)],
+        (6, 13) => vec![npc(NpcKind::Elara, 8, 5)],
+        (10, 13) => vec![npc(NpcKind::Maren, 7, 5)],
+        (10, 9) => vec![npc(NpcKind::Oswin, 8, 5)],
+        (3, 10) => vec![npc(NpcKind::Corvin, 7, 7)],
+        (7, 9) => vec![npc(NpcKind::Petra, 11, 5)],
+        (5, 8) => vec![npc(NpcKind::Aldric, 7, 5)],
+        (13, 7) => vec![npc(NpcKind::Sael, 7, 6)],
+        (8, 4) => vec![npc(NpcKind::Dax, 8, 5)],
+        (6, 4) => vec![npc(NpcKind::Vel, 8, 6)],
+        (9, 1) => vec![npc(NpcKind::CelestialMerchant, 8, 6)],
+        (11, 2) => vec![npc(NpcKind::Senna, 8, 5)],
+        (1, 3) => vec![npc(NpcKind::Wren, 8, 5)],
+        _ => vec![],
+    }
+}
+
+fn overworld_screen_items(screen_x: i32, screen_y: i32) -> Vec<ItemDef> {
+    match (screen_x, screen_y) {
+        (2, 12) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (4, 12) => vec![item(PickupType::Gem, 8, 4)],
+        (9, 14) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (10, 9) => vec![item(PickupType::Gem, 8, 3)],
+        (10, 11) => vec![item(PickupType::Gem, 4, 2), item(PickupType::Gem, 11, 7)],
+        (5, 9) => vec![item(PickupType::Gem, 8, 5)],
+        (7, 9) => vec![item(PickupType::Gem, 8, 4)],
+        (9, 6) => vec![item(PickupType::Gem, 8, 7)],
+        (13, 3) => vec![item(PickupType::Gem, 8, 6), item(PickupType::Gem, 9, 6)],
+        (5, 5) => vec![item(PickupType::Gem, 8, 6)],
+        (10, 0) => vec![item(PickupType::Gem, 8, 4)],
+        (11, 2) => vec![item(PickupType::Gem, 7, 5), item(PickupType::Gem, 9, 5)],
+        (3, 2) => vec![item(PickupType::Gem, 8, 4)],
+        (4, 2) => vec![item(PickupType::Gem, 7, 6), item(PickupType::Gem, 9, 6)],
+        _ => vec![],
+    }
 }
 
 fn dungeon_screen_items(dungeon_id: i32, sx: i32, sy: i32) -> Vec<ItemDef> {

@@ -1,7 +1,7 @@
 use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemyType, Pickup, PickupType, Player, PlayerState,
+    Bomb, DeathAnimation, Dir, Enemy, EnemyType, NpcKind, Pickup, PickupType, Player, PlayerState,
     Projectile, PropKind, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
@@ -689,6 +689,25 @@ fn draw_props(props: &[WorldProp]) {
             PropKind::LadderPoint => {
                 draw_ladder_icon(x + px(8.0), y + px(4.0), 1.0, color_u8!(174, 138, 88, 255));
                 draw_circle(x + TILE - px(8.0), y + px(8.0), px(3.0), color_u8!(230, 214, 164, 255));
+            }
+            PropKind::Npc(kind) => {
+                let robe = match kind {
+                    NpcKind::Elara | NpcKind::Barnett => color_u8!(86, 136, 78, 255),
+                    NpcKind::Maren | NpcKind::Oswin => color_u8!(132, 104, 86, 255),
+                    NpcKind::Corvin | NpcKind::Petra => color_u8!(118, 114, 136, 255),
+                    NpcKind::Aldric | NpcKind::Sael => color_u8!(72, 126, 156, 255),
+                    NpcKind::Dax => color_u8!(154, 94, 62, 255),
+                    NpcKind::Vel => color_u8!(118, 118, 148, 255),
+                    NpcKind::CelestialMerchant | NpcKind::Senna => color_u8!(150, 138, 204, 255),
+                    NpcKind::Wren => color_u8!(176, 164, 112, 255),
+                };
+                let trim = color_u8!(38, 32, 30, 255);
+                draw_circle(x + px(16.0), y + px(13.0), px(5.0), color_u8!(232, 206, 186, 255));
+                draw_rectangle(x + px(10.0), y + px(18.0), px(12.0), px(12.0), robe);
+                draw_rectangle_lines(x + px(10.0), y + px(18.0), px(12.0), px(12.0), px(1.0), trim);
+                draw_rectangle(x + px(12.0), y + px(30.0), px(3.0), px(4.0), trim);
+                draw_rectangle(x + px(17.0), y + px(30.0), px(3.0), px(4.0), trim);
+                draw_circle(x + px(26.0), y + px(11.0), px(3.0), color_u8!(252, 230, 142, 255));
             }
         }
     }

@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType,
-    Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
+    NpcKind, Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -225,6 +225,9 @@ impl Game {
             return;
         }
         if start_pressed() && self.try_use_ladder_point() {
+            return;
+        }
+        if start_pressed() && self.try_interact_npc() {
             return;
         }
         match self.check_tile_interaction() {
@@ -537,7 +540,7 @@ impl Game {
         }
         let rect = Rect::new(x, y, w, h);
         self.props.iter().any(|prop| {
-            if !matches!(prop.kind, crate::model::PropKind::Boulder) {
+            if !matches!(prop.kind, crate::model::PropKind::Boulder | crate::model::PropKind::Npc(_)) {
                 return false;
             }
             let px = prop.tile_x as f32 * TILE;
@@ -1377,6 +1380,167 @@ impl Game {
         self.player.y = prop.target_tile_y.unwrap() as f32 * TILE;
         self.show_message("You climb with the LADDER.");
         true
+    }
+
+    fn try_interact_npc(&mut self) -> bool {
+        let (tile_x, tile_y, _) = self.front_tile();
+        let Some(npc_kind) = self.props.iter().find_map(|prop| match prop.kind {
+            PropKind::Npc(kind) if prop.tile_x == tile_x && prop.tile_y == tile_y => Some(kind),
+            _ => None,
+        }) else {
+            return false;
+        };
+        self.handle_npc(npc_kind);
+        true
+    }
+
+    fn npc_state_key(&self, npc_kind: NpcKind) -> String {
+        format!(
+            "npc:{}:{npc_kind:?}",
+            world_data::screen_key(self.world.screen_x, self.world.screen_y),
+        )
+    }
+
+    fn spend_gems(&mut self, amount: i32) -> bool {
+        if self.player.gems < amount {
+            return false;
+        }
+        self.player.gems -= amount;
+        self.audio.currency();
+        true
+    }
+
+    fn handle_npc(&mut self, npc_kind: NpcKind) {
+        let state_key = self.npc_state_key(npc_kind);
+        let first_time = !self.world.opened_chests.contains_key(&state_key);
+        match npc_kind {
+            NpcKind::Elara => {
+                if self.player.hp < self.player.max_hp {
+                    if self.spend_gems(5) {
+                        self.player.hp = self.player.max_hp;
+                        self.show_message("Elara brews a forest tonic.\nFully healed for 5 gems.");
+                    } else {
+                        self.show_message("Elara: 5 gems for a healing tonic.");
+                    }
+                } else {
+                    self.show_message("Elara: The Fen cave is old.\nCome back if you need healing.");
+                }
+            }
+            NpcKind::Barnett => {
+                self.show_message("Barnett: East leads to Ashenfall.\nNorth reaches the Highlands.");
+            }
+            NpcKind::Maren => {
+                if !self.player.has_hammer {
+                    if self.spend_gems(24) {
+                        self.player.has_hammer = true;
+                        self.show_message("Maren sells you a HAMMER.\nIt feels heavy and reliable.");
+                    } else {
+                        self.show_message("Maren: A HAMMER costs 24 gems.");
+                    }
+                } else if self.player.has_bombs && self.player.bomb_count < self.player.max_bombs {
+                    if self.spend_gems(5) {
+                        self.player.bomb_count =
+                            (self.player.bomb_count + 8).min(self.player.max_bombs);
+                        self.show_message("Maren refills your bomb satchel for 5 gems.");
+                    } else {
+                        self.show_message("Maren: 5 gems for a bomb refill.");
+                    }
+                } else {
+                    self.show_message("Maren: The east district post still reeks of old ash.");
+                }
+            }
+            NpcKind::Oswin => {
+                self.show_message("Oswin: Ringing the old bell changes things.\nThe ruins reward curiosity.");
+            }
+            NpcKind::Corvin => {
+                if !self.player.has_ancient_key {
+                    if self.spend_gems(40) {
+                        self.player.has_ancient_key = true;
+                        self.show_message("Corvin sells you the ANCIENT KEY for 40 gems.");
+                    } else {
+                        self.show_message("Corvin: The ANCIENT KEY is 40 gems.");
+                    }
+                } else {
+                    self.show_message("Corvin: The vents are still burning beneath the Vault.");
+                }
+            }
+            NpcKind::Petra => {
+                self.show_message("Petra: Watch the vent timings.\nThe biggest one always pulses hottest.");
+            }
+            NpcKind::Aldric => {
+                if !self.player.has_raft {
+                    if self.spend_gems(35) {
+                        self.player.has_raft = true;
+                        self.show_message("Aldric sells you a RAFT for 35 gems.");
+                    } else {
+                        self.show_message("Aldric: A serviceable RAFT costs 35 gems.");
+                    }
+                } else {
+                    self.show_message("Aldric: Check the Tide Chart before diving the gate.");
+                }
+            }
+            NpcKind::Sael => {
+                if self.player.max_bombs < 16 {
+                    if self.spend_gems(20) {
+                        self.player.max_bombs = 16;
+                        self.player.bomb_count = self.player.bomb_count.max(8);
+                        self.show_message("Sael upgrades your bomb bag.\nMax bombs increased!");
+                    } else {
+                        self.show_message("Sael: Deep gear isn't cheap.\n20 gems for the upgrade.");
+                    }
+                } else {
+                    self.show_message("Sael: Dawn water shows the Citadel's shape from above.");
+                }
+            }
+            NpcKind::Dax => {
+                if !self.player.has_strong_arm_glove {
+                    if self.spend_gems(45) {
+                        self.player.has_strong_arm_glove = true;
+                        self.show_message("Dax sells you the STRONG ARM GLOVE for 45 gems.");
+                    } else {
+                        self.show_message("Dax: The STRONG ARM GLOVE costs 45 gems.");
+                    }
+                } else {
+                    self.show_message("Dax: The true crystal is the one that feels alive.");
+                }
+            }
+            NpcKind::Vel => {
+                self.show_message("Vel: Stable rifts point the way.\nFollow the shimmer to the Shade.");
+            }
+            NpcKind::CelestialMerchant => {
+                if !self.player.has_star_sigil {
+                    if self.spend_gems(60) {
+                        self.player.has_star_sigil = true;
+                        self.show_message("The Celestial Merchant sells you the STAR SIGIL.");
+                    } else {
+                        self.show_message("Celestial Merchant: The STAR SIGIL is 60 gems.");
+                    }
+                } else {
+                    self.show_message("Celestial Merchant: The Spire has your measure now.");
+                }
+            }
+            NpcKind::Senna => {
+                self.show_message("Senna: The dark seventh star isn't gone.\nIt's waiting.");
+            }
+            NpcKind::Wren => {
+                if !self.player.has_crystal_of_seeing {
+                    let free = self.player.has_dragon_codex;
+                    if free || self.spend_gems(30) {
+                        self.player.has_crystal_of_seeing = true;
+                        self.show_message("Wren gives you the CRYSTAL OF SEEING.");
+                    } else {
+                        self.show_message("Wren: The crystal costs 30 gems.");
+                    }
+                } else if first_time {
+                    self.show_message("Wren: You've come far.\nThe rest is between you and the mountain.");
+                } else {
+                    self.show_message("Wren keeps the last camp warm and quiet.");
+                }
+            }
+        }
+        if first_time {
+            self.world.opened_chests.insert(state_key, vec![]);
+        }
     }
 
     fn show_message(&mut self, text: &str) {
