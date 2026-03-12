@@ -321,6 +321,8 @@ pub struct WorldSnapshot {
     pub screen_y: i32,
     pub in_dungeon: bool,
     pub dungeon_id: i32,
+    pub in_interior: bool,
+    pub interior_id: String,
     pub tiles: TileGrid,
     pub visited: HashSet<String>,
     pub cleared_rooms: HashSet<String>,

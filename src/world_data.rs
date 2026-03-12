@@ -1,6 +1,6 @@
 use crate::constants::{COLS, ROWS, TILE, WORLD_H, WORLD_W};
 use crate::generated_overworld::{
-    GeneratedOverworldScreen, GENERATED_OVERWORLD_LAYOUT, GENERATED_OVERWORLD_SCREENS,
+    GENERATED_OVERWORLD_LAYOUT, GENERATED_OVERWORLD_SCREENS, GeneratedOverworldScreen,
 };
 use crate::model::{
     EnemySpawn, EnemyType, ItemDef, NpcKind, PickupType, PropKind, TileGrid, TileType, WorldProp,
@@ -108,6 +108,26 @@ struct DungeonDef {
     rooms: &'static [DungeonRoomDef],
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum InteriorStyle {
+    Cave,
+    House,
+}
+
+#[derive(Clone, Copy)]
+struct InteriorDef {
+    id: &'static str,
+    source_x: i32,
+    source_y: i32,
+    entrance_tile_x: i32,
+    entrance_tile_y: i32,
+    name: &'static str,
+    style: InteriorStyle,
+    tiles: &'static [&'static str],
+    props: &'static [PropDef],
+    auto_cave_reward: Option<CaveKind>,
+}
+
 #[derive(Clone, Copy)]
 struct OverworldSpec {
     biome: OverworldBiome,
@@ -127,7 +147,8 @@ fn spawn_defs_to_enemies(spawns: &[SpawnDef]) -> Vec<EnemySpawn> {
 }
 
 fn item_defs(items: &[ScreenItemDef]) -> Vec<ItemDef> {
-    items.iter()
+    items
+        .iter()
         .map(|item| ItemDef {
             pickup_type: item.pickup_type,
             tile_x: item.tile_x,
@@ -137,7 +158,8 @@ fn item_defs(items: &[ScreenItemDef]) -> Vec<ItemDef> {
 }
 
 fn prop_defs(props: &[PropDef]) -> Vec<WorldProp> {
-    props.iter()
+    props
+        .iter()
         .map(|prop| WorldProp {
             kind: prop.kind,
             tile_x: prop.tile_x,
@@ -165,6 +187,257 @@ fn npc(kind: NpcKind, tile_x: i32, tile_y: i32) -> WorldProp {
         target_tile_y: None,
     }
 }
+
+const HOUSE_INTERIOR_TILES: &[&str] = &[
+    "################",
+    "##ffffffffffff##",
+    "##f          f##",
+    "##f   ff     f##",
+    "##f          f##",
+    "##f    ff    f##",
+    "##f          f##",
+    "##f   ffff   f##",
+    "##f          f##",
+    "#######oo#######",
+    "################",
+];
+
+const CAVE_INTERIOR_TILES: &[&str] = &[
+    "################",
+    "###ffffxxffff###",
+    "##ff        ff##",
+    "##f   x  x   f##",
+    "##f          f##",
+    "##f  ff  ff  f##",
+    "##f          f##",
+    "##f   xxxx   f##",
+    "##ff        ff##",
+    "#######oo#######",
+    "################",
+];
+
+const ELARA_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Elara),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const MAREN_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Maren),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const CORVIN_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Corvin),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const ALDRIC_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Aldric),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const SAEL_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Sael),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const DAX_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Dax),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const CELESTIAL_MERCHANT_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::CelestialMerchant),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const WREN_HOUSE_PROPS: &[PropDef] = &[PropDef {
+    kind: PropKind::Npc(NpcKind::Wren),
+    tile_x: 8,
+    tile_y: 5,
+    target_tile_x: None,
+    target_tile_y: None,
+}];
+
+const INTERIORS: &[InteriorDef] = &[
+    InteriorDef {
+        id: "elara_house",
+        source_x: 2,
+        source_y: 11,
+        entrance_tile_x: 5,
+        entrance_tile_y: 6,
+        name: "ELARA'S TONIC HOUSE",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: ELARA_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "maren_house",
+        source_x: 5,
+        source_y: 12,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "MAREN'S SALVAGE SHACK",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: MAREN_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "corvin_house",
+        source_x: 2,
+        source_y: 7,
+        entrance_tile_x: 5,
+        entrance_tile_y: 6,
+        name: "CORVIN'S TOWER ROOM",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: CORVIN_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "aldric_house",
+        source_x: 9,
+        source_y: 9,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "ALDRIC'S DOCK HOUSE",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: ALDRIC_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "sael_house",
+        source_x: 12,
+        source_y: 9,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "SAEL'S SEA STORE",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: SAEL_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "dax_house",
+        source_x: 6,
+        source_y: 7,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "DAX'S FORGE HUT",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: DAX_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "merchant_lantern_house",
+        source_x: 8,
+        source_y: 0,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "CELESTIAL MERCHANT'S HOUSE",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: CELESTIAL_MERCHANT_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "wren_house",
+        source_x: 4,
+        source_y: 2,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "WREN'S LAST CAMP",
+        style: InteriorStyle::House,
+        tiles: HOUSE_INTERIOR_TILES,
+        props: WREN_HOUSE_PROPS,
+        auto_cave_reward: None,
+    },
+    InteriorDef {
+        id: "sword_cave",
+        source_x: 2,
+        source_y: 11,
+        entrance_tile_x: 10,
+        entrance_tile_y: 5,
+        name: "GRANDFATHER TREE CAVE",
+        style: InteriorStyle::Cave,
+        tiles: CAVE_INTERIOR_TILES,
+        props: &[],
+        auto_cave_reward: Some(CaveKind::Sword),
+    },
+    InteriorDef {
+        id: "threshold_stone_cave",
+        source_x: 4,
+        source_y: 1,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "THRESHOLD STONE CAVE",
+        style: InteriorStyle::Cave,
+        tiles: CAVE_INTERIOR_TILES,
+        props: &[],
+        auto_cave_reward: Some(CaveKind::CrystalOfSeeing),
+    },
+    InteriorDef {
+        id: "rift_cave",
+        source_x: 5,
+        source_y: 3,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "STABLE RIFT CAVE",
+        style: InteriorStyle::Cave,
+        tiles: CAVE_INTERIOR_TILES,
+        props: &[],
+        auto_cave_reward: Some(CaveKind::VoidCompass),
+    },
+    InteriorDef {
+        id: "ember_cave",
+        source_x: 7,
+        source_y: 6,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "EMBER GARDEN CAVE",
+        style: InteriorStyle::Cave,
+        tiles: CAVE_INTERIOR_TILES,
+        props: &[],
+        auto_cave_reward: Some(CaveKind::EmberCrystal),
+    },
+    InteriorDef {
+        id: "lighthouse_cave",
+        source_x: 9,
+        source_y: 6,
+        entrance_tile_x: 8,
+        entrance_tile_y: 5,
+        name: "LIGHTHOUSE ISLE CAVE",
+        style: InteriorStyle::Cave,
+        tiles: CAVE_INTERIOR_TILES,
+        props: &[],
+        auto_cave_reward: Some(CaveKind::TideChart),
+    },
+];
 
 pub fn screen_key(x: i32, y: i32) -> String {
     format!("{x},{y}")
@@ -216,6 +489,104 @@ pub fn parse(rows: &[&str]) -> TileGrid {
         .collect()
 }
 
+fn interiors_on_screen(screen_x: i32, screen_y: i32) -> impl Iterator<Item = &'static InteriorDef> {
+    INTERIORS
+        .iter()
+        .filter(move |interior| interior.source_x == screen_x && interior.source_y == screen_y)
+}
+
+pub fn interior_entrance_at(
+    screen_x: i32,
+    screen_y: i32,
+    tile_x: i32,
+    tile_y: i32,
+) -> Option<&'static str> {
+    interiors_on_screen(screen_x, screen_y)
+        .find(|interior| interior.entrance_tile_x == tile_x && interior.entrance_tile_y == tile_y)
+        .map(|interior| interior.id)
+}
+
+fn interior_by_id(id: &str) -> Option<&'static InteriorDef> {
+    INTERIORS.iter().find(|interior| interior.id == id)
+}
+
+pub fn interior_exit_overworld_tile(id: &str) -> Option<(i32, i32)> {
+    interior_by_id(id).map(|interior| {
+        (
+            interior.entrance_tile_x,
+            (interior.entrance_tile_y + 1).min(ROWS as i32 - 2),
+        )
+    })
+}
+
+pub fn interior_spawn_tile(_id: &str) -> (i32, i32) {
+    (7, 7)
+}
+
+pub fn interior_auto_cave_reward(id: &str) -> Option<CaveKind> {
+    interior_by_id(id).and_then(|interior| interior.auto_cave_reward)
+}
+
+pub fn build_interiors() -> HashMap<String, TileGrid> {
+    INTERIORS
+        .iter()
+        .map(|interior| (interior.id.to_string(), parse(interior.tiles)))
+        .collect()
+}
+
+fn overlay_house_entrance(tiles: &mut TileGrid, door_x: i32, door_y: i32) {
+    let door_col = door_x.clamp(2, COLS as i32 - 3) as usize;
+    let door_row = door_y.clamp(4, ROWS as i32 - 2) as usize;
+    let left = door_col.saturating_sub(3).max(1);
+    let right = (door_col + 3).min(COLS - 2);
+    let top = door_row.saturating_sub(4).max(1);
+
+    for col in left..=right {
+        tiles[top][col] = TileType::Rock;
+    }
+    for col in left.saturating_sub(1)..=(right + 1).min(COLS - 2) {
+        tiles[(top + 1).min(ROWS - 2)][col] = TileType::Rock;
+    }
+    for row in (top + 2)..door_row {
+        for col in left..=right {
+            tiles[row][col] = TileType::Wall;
+        }
+    }
+    tiles[(top + 2).min(ROWS - 2)][left + 1] = TileType::Rock;
+    tiles[(top + 2).min(ROWS - 2)][right.saturating_sub(1)] = TileType::Rock;
+    for col in left..=right {
+        tiles[door_row][col] = TileType::Wall;
+    }
+    tiles[door_row][door_col] = TileType::Door;
+    for row in (door_row + 1)..ROWS {
+        tiles[row][door_col] = TileType::Path;
+    }
+}
+
+fn overlay_cave_entrance(tiles: &mut TileGrid, cave_x: i32, cave_y: i32) {
+    let cave_col = cave_x.clamp(1, COLS as i32 - 2) as usize;
+    let cave_row = cave_y.clamp(1, ROWS as i32 - 2) as usize;
+    for row in cave_row.saturating_sub(1)..=(cave_row + 1).min(ROWS - 2) {
+        for col in cave_col.saturating_sub(1)..=(cave_col + 1).min(COLS - 2) {
+            tiles[row][col] = TileType::Path;
+        }
+    }
+    tiles[cave_row][cave_col] = TileType::Cave;
+}
+
+fn overlay_interior_entrances(tiles: &mut TileGrid, screen_x: i32, screen_y: i32) {
+    for interior in interiors_on_screen(screen_x, screen_y) {
+        match interior.style {
+            InteriorStyle::House => {
+                overlay_house_entrance(tiles, interior.entrance_tile_x, interior.entrance_tile_y)
+            }
+            InteriorStyle::Cave => {
+                overlay_cave_entrance(tiles, interior.entrance_tile_x, interior.entrance_tile_y)
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Overworld: generated 14 columns x 15 rows = 210 screens
 // ---------------------------------------------------------------------------
@@ -225,6 +596,9 @@ pub fn overworld_start() -> (i32, i32) {
 }
 
 pub fn cave_kind(screen_x: i32, screen_y: i32) -> Option<CaveKind> {
+    if matches!((screen_x, screen_y), (8, 0) | (4, 2) | (2, 7)) {
+        return None;
+    }
     if let Some(screen) = generated_overworld_screen(screen_x, screen_y) {
         return screen.cave.and_then(cave_kind_from_code);
     }
@@ -234,7 +608,20 @@ pub fn cave_kind(screen_x: i32, screen_y: i32) -> Option<CaveKind> {
     None
 }
 
-pub fn location_name(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: i32) -> String {
+pub fn location_name(
+    screen_x: i32,
+    screen_y: i32,
+    in_dungeon: bool,
+    dungeon_id: i32,
+    in_interior: bool,
+    interior_id: &str,
+) -> String {
+    if in_interior {
+        if let Some(interior) = interior_by_id(interior_id) {
+            return interior.name.to_string();
+        }
+        return "INTERIOR".to_string();
+    }
     if in_dungeon {
         if let Some(dungeon) = authored_dungeon(dungeon_id) {
             return dungeon.name.to_string();
@@ -258,7 +645,17 @@ pub fn location_name(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id:
     overworld_spec(screen_x, screen_y).name.to_string()
 }
 
-pub fn visual_theme_id(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: i32) -> Option<i32> {
+pub fn visual_theme_id(
+    screen_x: i32,
+    screen_y: i32,
+    in_dungeon: bool,
+    dungeon_id: i32,
+    in_interior: bool,
+    _interior_id: &str,
+) -> Option<i32> {
+    if in_interior {
+        return None;
+    }
     if in_dungeon {
         return match dungeon_id {
             1..=8 => Some(dungeon_id),
@@ -277,6 +674,7 @@ pub fn build_overworld() -> HashMap<String, TileGrid> {
     let mut data = HashMap::new();
     for screen in GENERATED_OVERWORLD_SCREENS {
         let mut tiles = parse(screen.tiles);
+        overlay_interior_entrances(&mut tiles, screen.x, screen.y);
         seal_world_edges(&mut tiles, screen.x, screen.y, biome_theme(screen.biome_id));
         data.insert(screen_key(screen.x, screen.y), tiles);
     }
@@ -333,9 +731,9 @@ fn overworld_layout_biome_id(x: i32, y: i32) -> Option<i32> {
         return None;
     }
     match GENERATED_OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] as char {
-        '1'..='8' => Some(
-            (GENERATED_OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] - b'0') as i32,
-        ),
+        '1'..='8' => {
+            Some((GENERATED_OVERWORLD_LAYOUT[y as usize].as_bytes()[x as usize] - b'0') as i32)
+        }
         _ => None,
     }
 }
@@ -1107,9 +1505,9 @@ fn validate_overworld_connections(data: &HashMap<String, TileGrid>) -> Result<()
                 let right = data
                     .get(&right_key)
                     .ok_or_else(|| format!("missing screen {right_key}"))?;
-                if !(0..ROWS).any(|row| {
-                    is_walkable(left[row][COLS - 1]) && is_walkable(right[row][0])
-                }) {
+                if !(0..ROWS)
+                    .any(|row| is_walkable(left[row][COLS - 1]) && is_walkable(right[row][0]))
+                {
                     return Err(format!(
                         "horizontal mismatch between {left_key} and {right_key}"
                     ));
@@ -1141,9 +1539,9 @@ fn validate_overworld_connections(data: &HashMap<String, TileGrid>) -> Result<()
                 let bottom = data
                     .get(&bottom_key)
                     .ok_or_else(|| format!("missing screen {bottom_key}"))?;
-                if !(0..COLS).any(|col| {
-                    is_walkable(top[ROWS - 1][col]) && is_walkable(bottom[0][col])
-                }) {
+                if !(0..COLS)
+                    .any(|col| is_walkable(top[ROWS - 1][col]) && is_walkable(bottom[0][col]))
+                {
                     return Err(format!(
                         "vertical mismatch between {top_key} and {bottom_key}"
                     ));
@@ -5848,12 +6246,27 @@ pub fn dungeon_map_rooms(dungeon_id: i32) -> HashSet<String> {
         .unwrap_or_default()
 }
 
-pub fn boss_key_spawn_tile(dungeon_id: i32, screen_x: i32, screen_y: i32) -> Option<(usize, usize)> {
+pub fn boss_key_spawn_tile(
+    dungeon_id: i32,
+    screen_x: i32,
+    screen_y: i32,
+) -> Option<(usize, usize)> {
     authored_dungeon_room(dungeon_id, screen_x, screen_y)?.boss_key_tile
 }
 
-pub fn screen_props(screen_x: i32, screen_y: i32, in_dungeon: bool, dungeon_id: i32) -> Vec<WorldProp> {
-    if in_dungeon {
+pub fn screen_props(
+    screen_x: i32,
+    screen_y: i32,
+    in_dungeon: bool,
+    dungeon_id: i32,
+    in_interior: bool,
+    interior_id: &str,
+) -> Vec<WorldProp> {
+    if in_interior {
+        if let Some(interior) = interior_by_id(interior_id) {
+            return prop_defs(interior.props);
+        }
+    } else if in_dungeon {
         if let Some(room) = authored_dungeon_room(dungeon_id, screen_x, screen_y) {
             return prop_defs(room.props);
         }
@@ -5903,27 +6316,30 @@ mod tests {
     #[test]
     fn mosshaven_overrides_and_dungeon_metadata_exist() {
         assert_eq!(overworld_start(), (1, 13));
-        assert_eq!(location_name(1, 8, false, 0), "THE FEN");
+        assert_eq!(location_name(1, 8, false, 0, false, ""), "THE FEN");
         assert_eq!(dungeon_at(1, 8), 1);
-        assert_eq!(location_name(0, 0, true, 1), "MOSSHAVEN CAVE");
-        assert_eq!(location_name(2, 7, false, 0), "ENGINEER'S TOWER");
+        assert_eq!(location_name(0, 0, true, 1, false, ""), "MOSSHAVEN CAVE");
+        assert_eq!(location_name(2, 7, false, 0, false, ""), "ENGINEER'S TOWER");
         assert_eq!(dungeon_at(3, 4), 3);
-        assert_eq!(location_name(3, 6, true, 3), "IRONCLAD VAULT");
-        assert_eq!(location_name(9, 6, false, 0), "LIGHTHOUSE ISLE");
+        assert_eq!(location_name(3, 6, true, 3, false, ""), "IRONCLAD VAULT");
+        assert_eq!(location_name(9, 6, false, 0, false, ""), "LIGHTHOUSE ISLE");
         assert_eq!(dungeon_at(11, 9), 4);
-        assert_eq!(location_name(1, 6, true, 4), "SUNKEN CITADEL");
-        assert_eq!(location_name(7, 6, false, 0), "EMBER GARDEN");
+        assert_eq!(location_name(1, 6, true, 4, false, ""), "SUNKEN CITADEL");
+        assert_eq!(location_name(7, 6, false, 0, false, ""), "EMBER GARDEN");
         assert_eq!(dungeon_at(8, 4), 5);
-        assert_eq!(location_name(1, 3, true, 5), "GRIMFORGE DEPTHS");
-        assert_eq!(location_name(6, 5, false, 0), "MIRROR POOL");
+        assert_eq!(location_name(1, 3, true, 5, false, ""), "GRIMFORGE DEPTHS");
+        assert_eq!(location_name(6, 5, false, 0, false, ""), "MIRROR POOL");
         assert_eq!(dungeon_at(4, 3), 6);
-        assert_eq!(location_name(1, 3, true, 6), "FRACTURED SANCTUM");
-        assert_eq!(location_name(8, 0, false, 0), "MERCHANT LANTERN");
+        assert_eq!(location_name(1, 3, true, 6, false, ""), "FRACTURED SANCTUM");
+        assert_eq!(location_name(8, 0, false, 0, false, ""), "MERCHANT LANTERN");
         assert_eq!(dungeon_at(7, 2), 7);
-        assert_eq!(location_name(1, 3, true, 7), "AETHERIAN SPIRE");
-        assert_eq!(location_name(4, 2, false, 0), "LAST CAMP");
+        assert_eq!(location_name(1, 3, true, 7, false, ""), "AETHERIAN SPIRE");
+        assert_eq!(location_name(4, 2, false, 0, false, ""), "LAST CAMP");
         assert_eq!(dungeon_at(3, 0), 8);
-        assert_eq!(location_name(1, 3, true, 8), "DRAGON'S ETERNAL THRONE");
+        assert_eq!(
+            location_name(1, 3, true, 8, false, ""),
+            "DRAGON'S ETERNAL THRONE"
+        );
 
         let rooms = dungeon_map_rooms(1);
         assert!(rooms.contains("1,5"));
@@ -5958,46 +6374,78 @@ mod tests {
 
     #[test]
     fn mosshaven_room_props_and_rewards_are_authored() {
-        let r04_props = screen_props(1, 3, true, 1);
+        let r04_props = screen_props(1, 3, true, 1, false, "");
         assert_eq!(r04_props.len(), 2);
 
-        let r07_props = screen_props(1, 1, true, 1);
+        let r07_props = screen_props(1, 1, true, 1, false, "");
         assert_eq!(r07_props.len(), 8);
         assert_eq!(boss_key_spawn_tile(1, 1, 1), Some((8, 3)));
 
         let boss_rewards = room_clear_rewards(1, 1, 0);
         assert_eq!(boss_rewards.len(), 2);
-        assert!(boss_rewards
-            .iter()
-            .any(|item| item.pickup_type == PickupType::DragonPiece));
-        assert!(boss_rewards
-            .iter()
-            .any(|item| item.pickup_type == PickupType::Ladder));
+        assert!(
+            boss_rewards
+                .iter()
+                .any(|item| item.pickup_type == PickupType::DragonPiece)
+        );
+        assert!(
+            boss_rewards
+                .iter()
+                .any(|item| item.pickup_type == PickupType::Ladder)
+        );
     }
 
     #[test]
     fn overworld_npcs_and_gem_caches_are_authored() {
-        let meadow_props = screen_props(1, 13, false, 0);
-        assert!(meadow_props
-            .iter()
-            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Barnett))));
+        let meadow_props = screen_props(1, 13, false, 0, false, "");
+        assert!(
+            meadow_props
+                .iter()
+                .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Barnett)))
+        );
 
-        let circuit_props = screen_props(8, 0, false, 0);
-        assert!(circuit_props
-            .iter()
-            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::CelestialMerchant))));
+        let circuit_props = screen_props(8, 0, false, 0, false, "");
+        assert!(
+            !circuit_props
+                .iter()
+                .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::CelestialMerchant)))
+        );
 
-        let wren_props = screen_props(4, 2, false, 0);
-        assert!(wren_props
-            .iter()
-            .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Wren))));
+        let wren_props = screen_props(4, 2, false, 0, false, "");
+        assert!(
+            !wren_props
+                .iter()
+                .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Wren)))
+        );
 
-        let fen_loot = screen_items(1, 8, false, 0);
+        let merchant_house_props = screen_props(8, 0, false, 0, true, "merchant_lantern_house");
+        assert!(
+            merchant_house_props
+                .iter()
+                .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::CelestialMerchant)))
+        );
+
+        let wren_house_props = screen_props(4, 2, false, 0, true, "wren_house");
+        assert!(
+            wren_house_props
+                .iter()
+                .any(|prop| matches!(prop.kind, PropKind::Npc(NpcKind::Wren)))
+        );
+
+        let fen_loot = screen_items(1, 8, false, 0, false, "");
         assert!(fen_loot.len() >= 2);
-        assert!(fen_loot.iter().all(|item| item.pickup_type == PickupType::Gem));
+        assert!(
+            fen_loot
+                .iter()
+                .all(|item| item.pickup_type == PickupType::Gem)
+        );
 
-        let plaza_loot = screen_items(9, 2, false, 0);
-        assert!(plaza_loot.iter().any(|item| item.pickup_type == PickupType::Gem));
+        let plaza_loot = screen_items(9, 2, false, 0, false, "");
+        assert!(
+            plaza_loot
+                .iter()
+                .any(|item| item.pickup_type == PickupType::Gem)
+        );
     }
 }
 
@@ -6431,8 +6879,13 @@ pub fn enemy_spawns(
     screen_y: i32,
     in_dungeon: bool,
     dungeon_id: i32,
+    in_interior: bool,
+    _interior_id: &str,
     cleared: bool,
 ) -> Vec<EnemySpawn> {
+    if in_interior {
+        return vec![];
+    }
     if in_dungeon {
         if cleared {
             return vec![];
@@ -6452,8 +6905,13 @@ pub fn enemy_spawns(
 }
 
 fn overworld_enemy_spawns(sx: i32, sy: i32) -> Vec<EnemySpawn> {
+    if interiors_on_screen(sx, sy).next().is_some() {
+        return vec![];
+    }
     if let Some(screen) = generated_overworld_screen(sx, sy) {
-        if screen.cave.is_some() || screen.dungeon != 0 || !overworld_screen_props(sx, sy).is_empty()
+        if screen.cave.is_some()
+            || screen.dungeon != 0
+            || !overworld_screen_props(sx, sy).is_empty()
         {
             return vec![];
         }
@@ -6498,16 +6956,58 @@ fn overworld_enemy_type(biome: OverworldBiome, difficulty: i32, seed: usize) -> 
     let roll = seed % 4;
     match biome {
         OverworldBiome::Forest | OverworldBiome::DeepForest => match difficulty {
-            0 => if roll == 0 { EnemyType::Bat } else { EnemyType::Slime },
-            1 => if roll >= 2 { EnemyType::Bat } else { EnemyType::Octorok },
-            2 => if roll == 0 { EnemyType::Darknut } else { EnemyType::Octorok },
-            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Bat },
+            0 => {
+                if roll == 0 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Slime
+                }
+            }
+            1 => {
+                if roll >= 2 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            2 => {
+                if roll == 0 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            _ => {
+                if roll % 2 == 0 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Bat
+                }
+            }
         },
         OverworldBiome::Lake | OverworldBiome::Coast => match difficulty {
             0 => EnemyType::Octorok,
-            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Octorok },
-            2 => if roll >= 2 { EnemyType::Darknut } else { EnemyType::Octorok },
-            _ => if roll == 0 { EnemyType::Bat } else { EnemyType::Darknut },
+            1 => {
+                if roll == 0 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            2 => {
+                if roll >= 2 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            _ => {
+                if roll == 0 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Darknut
+                }
+            }
         },
         OverworldBiome::Desert
         | OverworldBiome::Ruins
@@ -6515,15 +7015,51 @@ fn overworld_enemy_type(biome: OverworldBiome, difficulty: i32, seed: usize) -> 
         | OverworldBiome::Snow
         | OverworldBiome::Canyon => match difficulty {
             0 => EnemyType::Octorok,
-            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Octorok },
-            2 => if roll >= 2 { EnemyType::Darknut } else { EnemyType::Octorok },
-            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Bat },
+            1 => {
+                if roll == 0 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            2 => {
+                if roll >= 2 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Octorok
+                }
+            }
+            _ => {
+                if roll % 2 == 0 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Bat
+                }
+            }
         },
         OverworldBiome::Plains | OverworldBiome::Highlands => match difficulty {
             0 => EnemyType::Slime,
-            1 => if roll == 0 { EnemyType::Bat } else { EnemyType::Slime },
-            2 => if roll >= 2 { EnemyType::Octorok } else { EnemyType::Bat },
-            _ => if roll % 2 == 0 { EnemyType::Darknut } else { EnemyType::Octorok },
+            1 => {
+                if roll == 0 {
+                    EnemyType::Bat
+                } else {
+                    EnemyType::Slime
+                }
+            }
+            2 => {
+                if roll >= 2 {
+                    EnemyType::Octorok
+                } else {
+                    EnemyType::Bat
+                }
+            }
+            _ => {
+                if roll % 2 == 0 {
+                    EnemyType::Darknut
+                } else {
+                    EnemyType::Octorok
+                }
+            }
         },
     }
 }
@@ -6640,7 +7176,12 @@ pub fn screen_items(
     screen_y: i32,
     in_dungeon: bool,
     dungeon_id: i32,
+    in_interior: bool,
+    _interior_id: &str,
 ) -> Vec<ItemDef> {
+    if in_interior {
+        return vec![];
+    }
     if in_dungeon {
         if let Some(room) = authored_dungeon_room(dungeon_id, screen_x, screen_y) {
             return item_defs(room.items);
@@ -6653,18 +7194,18 @@ pub fn screen_items(
 fn overworld_screen_props(screen_x: i32, screen_y: i32) -> Vec<WorldProp> {
     match (screen_x, screen_y) {
         (1, 13) => vec![npc(NpcKind::Barnett, 8, 5)],
-        (2, 11) => vec![npc(NpcKind::Elara, 8, 5)],
-        (5, 12) => vec![npc(NpcKind::Maren, 8, 5)],
+        (2, 11) => vec![],
+        (5, 12) => vec![],
         (6, 9) => vec![npc(NpcKind::Oswin, 8, 5)],
-        (2, 7) => vec![npc(NpcKind::Corvin, 8, 5)],
+        (2, 7) => vec![],
         (1, 6) => vec![npc(NpcKind::Petra, 8, 5)],
-        (9, 9) => vec![npc(NpcKind::Aldric, 8, 5)],
-        (12, 9) => vec![npc(NpcKind::Sael, 8, 5)],
-        (6, 7) => vec![npc(NpcKind::Dax, 8, 5)],
+        (9, 9) => vec![],
+        (12, 9) => vec![],
+        (6, 7) => vec![],
         (8, 5) => vec![npc(NpcKind::Vel, 8, 5)],
-        (8, 0) => vec![npc(NpcKind::CelestialMerchant, 8, 5)],
+        (8, 0) => vec![],
         (9, 2) => vec![npc(NpcKind::Senna, 8, 5)],
-        (4, 2) => vec![npc(NpcKind::Wren, 8, 5)],
+        (4, 2) => vec![],
         _ => vec![],
     }
 }

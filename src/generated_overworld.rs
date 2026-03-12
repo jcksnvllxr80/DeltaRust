@@ -4441,4 +4441,3 @@ pub const GENERATED_OVERWORLD_SCREENS: &[GeneratedOverworldScreen] = &[
         dungeon: 0,
     },
 ];
-

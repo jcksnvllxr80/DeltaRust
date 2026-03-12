@@ -5,8 +5,8 @@ use crate::constants::{
     PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, Pickup, PickupType,
-    NpcKind, Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
+    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, GameState, NpcKind, Pickup,
+    PickupType, Player, PlayerState, Projectile, PropKind, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -238,8 +238,16 @@ impl Game {
                 }
                 return;
             }
+            Some("enter_interior") if start_pressed() => {
+                self.enter_interior();
+                return;
+            }
             Some("exit_dungeon") => {
                 self.exit_dungeon();
+                return;
+            }
+            Some("exit_interior") if start_pressed() => {
+                self.exit_interior();
                 return;
             }
             Some("cave_interact") if start_pressed() => {
@@ -452,6 +460,33 @@ impl Game {
         match self.world.get_tile(cx, cy) {
             TileType::Dungeon => Some("enter_dungeon"),
             TileType::Stairs => Some("exit_dungeon"),
+            TileType::Door if self.world.in_interior => Some("exit_interior"),
+            TileType::Door
+                if !self.world.in_dungeon
+                    && !self.world.in_interior
+                    && world_data::interior_entrance_at(
+                        self.world.screen_x,
+                        self.world.screen_y,
+                        cx,
+                        cy,
+                    )
+                    .is_some() =>
+            {
+                Some("enter_interior")
+            }
+            TileType::Cave
+                if !self.world.in_dungeon
+                    && !self.world.in_interior
+                    && world_data::interior_entrance_at(
+                        self.world.screen_x,
+                        self.world.screen_y,
+                        cx,
+                        cy,
+                    )
+                    .is_some() =>
+            {
+                Some("enter_interior")
+            }
             TileType::Cave => Some("cave_interact"),
             TileType::Goal => Some("victory"),
             _ => None,
@@ -541,7 +576,10 @@ impl Game {
         }
         let rect = Rect::new(x, y, w, h);
         self.props.iter().any(|prop| {
-            if !matches!(prop.kind, crate::model::PropKind::Boulder | crate::model::PropKind::Npc(_)) {
+            if !matches!(
+                prop.kind,
+                crate::model::PropKind::Boulder | crate::model::PropKind::Npc(_)
+            ) {
                 return false;
             }
             let px = prop.tile_x as f32 * TILE;
@@ -597,7 +635,9 @@ impl Game {
         };
         let target_x = self.props[index].tile_x + dx;
         let target_y = self.props[index].tile_y + dy;
-        if self.world.is_solid(target_x, target_y) || self.boulder_index_at(target_x, target_y).is_some() {
+        if self.world.is_solid(target_x, target_y)
+            || self.boulder_index_at(target_x, target_y).is_some()
+        {
             return;
         }
         self.props[index].tile_x = target_x;
@@ -654,7 +694,7 @@ impl Game {
             self.world.destroy_tile(
                 col as usize,
                 row as usize,
-                if self.world.in_dungeon {
+                if self.world.in_dungeon || self.world.in_interior {
                     TileType::Floor
                 } else {
                     TileType::Grass
@@ -744,7 +784,7 @@ impl Game {
                     self.world.destroy_tile(
                         col,
                         row,
-                        if self.world.in_dungeon {
+                        if self.world.in_dungeon || self.world.in_interior {
                             TileType::Floor
                         } else {
                             TileType::Path
@@ -763,15 +803,14 @@ impl Game {
             Dir::Up => next_y -= 1,
             Dir::Down => next_y += 1,
         }
-        if next_x < 0
-            || next_y < 0
-            || !self.world.screen_exists(next_x, next_y)
-        {
+        if next_x < 0 || next_y < 0 || !self.world.screen_exists(next_x, next_y) {
             self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
             self.player.y = self.player.y.clamp(0.0, GAME_H - TILE);
             return;
         }
-        let Some((player_new_x, player_new_y)) = self.find_transition_target(dir, next_x, next_y, nx, ny) else {
+        let Some((player_new_x, player_new_y)) =
+            self.find_transition_target(dir, next_x, next_y, nx, ny)
+        else {
             self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
             self.player.y = self.player.y.clamp(0.0, GAME_H - TILE);
             return;
@@ -800,8 +839,16 @@ impl Game {
         match dir {
             Dir::Left | Dir::Right => {
                 let start_row = ((self.player.y + 8.0) / TILE).floor() as i32;
-                let current_edge = if matches!(dir, Dir::Left) { 0 } else { COLS - 1 };
-                let next_edge = if matches!(dir, Dir::Left) { COLS - 1 } else { 0 };
+                let current_edge = if matches!(dir, Dir::Left) {
+                    0
+                } else {
+                    COLS - 1
+                };
+                let next_edge = if matches!(dir, Dir::Left) {
+                    COLS - 1
+                } else {
+                    0
+                };
                 let mut candidates: Vec<i32> = (0..ROWS).map(|row| row as i32).collect();
                 candidates.sort_by_key(|row| (row - start_row).abs());
                 for row in candidates {
@@ -848,8 +895,7 @@ impl Game {
     fn enter_dungeon(&mut self) {
         self.dungeon_overworld_x = self.world.screen_x;
         self.dungeon_overworld_y = self.world.screen_y;
-        self.pending_dungeon =
-            world_data::dungeon_at(self.world.screen_x, self.world.screen_y);
+        self.pending_dungeon = world_data::dungeon_at(self.world.screen_x, self.world.screen_y);
         self.transition.progress = 0.0;
         self.state = GameState::DungeonEnter;
     }
@@ -859,13 +905,61 @@ impl Game {
         self.state = GameState::DungeonExit;
     }
 
+    fn enter_interior(&mut self) {
+        let tile_x = ((self.player.x + 8.0) / TILE).floor() as i32;
+        let tile_y = ((self.player.y + 8.0) / TILE).floor() as i32;
+        let Some(interior_id) = world_data::interior_entrance_at(
+            self.world.screen_x,
+            self.world.screen_y,
+            tile_x,
+            tile_y,
+        ) else {
+            return;
+        };
+        self.world.enter_interior(interior_id);
+        let (spawn_x, spawn_y) = world_data::interior_spawn_tile(interior_id);
+        self.player.x = spawn_x as f32 * TILE;
+        self.player.y = spawn_y as f32 * TILE;
+        self.player.dir = Dir::Up;
+        self.spawn_for_screen();
+        self.reset_items();
+        self.load_screen_items();
+        if let Some(cave_kind) = world_data::interior_auto_cave_reward(interior_id) {
+            self.handle_cave_kind(cave_kind);
+        }
+    }
+
+    fn exit_interior(&mut self) {
+        let interior_id = self.world.interior_id.clone();
+        self.world.exit_interior();
+        if let Some((tile_x, tile_y)) = world_data::interior_exit_overworld_tile(&interior_id) {
+            self.player.x = tile_x as f32 * TILE;
+            self.player.y = tile_y as f32 * TILE;
+        }
+        self.player.dir = Dir::Down;
+        self.spawn_for_screen();
+        self.reset_items();
+        self.load_screen_items();
+    }
+
     fn handle_cave(&mut self) {
-        let cave_key = format!(
-            "cave:{}",
-            world_data::screen_key(self.world.screen_x, self.world.screen_y)
-        );
         match world_data::cave_kind(self.world.screen_x, self.world.screen_y) {
-            Some(world_data::CaveKind::Sword) => {
+            Some(cave_kind) => self.handle_cave_kind(cave_kind),
+            None => self.show_message("A mysterious\ncave..."),
+        }
+    }
+
+    fn handle_cave_kind(&mut self, cave_kind: world_data::CaveKind) {
+        let cave_key = if self.world.in_interior {
+            format!("cave:{}", self.world.interior_id)
+        } else {
+            format!(
+                "cave:{}",
+                world_data::screen_key(self.world.screen_x, self.world.screen_y)
+            )
+        };
+        match cave_kind {
+            world_data::CaveKind::Sword => {
                 if !self.player.has_sword {
                     self.player.has_sword = true;
                     self.show_message("You found a sword!\nUse it to fight enemies.");
@@ -873,7 +967,7 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            Some(world_data::CaveKind::Heart) => {
+            world_data::CaveKind::Heart => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![(3, 4)]);
                     self.player.max_hp += 2;
@@ -883,7 +977,7 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            Some(world_data::CaveKind::Shop) => {
+            world_data::CaveKind::Shop => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_bombs = 16;
@@ -894,7 +988,7 @@ impl Game {
                     self.show_message("The shop is closed.");
                 }
             }
-            Some(world_data::CaveKind::AncientKey) => {
+            world_data::CaveKind::AncientKey => {
                 if !self.player.has_ancient_key {
                     self.player.has_ancient_key = true;
                     self.show_message("You found the ANCIENT KEY!");
@@ -902,7 +996,7 @@ impl Game {
                     self.show_message("Corvin already sold you the key.");
                 }
             }
-            Some(world_data::CaveKind::TideChart) => {
+            world_data::CaveKind::TideChart => {
                 if !self.player.has_tide_chart {
                     self.player.has_tide_chart = true;
                     self.show_message("You found the TIDE CHART!");
@@ -910,7 +1004,7 @@ impl Game {
                     self.show_message("The lighthouse is empty.");
                 }
             }
-            Some(world_data::CaveKind::EmberCrystal) => {
+            world_data::CaveKind::EmberCrystal => {
                 if !self.player.has_strong_arm_glove {
                     self.show_message("The crystal is too hot to touch.");
                 } else if !self.player.has_ember_crystal {
@@ -920,7 +1014,7 @@ impl Game {
                     self.show_message("Only cooling shards remain.");
                 }
             }
-            Some(world_data::CaveKind::VoidCompass) => {
+            world_data::CaveKind::VoidCompass => {
                 if !self.player.has_void_compass {
                     self.player.has_void_compass = true;
                     self.show_message("You found the VOID COMPASS!");
@@ -928,7 +1022,7 @@ impl Game {
                     self.show_message("The rift has gone still.");
                 }
             }
-            Some(world_data::CaveKind::StarSigil) => {
+            world_data::CaveKind::StarSigil => {
                 if !self.player.has_star_sigil {
                     self.player.has_star_sigil = true;
                     self.show_message("You received the STAR SIGIL!");
@@ -936,7 +1030,7 @@ impl Game {
                     self.show_message("The merchant has already moved on.");
                 }
             }
-            Some(world_data::CaveKind::DragonCodex) => {
+            world_data::CaveKind::DragonCodex => {
                 if !self.player.has_dragon_codex {
                     self.player.has_dragon_codex = true;
                     self.show_message("You assembled the DRAGON CODEX!");
@@ -944,7 +1038,7 @@ impl Game {
                     self.show_message("Wren has no more pages for you.");
                 }
             }
-            Some(world_data::CaveKind::CrystalOfSeeing) => {
+            world_data::CaveKind::CrystalOfSeeing => {
                 if !self.player.has_crystal_of_seeing {
                     self.player.has_crystal_of_seeing = true;
                     self.show_message("You found the CRYSTAL OF SEEING!");
@@ -952,7 +1046,7 @@ impl Game {
                     self.show_message("The niche is empty.");
                 }
             }
-            Some(world_data::CaveKind::Shrine) => {
+            world_data::CaveKind::Shrine => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_hp += 2;
@@ -962,7 +1056,7 @@ impl Game {
                     self.show_message("The shrine is quiet.");
                 }
             }
-            Some(world_data::CaveKind::Sanctum) => {
+            world_data::CaveKind::Sanctum => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_hp += 2;
@@ -972,7 +1066,7 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            Some(world_data::CaveKind::Bombs) => {
+            world_data::CaveKind::Bombs => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     if !self.player.has_bombs {
@@ -988,7 +1082,6 @@ impl Game {
                     self.show_message("The cave is empty.");
                 }
             }
-            None => self.show_message("A mysterious\ncave..."),
         }
     }
 
@@ -1087,7 +1180,7 @@ impl Game {
                     self.world.destroy_tile(
                         col,
                         row,
-                        if self.world.in_dungeon {
+                        if self.world.in_dungeon || self.world.in_interior {
                             TileType::Floor
                         } else {
                             TileType::Path
@@ -1314,7 +1407,10 @@ impl Game {
                 self.show_message("You claimed a dragon piece!");
             }
         }
-        if matches!(pickup, PickupType::Key | PickupType::Gem | PickupType::DragonPiece) {
+        if matches!(
+            pickup,
+            PickupType::Key | PickupType::Gem | PickupType::DragonPiece
+        ) {
             self.audio.currency();
         } else {
             self.audio.pickup();
@@ -1333,6 +1429,8 @@ impl Game {
             self.world.screen_y,
             self.world.in_dungeon,
             self.world.dungeon_id,
+            self.world.in_interior,
+            &self.world.interior_id,
         );
     }
 
@@ -1486,17 +1584,23 @@ impl Game {
                         self.show_message("Elara: 5 gems for a healing tonic.");
                     }
                 } else {
-                    self.show_message("Elara: The Fen cave is old.\nCome back if you need healing.");
+                    self.show_message(
+                        "Elara: The Fen cave is old.\nCome back if you need healing.",
+                    );
                 }
             }
             NpcKind::Barnett => {
-                self.show_message("Barnett: East leads to Ashenfall.\nNorth reaches the Highlands.");
+                self.show_message(
+                    "Barnett: East leads to Ashenfall.\nNorth reaches the Highlands.",
+                );
             }
             NpcKind::Maren => {
                 if !self.player.has_hammer {
                     if self.spend_gems(24) {
                         self.player.has_hammer = true;
-                        self.show_message("Maren sells you a HAMMER.\nIt feels heavy and reliable.");
+                        self.show_message(
+                            "Maren sells you a HAMMER.\nIt feels heavy and reliable.",
+                        );
                     } else {
                         self.show_message("Maren: A HAMMER costs 24 gems.");
                     }
@@ -1513,7 +1617,9 @@ impl Game {
                 }
             }
             NpcKind::Oswin => {
-                self.show_message("Oswin: Ringing the old bell changes things.\nThe ruins reward curiosity.");
+                self.show_message(
+                    "Oswin: Ringing the old bell changes things.\nThe ruins reward curiosity.",
+                );
             }
             NpcKind::Corvin => {
                 if !self.player.has_ancient_key {
@@ -1528,7 +1634,9 @@ impl Game {
                 }
             }
             NpcKind::Petra => {
-                self.show_message("Petra: Watch the vent timings.\nThe biggest one always pulses hottest.");
+                self.show_message(
+                    "Petra: Watch the vent timings.\nThe biggest one always pulses hottest.",
+                );
             }
             NpcKind::Aldric => {
                 if !self.player.has_raft {
@@ -1568,7 +1676,9 @@ impl Game {
                 }
             }
             NpcKind::Vel => {
-                self.show_message("Vel: Stable rifts point the way.\nFollow the shimmer to the Shade.");
+                self.show_message(
+                    "Vel: Stable rifts point the way.\nFollow the shimmer to the Shade.",
+                );
             }
             NpcKind::CelestialMerchant => {
                 if !self.player.has_star_sigil {
@@ -1586,16 +1696,17 @@ impl Game {
                 self.show_message("Senna: The dark seventh star isn't gone.\nIt's waiting.");
             }
             NpcKind::Wren => {
-                if !self.player.has_crystal_of_seeing {
-                    let free = self.player.has_dragon_codex;
-                    if free || self.spend_gems(30) {
-                        self.player.has_crystal_of_seeing = true;
-                        self.show_message("Wren gives you the CRYSTAL OF SEEING.");
+                if !self.player.has_dragon_codex {
+                    if self.spend_gems(30) {
+                        self.player.has_dragon_codex = true;
+                        self.show_message("Wren pieces together the DRAGON CODEX.");
                     } else {
-                        self.show_message("Wren: The crystal costs 30 gems.");
+                        self.show_message("Wren: The final codex pages cost 30 gems.");
                     }
                 } else if first_time {
-                    self.show_message("Wren: You've come far.\nThe rest is between you and the mountain.");
+                    self.show_message(
+                        "Wren: You've come far.\nThe rest is between you and the mountain.",
+                    );
                 } else {
                     self.show_message("Wren keeps the last camp warm and quiet.");
                 }

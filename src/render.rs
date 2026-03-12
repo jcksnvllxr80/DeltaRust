@@ -27,7 +27,14 @@ pub fn draw_game(
     death_animations: &[DeathAnimation],
 ) {
     clear_background(color_u8!(17, 17, 17, 255));
-    let theme_id = world_data::visual_theme_id(world.screen_x, world.screen_y, world.in_dungeon, world.dungeon_id);
+    let theme_id = world_data::visual_theme_id(
+        world.screen_x,
+        world.screen_y,
+        world.in_dungeon,
+        world.dungeon_id,
+        world.in_interior,
+        &world.interior_id,
+    );
     draw_tiles(sprites, &world.tiles, 0.0, 0.0, theme_id);
     draw_props(sprites, props, frame);
     draw_pickups(sprites, pickups, theme_id);
@@ -56,8 +63,21 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
     let map_w = outer_w - side_w - px(34.0);
     let map_h = outer_h - px(58.0);
 
-    draw_rectangle(outer_x, outer_y, outer_w, outer_h, color_u8!(24, 28, 39, 255));
-    draw_rectangle_lines(outer_x, outer_y, outer_w, outer_h, px(2.0), color_u8!(197, 170, 119, 255));
+    draw_rectangle(
+        outer_x,
+        outer_y,
+        outer_w,
+        outer_h,
+        color_u8!(24, 28, 39, 255),
+    );
+    draw_rectangle_lines(
+        outer_x,
+        outer_y,
+        outer_w,
+        outer_h,
+        px(2.0),
+        color_u8!(197, 170, 119, 255),
+    );
     draw_rectangle(
         outer_x + px(8.0),
         outer_y + px(36.0),
@@ -65,16 +85,23 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         outer_h - px(44.0),
         color_u8!(31, 38, 51, 255),
     );
-    draw_rectangle(
+    draw_rectangle(map_x, map_y, map_w, map_h, color_u8!(18, 22, 30, 255));
+    draw_rectangle_lines(
         map_x,
         map_y,
         map_w,
         map_h,
-        color_u8!(18, 22, 30, 255),
+        px(1.0),
+        color_u8!(90, 103, 124, 255),
     );
-    draw_rectangle_lines(map_x, map_y, map_w, map_h, px(1.0), color_u8!(90, 103, 124, 255));
 
-    draw_text("INVENTORY", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
+    draw_text(
+        "INVENTORY",
+        outer_x + px(12.0),
+        outer_y + px(22.0),
+        px(22.0),
+        WHITE,
+    );
     draw_text(
         "I / TAB / ESC to close",
         outer_x + outer_w - px(150.0),
@@ -88,14 +115,44 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         world.screen_y,
         world.in_dungeon,
         world.dungeon_id,
+        world.in_interior,
+        &world.interior_id,
     );
-    draw_text(&location, outer_x + px(14.0), outer_y + px(58.0), px(14.0), color_u8!(214, 214, 214, 255));
-    draw_text("GEAR", outer_x + px(14.0), outer_y + px(88.0), px(14.0), color_u8!(197, 170, 119, 255));
+    draw_text(
+        &location,
+        outer_x + px(14.0),
+        outer_y + px(58.0),
+        px(14.0),
+        color_u8!(214, 214, 214, 255),
+    );
+    draw_text(
+        "GEAR",
+        outer_x + px(14.0),
+        outer_y + px(88.0),
+        px(14.0),
+        color_u8!(197, 170, 119, 255),
+    );
 
     let mut line_y = outer_y + px(112.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Sword", player.has_sword, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Sword",
+        player.has_sword,
+        None,
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Gems", true, Some(player.gems));
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Gems",
+        true,
+        Some(player.gems),
+    );
     line_y += px(28.0);
     draw_inventory_stat(
         sprites,
@@ -107,9 +164,25 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         Some(player.dragon_pieces),
     );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Ancient Key", player.has_ancient_key, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Ancient Key",
+        player.has_ancient_key,
+        None,
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Tide Chart", player.has_tide_chart, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Tide Chart",
+        player.has_tide_chart,
+        None,
+    );
     line_y += px(28.0);
     draw_inventory_stat(
         sprites,
@@ -161,17 +234,65 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         None,
     );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Bombs", player.has_bombs, Some(player.bomb_count));
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Bombs",
+        player.has_bombs,
+        Some(player.bomb_count),
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Keys", player.keys > 0, Some(player.keys));
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Keys",
+        player.keys > 0,
+        Some(player.keys),
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Boss Key", player.has_boss_key, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Boss Key",
+        player.has_boss_key,
+        None,
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Ladder", player.has_ladder, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Ladder",
+        player.has_ladder,
+        None,
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Hammer", player.has_hammer, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Hammer",
+        player.has_hammer,
+        None,
+    );
     line_y += px(28.0);
-    draw_inventory_stat(sprites, player, outer_x + px(16.0), line_y, "Raft", player.has_raft, None);
+    draw_inventory_stat(
+        sprites,
+        player,
+        outer_x + px(16.0),
+        line_y,
+        "Raft",
+        player.has_raft,
+        None,
+    );
     line_y += px(28.0);
     draw_inventory_stat(
         sprites,
@@ -193,11 +314,29 @@ pub fn draw_inventory(sprites: &Sprites, world: &WorldSnapshot, player: &Player)
         None,
     );
 
-    draw_text("MAP", map_x + px(10.0), map_y - px(10.0), px(14.0), color_u8!(197, 170, 119, 255));
+    draw_text(
+        "MAP",
+        map_x + px(10.0),
+        map_y - px(10.0),
+        px(14.0),
+        color_u8!(197, 170, 119, 255),
+    );
     if world.in_dungeon {
-        draw_dungeon_map_panel(world, map_x + px(16.0), map_y + px(20.0), map_w - px(32.0), map_h - px(36.0));
+        draw_dungeon_map_panel(
+            world,
+            map_x + px(16.0),
+            map_y + px(20.0),
+            map_w - px(32.0),
+            map_h - px(36.0),
+        );
     } else {
-        draw_overworld_map_panel(world, map_x + px(16.0), map_y + px(20.0), map_w - px(32.0), map_h - px(36.0));
+        draw_overworld_map_panel(
+            world,
+            map_x + px(16.0),
+            map_y + px(20.0),
+            map_w - px(32.0),
+            map_h - px(36.0),
+        );
     }
 }
 
@@ -355,7 +494,14 @@ pub fn draw_transition(
     player: &Player,
 ) {
     clear_background(color_u8!(17, 17, 17, 255));
-    let theme_id = world_data::visual_theme_id(world.screen_x, world.screen_y, world.in_dungeon, world.dungeon_id);
+    let theme_id = world_data::visual_theme_id(
+        world.screen_x,
+        world.screen_y,
+        world.in_dungeon,
+        world.dungeon_id,
+        world.in_interior,
+        &world.interior_id,
+    );
     let (mut old_ox, mut old_oy, mut new_ox, mut new_oy) = (0.0, 0.0, 0.0, 0.0);
     match transition.dir.unwrap() {
         Dir::Left => {
@@ -395,7 +541,9 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize) {
     let dragon_x = cx - dragon_w / 2.0;
     // ensure dragon doesn't start above window
     let mut dragon_y = px(6.0) - (dragon_h - px(96.0)) / 2.0;
-    if dragon_y < 0.0 { dragon_y = 0.0; }
+    if dragon_y < 0.0 {
+        dragon_y = 0.0;
+    }
     if !sprites.draw_title_dragon(dragon_x, dragon_y, dragon_w, dragon_h) {
         draw_dragon(cx - px(36.0), px(12.0), 1.55);
     }
@@ -461,7 +609,13 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     let list_x = outer_x + preview_w + px(18.0);
     let list_w = outer_w - preview_w - px(30.0);
 
-    draw_rectangle(outer_x, outer_y, outer_w, outer_h, color_u8!(25, 29, 38, 255));
+    draw_rectangle(
+        outer_x,
+        outer_y,
+        outer_w,
+        outer_h,
+        color_u8!(25, 29, 38, 255),
+    );
     draw_rectangle_lines(
         outer_x,
         outer_y,
@@ -485,7 +639,13 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
         color_u8!(20, 23, 31, 255),
     );
 
-    draw_text("CREATE HERO", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
+    draw_text(
+        "CREATE HERO",
+        outer_x + px(12.0),
+        outer_y + px(22.0),
+        px(22.0),
+        WHITE,
+    );
     draw_text(
         "R randomize  ENTER save",
         outer_x + outer_w - px(166.0),
@@ -506,7 +666,13 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     preview.state = PlayerState::Walking;
     preview.walk_frame = (frame / 18) % 4;
     preview.has_sword = creator.appearance.weapon != WeaponStyle::None;
-    draw_text("PREVIEW", outer_x + px(18.0), outer_y + px(60.0), px(16.0), color_u8!(197, 170, 119, 255));
+    draw_text(
+        "PREVIEW",
+        outer_x + px(18.0),
+        outer_y + px(60.0),
+        px(16.0),
+        color_u8!(197, 170, 119, 255),
+    );
     draw_player(sprites, &preview, frame);
 
     let rows_per_col = creator.field_count().div_ceil(2);
@@ -527,7 +693,13 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
             );
         }
         if let Some(color) = creator.field_color(index) {
-            draw_rectangle(line_x + px(4.0), line_y - px(10.0), px(10.0), px(10.0), color);
+            draw_rectangle(
+                line_x + px(4.0),
+                line_y - px(10.0),
+                px(10.0),
+                px(10.0),
+                color,
+            );
             draw_rectangle_lines(
                 line_x + px(4.0),
                 line_y - px(10.0),
@@ -676,8 +848,20 @@ fn draw_props(sprites: &Sprites, props: &[WorldProp], frame: i32) {
                 );
             }
             PropKind::Boulder => {
-                draw_rectangle(x + px(6.0), y + px(6.0), TILE - px(12.0), TILE - px(12.0), color_u8!(76, 84, 92, 255));
-                draw_rectangle(x + px(12.0), y + px(10.0), TILE - px(24.0), TILE - px(24.0), color_u8!(116, 124, 132, 255));
+                draw_rectangle(
+                    x + px(6.0),
+                    y + px(6.0),
+                    TILE - px(12.0),
+                    TILE - px(12.0),
+                    color_u8!(76, 84, 92, 255),
+                );
+                draw_rectangle(
+                    x + px(12.0),
+                    y + px(10.0),
+                    TILE - px(24.0),
+                    TILE - px(24.0),
+                    color_u8!(116, 124, 132, 255),
+                );
                 draw_rectangle_lines(
                     x + px(6.0),
                     y + px(6.0),
@@ -689,7 +873,12 @@ fn draw_props(sprites: &Sprites, props: &[WorldProp], frame: i32) {
             }
             PropKind::LadderPoint => {
                 draw_ladder_icon(x + px(8.0), y + px(4.0), 1.0, color_u8!(174, 138, 88, 255));
-                draw_circle(x + TILE - px(8.0), y + px(8.0), px(3.0), color_u8!(230, 214, 164, 255));
+                draw_circle(
+                    x + TILE - px(8.0),
+                    y + px(8.0),
+                    px(3.0),
+                    color_u8!(230, 214, 164, 255),
+                );
             }
             PropKind::Npc(kind) => {
                 let _ = sprites.draw_npc(kind, x + TILE * 0.5, y + TILE * 0.72, frame);
@@ -754,7 +943,14 @@ fn draw_death_animations(animations: &[DeathAnimation]) {
         let cx = anim.x - size / 2.0;
         let cy = anim.y + HUD_H - size / 2.0;
         draw_rectangle(cx, cy, size, size, Color::new(1.0, 1.0, 1.0, alpha * 0.5));
-        draw_rectangle_lines(cx, cy, size, size, px(2.0), Color::new(1.0, 1.0, 0.5, alpha));
+        draw_rectangle_lines(
+            cx,
+            cy,
+            size,
+            size,
+            px(2.0),
+            Color::new(1.0, 1.0, 0.5, alpha),
+        );
     }
 }
 
@@ -830,20 +1026,68 @@ fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
         let y_offset = y - px(32.0);
         match dir {
             Dir::Up => {
-                draw_rectangle(x_offset + px(22.0), y_offset - px(10.0), px(4.0), px(18.0), blade);
-                draw_rectangle(x_offset + px(20.0), y_offset + px(7.0), px(8.0), px(2.0), hilt);
+                draw_rectangle(
+                    x_offset + px(22.0),
+                    y_offset - px(10.0),
+                    px(4.0),
+                    px(18.0),
+                    blade,
+                );
+                draw_rectangle(
+                    x_offset + px(20.0),
+                    y_offset + px(7.0),
+                    px(8.0),
+                    px(2.0),
+                    hilt,
+                );
             }
             Dir::Down => {
-                draw_rectangle(x_offset + px(22.0), y_offset + px(30.0), px(4.0), px(18.0), blade);
-                draw_rectangle(x_offset + px(20.0), y_offset + px(29.0), px(8.0), px(2.0), hilt);
+                draw_rectangle(
+                    x_offset + px(22.0),
+                    y_offset + px(30.0),
+                    px(4.0),
+                    px(18.0),
+                    blade,
+                );
+                draw_rectangle(
+                    x_offset + px(20.0),
+                    y_offset + px(29.0),
+                    px(8.0),
+                    px(2.0),
+                    hilt,
+                );
             }
             Dir::Left => {
-                draw_rectangle(x_offset - px(12.0), y_offset + px(22.0), px(18.0), px(4.0), blade);
-                draw_rectangle(x_offset + px(5.0), y_offset + px(20.0), px(2.0), px(8.0), hilt);
+                draw_rectangle(
+                    x_offset - px(12.0),
+                    y_offset + px(22.0),
+                    px(18.0),
+                    px(4.0),
+                    blade,
+                );
+                draw_rectangle(
+                    x_offset + px(5.0),
+                    y_offset + px(20.0),
+                    px(2.0),
+                    px(8.0),
+                    hilt,
+                );
             }
             Dir::Right => {
-                draw_rectangle(x_offset + px(42.0), y_offset + px(22.0), px(18.0), px(4.0), blade);
-                draw_rectangle(x_offset + px(41.0), y_offset + px(20.0), px(2.0), px(8.0), hilt);
+                draw_rectangle(
+                    x_offset + px(42.0),
+                    y_offset + px(22.0),
+                    px(18.0),
+                    px(4.0),
+                    blade,
+                );
+                draw_rectangle(
+                    x_offset + px(41.0),
+                    y_offset + px(20.0),
+                    px(2.0),
+                    px(8.0),
+                    hilt,
+                );
             }
         }
         return;
@@ -1119,8 +1363,20 @@ fn draw_sword_icon(x: f32, y: f32, scale: f32, tint: Color) {
     let blade = tint;
     let hilt = color_u8!(196, 160, 74, 255);
     draw_rectangle(x + scale * 4.0, y, scale * 4.0, scale * 12.0, blade);
-    draw_rectangle(x + scale * 2.0, y + scale * 10.0, scale * 8.0, scale * 2.0, hilt);
-    draw_rectangle(x + scale * 5.0, y + scale * 12.0, scale * 2.0, scale * 4.0, hilt);
+    draw_rectangle(
+        x + scale * 2.0,
+        y + scale * 10.0,
+        scale * 8.0,
+        scale * 2.0,
+        hilt,
+    );
+    draw_rectangle(
+        x + scale * 5.0,
+        y + scale * 12.0,
+        scale * 2.0,
+        scale * 4.0,
+        hilt,
+    );
 }
 
 fn draw_gem_icon(x: f32, y: f32, scale: f32, tint: Color) {
@@ -1138,12 +1394,54 @@ fn draw_gem_icon(x: f32, y: f32, scale: f32, tint: Color) {
     draw_triangle(left, bottom, center, mid);
     draw_triangle(center, bottom, right, dark);
 
-    draw_line(top.x, top.y, right.x, right.y, scale, color_u8!(20, 56, 124, 255));
-    draw_line(right.x, right.y, bottom.x, bottom.y, scale, color_u8!(20, 56, 124, 255));
-    draw_line(bottom.x, bottom.y, left.x, left.y, scale, color_u8!(20, 56, 124, 255));
-    draw_line(left.x, left.y, top.x, top.y, scale, color_u8!(20, 56, 124, 255));
-    draw_line(top.x, top.y, bottom.x, bottom.y, scale * 0.7, color_u8!(110, 200, 245, 255));
-    draw_line(left.x, left.y, right.x, right.y, scale * 0.7, color_u8!(110, 200, 245, 255));
+    draw_line(
+        top.x,
+        top.y,
+        right.x,
+        right.y,
+        scale,
+        color_u8!(20, 56, 124, 255),
+    );
+    draw_line(
+        right.x,
+        right.y,
+        bottom.x,
+        bottom.y,
+        scale,
+        color_u8!(20, 56, 124, 255),
+    );
+    draw_line(
+        bottom.x,
+        bottom.y,
+        left.x,
+        left.y,
+        scale,
+        color_u8!(20, 56, 124, 255),
+    );
+    draw_line(
+        left.x,
+        left.y,
+        top.x,
+        top.y,
+        scale,
+        color_u8!(20, 56, 124, 255),
+    );
+    draw_line(
+        top.x,
+        top.y,
+        bottom.x,
+        bottom.y,
+        scale * 0.7,
+        color_u8!(110, 200, 245, 255),
+    );
+    draw_line(
+        left.x,
+        left.y,
+        right.x,
+        right.y,
+        scale * 0.7,
+        color_u8!(110, 200, 245, 255),
+    );
     draw_circle(x + scale * 4.0, y + scale * 3.0, scale * 0.9, WHITE);
 }
 
@@ -1152,7 +1450,13 @@ fn draw_ladder_icon(x: f32, y: f32, scale: f32, tint: Color) {
     draw_rectangle(x, y, scale * 2.0, scale * 14.0, dark);
     draw_rectangle(x + scale * 8.0, y, scale * 2.0, scale * 14.0, dark);
     for rung in [2.0, 5.0, 8.0, 11.0] {
-        draw_rectangle(x + scale * 1.5, y + scale * rung, scale * 7.0, scale * 1.2, tint);
+        draw_rectangle(
+            x + scale * 1.5,
+            y + scale * rung,
+            scale * 7.0,
+            scale * 1.2,
+            tint,
+        );
     }
 }
 
@@ -1161,15 +1465,33 @@ fn draw_hammer_icon(x: f32, y: f32, scale: f32) {
     let metal_shadow = color_u8!(90, 96, 110, 255);
     let wood = color_u8!(126, 82, 44, 255);
     draw_rectangle(x + scale * 5.0, y, scale * 6.0, scale * 4.0, metal);
-    draw_rectangle(x + scale * 8.0, y + scale * 3.0, scale * 2.0, scale * 10.0, wood);
-    draw_rectangle(x + scale * 5.0, y + scale * 3.0, scale * 3.0, scale * 2.0, metal_shadow);
+    draw_rectangle(
+        x + scale * 8.0,
+        y + scale * 3.0,
+        scale * 2.0,
+        scale * 10.0,
+        wood,
+    );
+    draw_rectangle(
+        x + scale * 5.0,
+        y + scale * 3.0,
+        scale * 3.0,
+        scale * 2.0,
+        metal_shadow,
+    );
 }
 
 fn draw_raft_icon(x: f32, y: f32, scale: f32) {
     let wood = color_u8!(132, 92, 54, 255);
     let rope = color_u8!(206, 178, 114, 255);
     for plank in [0.0, 4.0, 8.0] {
-        draw_rectangle(x + plank * scale * 0.4, y + plank * 0.0, scale * 3.0, scale * 10.0, wood);
+        draw_rectangle(
+            x + plank * scale * 0.4,
+            y + plank * 0.0,
+            scale * 3.0,
+            scale * 10.0,
+            wood,
+        );
     }
     draw_rectangle(x, y + scale * 2.0, scale * 10.0, scale * 1.2, rope);
     draw_rectangle(x, y + scale * 7.0, scale * 10.0, scale * 1.2, rope);
@@ -1178,19 +1500,49 @@ fn draw_raft_icon(x: f32, y: f32, scale: f32) {
 fn draw_glove_icon(x: f32, y: f32, scale: f32) {
     let leather = color_u8!(162, 118, 68, 255);
     let dark = color_u8!(92, 62, 30, 255);
-    draw_rectangle(x + scale * 3.0, y + scale * 2.0, scale * 6.0, scale * 8.0, leather);
+    draw_rectangle(
+        x + scale * 3.0,
+        y + scale * 2.0,
+        scale * 6.0,
+        scale * 8.0,
+        leather,
+    );
     for finger in [0.0, 2.0, 4.0, 6.0] {
-        draw_rectangle(x + scale * (3.0 + finger), y, scale * 1.5, scale * 4.0, leather);
+        draw_rectangle(
+            x + scale * (3.0 + finger),
+            y,
+            scale * 1.5,
+            scale * 4.0,
+            leather,
+        );
     }
-    draw_rectangle_lines(x + scale * 3.0, y + scale * 2.0, scale * 6.0, scale * 8.0, scale * 0.6, dark);
+    draw_rectangle_lines(
+        x + scale * 3.0,
+        y + scale * 2.0,
+        scale * 6.0,
+        scale * 8.0,
+        scale * 0.6,
+        dark,
+    );
 }
 
 fn draw_portal_icon(x: f32, y: f32, scale: f32) {
     let outer = color_u8!(110, 82, 196, 255);
     let inner = color_u8!(182, 148, 255, 255);
     draw_circle(x + scale * 6.0, y + scale * 6.0, scale * 5.0, outer);
-    draw_circle(x + scale * 6.0, y + scale * 6.0, scale * 2.8, color_u8!(18, 12, 32, 255));
-    draw_circle_lines(x + scale * 6.0, y + scale * 6.0, scale * 5.0, scale * 1.0, inner);
+    draw_circle(
+        x + scale * 6.0,
+        y + scale * 6.0,
+        scale * 2.8,
+        color_u8!(18, 12, 32, 255),
+    );
+    draw_circle_lines(
+        x + scale * 6.0,
+        y + scale * 6.0,
+        scale * 5.0,
+        scale * 1.0,
+        inner,
+    );
 }
 
 fn draw_dragon_piece_icon(x: f32, y: f32, scale: f32) {
@@ -1209,12 +1561,25 @@ fn draw_dragon_piece_icon(x: f32, y: f32, scale: f32) {
         vec2(x + scale * 10.0, y + scale * 10.0),
         inner,
     );
-    draw_line(x + scale * 6.0, y, x + scale * 12.0, y + scale * 12.0, scale * 0.8, dark);
+    draw_line(
+        x + scale * 6.0,
+        y,
+        x + scale * 12.0,
+        y + scale * 12.0,
+        scale * 0.8,
+        dark,
+    );
 }
 
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
-    draw_rectangle(0.0, HUD_H - px(2.0), GAME_W, px(2.0), color_u8!(100, 100, 100, 255));
+    draw_rectangle(
+        0.0,
+        HUD_H - px(2.0),
+        GAME_W,
+        px(2.0),
+        color_u8!(100, 100, 100, 255),
+    );
     for i in 0..(player.max_hp / 2) {
         let x = GAME_W - px(20.0) - i as f32 * px(14.0);
         let state = if player.hp >= (i + 1) * 2 {
@@ -1247,13 +1612,7 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     let gem_x = gem_text_x - gem_gap - gem_icon_w;
     let gem_y = px(30.0);
     draw_gem_icon(gem_x, gem_y, gem_scale, SKYBLUE);
-    draw_text(
-        &gem_text,
-        gem_text_x,
-        px(44.0),
-        gem_font_size,
-        SKYBLUE,
-    );
+    draw_text(&gem_text, gem_text_x, px(44.0), gem_font_size, SKYBLUE);
     if player.has_bombs {
         if !sprites.draw_hud_bomb(px(16.0), px(28.0), px(16.0)) {
             draw_rectangle(px(18.0), px(30.0), px(12.0), px(12.0), DARKGRAY);
@@ -1279,7 +1638,13 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     }
     if player.has_ladder {
         draw_ladder_icon(px(160.0), px(6.0), px(1.0), color_u8!(186, 145, 96, 255));
-        draw_text("LADDER", px(176.0), px(20.0), px(16.0), color_u8!(186, 145, 96, 255));
+        draw_text(
+            "LADDER",
+            px(176.0),
+            px(20.0),
+            px(16.0),
+            color_u8!(186, 145, 96, 255),
+        );
     }
     if player.keys > 0 || world.in_dungeon {
         if !sprites.draw_hud_key(px(106.0), px(6.0), px(16.0)) {
@@ -1306,11 +1671,19 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         world.screen_y,
         world.in_dungeon,
         world.dungeon_id,
+        world.in_interior,
+        &world.interior_id,
     );
     draw_text(&location, px(178.0), px(20.0), px(14.0), LIGHTGRAY);
 }
 
-fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, area_w: f32, area_h: f32) {
+fn draw_overworld_map_panel(
+    world: &WorldSnapshot,
+    area_x: f32,
+    area_y: f32,
+    area_w: f32,
+    area_h: f32,
+) {
     let gap_x = px(2.0);
     let gap_y = px(2.0);
     let cell_w = ((area_w - gap_x * (WORLD_W as f32 - 1.0)) / WORLD_W as f32).max(px(3.0));
@@ -1334,7 +1707,7 @@ fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, are
                 if current {
                     color_u8!(120, 212, 120, 255)
                 } else if visited {
-                    biome_color(world_data::location_name(sx, sy, false, 0).as_str())
+                    biome_color(world_data::location_name(sx, sy, false, 0, false, "").as_str())
                 } else {
                     color_u8!(34, 34, 34, 255)
                 },
@@ -1373,7 +1746,13 @@ fn draw_overworld_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, are
     }
 }
 
-fn draw_dungeon_map_panel(world: &WorldSnapshot, area_x: f32, area_y: f32, area_w: f32, area_h: f32) {
+fn draw_dungeon_map_panel(
+    world: &WorldSnapshot,
+    area_x: f32,
+    area_y: f32,
+    area_w: f32,
+    area_h: f32,
+) {
     let gap_x = px(10.0);
     let gap_y = px(8.0);
     let mut min_x: i32 = 99;
@@ -1450,10 +1829,16 @@ fn draw_inventory_stat(
             let _ = sprites.draw_hud_key(x + px(2.0), y - px(8.0), px(18.0));
         }
         "Boss Key" if player.has_boss_key => {
-            let _ = sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
+            let _ =
+                sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
         }
         "Ladder" if player.has_ladder => {
-            draw_ladder_icon(x + px(4.0), y - px(11.0), px(0.9), color_u8!(181, 141, 91, 255));
+            draw_ladder_icon(
+                x + px(4.0),
+                y - px(11.0),
+                px(0.9),
+                color_u8!(181, 141, 91, 255),
+            );
         }
         _ => {}
     }
@@ -1461,7 +1846,11 @@ fn draw_inventory_stat(
     let value = match count {
         Some(amount) => format!("x{amount}"),
         None => {
-            if active { "YES".to_string() } else { "NO".to_string() }
+            if active {
+                "YES".to_string()
+            } else {
+                "NO".to_string()
+            }
         }
     };
     draw_text(&value, x + px(88.0), y, px(14.0), color);

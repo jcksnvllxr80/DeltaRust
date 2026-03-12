@@ -1,7 +1,7 @@
+use crate::model::NpcKind;
 use macroquad::prelude::{Color, Image, WHITE};
 use macroquad::rand::gen_range;
 use std::collections::HashSet;
-use crate::model::NpcKind;
 
 pub const FRAME_SIZE: u16 = 48;
 pub const SHEET_SIZE: u16 = FRAME_SIZE * 4;
@@ -404,7 +404,9 @@ impl CharacterCreator {
 
     pub fn adjust_selected(&mut self, delta: i32) {
         match CREATOR_FIELDS[self.selected_field] {
-            CreatorField::Skin => cycle_color(&mut self.appearance.palette.skin, &SKIN_COLORS, delta),
+            CreatorField::Skin => {
+                cycle_color(&mut self.appearance.palette.skin, &SKIN_COLORS, delta)
+            }
             CreatorField::HairColor => {
                 cycle_color(&mut self.appearance.palette.hair, &HAIR_COLORS, delta)
             }
@@ -428,22 +430,36 @@ impl CharacterCreator {
             }
             CreatorField::Face => cycle_enum(&mut self.appearance.face, &FACE_SHAPES, delta),
             CreatorField::Eyes => cycle_enum(&mut self.appearance.eyes, &EYE_EXPRESSIONS, delta),
-            CreatorField::HairStyle => cycle_enum(&mut self.appearance.hair_style, &HAIR_STYLES, delta),
+            CreatorField::HairStyle => {
+                cycle_enum(&mut self.appearance.hair_style, &HAIR_STYLES, delta)
+            }
             CreatorField::Build => cycle_enum(&mut self.appearance.build, &BUILD_TYPES, delta),
-            CreatorField::Clothes => cycle_enum(&mut self.appearance.clothes, &CLOTHES_STYLES, delta),
+            CreatorField::Clothes => {
+                cycle_enum(&mut self.appearance.clothes, &CLOTHES_STYLES, delta)
+            }
             CreatorField::Helmet => cycle_enum(&mut self.appearance.helmet, &HELMET_STYLES, delta),
-            CreatorField::Chainmail => toggle_armor(&mut self.appearance.armors, ArmorPiece::Chainmail),
+            CreatorField::Chainmail => {
+                toggle_armor(&mut self.appearance.armors, ArmorPiece::Chainmail)
+            }
             CreatorField::Leather => toggle_armor(&mut self.appearance.armors, ArmorPiece::Leather),
-            CreatorField::Chestplate => toggle_armor(&mut self.appearance.armors, ArmorPiece::Chestplate),
-            CreatorField::Shoulderpads => toggle_armor(&mut self.appearance.armors, ArmorPiece::Shoulderpads),
-            CreatorField::Fullplate => toggle_armor(&mut self.appearance.armors, ArmorPiece::Fullplate),
+            CreatorField::Chestplate => {
+                toggle_armor(&mut self.appearance.armors, ArmorPiece::Chestplate)
+            }
+            CreatorField::Shoulderpads => {
+                toggle_armor(&mut self.appearance.armors, ArmorPiece::Shoulderpads)
+            }
+            CreatorField::Fullplate => {
+                toggle_armor(&mut self.appearance.armors, ArmorPiece::Fullplate)
+            }
             CreatorField::Cape => self.appearance.has_cape = !self.appearance.has_cape,
             CreatorField::Shield => self.appearance.shield_on = !self.appearance.shield_on,
             CreatorField::ShieldStyle => {
                 cycle_enum(&mut self.appearance.shield_style, &SHIELD_STYLES, delta)
             }
             CreatorField::Weapon => cycle_enum(&mut self.appearance.weapon, &WEAPON_STYLES, delta),
-            CreatorField::Offhand => cycle_enum(&mut self.appearance.offhand, &OFFHAND_STYLES, delta),
+            CreatorField::Offhand => {
+                cycle_enum(&mut self.appearance.offhand, &OFFHAND_STYLES, delta)
+            }
         }
     }
 
@@ -454,22 +470,37 @@ impl CharacterCreator {
                 format!("Hair Color: {}", color_label(self.appearance.palette.hair))
             }
             CreatorField::ShirtColor => {
-                format!("Shirt Color: {}", color_label(self.appearance.palette.shirt))
+                format!(
+                    "Shirt Color: {}",
+                    color_label(self.appearance.palette.shirt)
+                )
             }
             CreatorField::PantsColor => {
-                format!("Pants Color: {}", color_label(self.appearance.palette.pants))
+                format!(
+                    "Pants Color: {}",
+                    color_label(self.appearance.palette.pants)
+                )
             }
             CreatorField::BootsColor => {
-                format!("Boots Color: {}", color_label(self.appearance.palette.boots))
+                format!(
+                    "Boots Color: {}",
+                    color_label(self.appearance.palette.boots)
+                )
             }
             CreatorField::ArmorColor => {
-                format!("Armor Color: {}", color_label(self.appearance.palette.armor))
+                format!(
+                    "Armor Color: {}",
+                    color_label(self.appearance.palette.armor)
+                )
             }
             CreatorField::CapeColor => {
                 format!("Cape Color: {}", color_label(self.appearance.palette.cape))
             }
             CreatorField::WeaponColor => {
-                format!("Weapon Color: {}", color_label(self.appearance.palette.weapon))
+                format!(
+                    "Weapon Color: {}",
+                    color_label(self.appearance.palette.weapon)
+                )
             }
             CreatorField::Face => format!("Face: {:?}", self.appearance.face),
             CreatorField::Eyes => format!("Eyes: {:?}", self.appearance.eyes),
@@ -478,23 +509,40 @@ impl CharacterCreator {
             CreatorField::Clothes => format!("Clothes: {:?}", self.appearance.clothes),
             CreatorField::Helmet => format!("Helmet: {:?}", self.appearance.helmet),
             CreatorField::Chainmail => {
-                format!("Armor Chainmail: {}", toggle_text(self.appearance.armors.contains(&ArmorPiece::Chainmail)))
+                format!(
+                    "Armor Chainmail: {}",
+                    toggle_text(self.appearance.armors.contains(&ArmorPiece::Chainmail))
+                )
             }
             CreatorField::Leather => {
-                format!("Armor Leather: {}", toggle_text(self.appearance.armors.contains(&ArmorPiece::Leather)))
+                format!(
+                    "Armor Leather: {}",
+                    toggle_text(self.appearance.armors.contains(&ArmorPiece::Leather))
+                )
             }
             CreatorField::Chestplate => {
-                format!("Armor Chestplate: {}", toggle_text(self.appearance.armors.contains(&ArmorPiece::Chestplate)))
+                format!(
+                    "Armor Chestplate: {}",
+                    toggle_text(self.appearance.armors.contains(&ArmorPiece::Chestplate))
+                )
             }
             CreatorField::Shoulderpads => {
-                format!("Armor Shoulders: {}", toggle_text(self.appearance.armors.contains(&ArmorPiece::Shoulderpads)))
+                format!(
+                    "Armor Shoulders: {}",
+                    toggle_text(self.appearance.armors.contains(&ArmorPiece::Shoulderpads))
+                )
             }
             CreatorField::Fullplate => {
-                format!("Armor Fullplate: {}", toggle_text(self.appearance.armors.contains(&ArmorPiece::Fullplate)))
+                format!(
+                    "Armor Fullplate: {}",
+                    toggle_text(self.appearance.armors.contains(&ArmorPiece::Fullplate))
+                )
             }
             CreatorField::Cape => format!("Cape: {}", toggle_text(self.appearance.has_cape)),
             CreatorField::Shield => format!("Shield: {}", toggle_text(self.appearance.shield_on)),
-            CreatorField::ShieldStyle => format!("Shield Style: {:?}", self.appearance.shield_style),
+            CreatorField::ShieldStyle => {
+                format!("Shield Style: {:?}", self.appearance.shield_style)
+            }
             CreatorField::Weapon => format!("Weapon: {:?}", self.appearance.weapon),
             CreatorField::Offhand => format!("Offhand: {:?}", self.appearance.offhand),
         }
@@ -591,11 +639,7 @@ pub fn generate_hero_sheets(appearance: &CharacterAppearance) -> HeroSheets {
 }
 
 fn build_sheet(appearance: &CharacterAppearance, mode: AnimMode, armed: bool) -> Image {
-    let mut image = Image::gen_image_color(
-        SHEET_SIZE,
-        SHEET_SIZE,
-        Color::new(0.0, 0.0, 0.0, 0.0),
-    );
+    let mut image = Image::gen_image_color(SHEET_SIZE, SHEET_SIZE, Color::new(0.0, 0.0, 0.0, 0.0));
     for dir in 0..4 {
         for frame in 0..4 {
             let canvas = draw_frame(appearance, dir, frame, mode, armed);
@@ -682,10 +726,20 @@ fn draw_frame(
         for y in 0..9 {
             let t = y as f32 / 8.0;
             let y_off = (side_back_leg as f32 * t).round() as i32;
-            let color = if y > 5 { pants_dark } else { shade(appearance.palette.pants, 0.82) };
+            let color = if y > 5 {
+                pants_dark
+            } else {
+                shade(appearance.palette.pants, 0.82)
+            };
             rect(&mut px, back_leg_x, leg_y + y + y_off, 4, 1, color);
         }
-        hline(&mut px, body_left, body_left + 5, leg_y + 8 + side_back_leg, boots_dark);
+        hline(
+            &mut px,
+            body_left,
+            body_left + 5,
+            leg_y + 8 + side_back_leg,
+            boots_dark,
+        );
 
         for y in 0..8 {
             let t = y as f32 / 7.0;
@@ -705,9 +759,19 @@ fn draw_frame(
         }
 
         for y in 0..13 {
-            let row_w = if y < 2 { body_w - 2 } else if y < 4 { body_w - 1 } else { body_w };
+            let row_w = if y < 2 {
+                body_w - 2
+            } else if y < 4 {
+                body_w - 1
+            } else {
+                body_w
+            };
             let color = if appearance.clothes == ClothesStyle::Bare {
-                if y > 4 { shade(appearance.palette.skin, 0.75) } else { appearance.palette.skin }
+                if y > 4 {
+                    shade(appearance.palette.skin, 0.75)
+                } else {
+                    appearance.palette.skin
+                }
             } else if y > 8 {
                 shirt_dark
             } else {
@@ -717,18 +781,41 @@ fn draw_frame(
         }
         draw_clothes_detail_side(&mut px, appearance, body_y, body_left, body_w);
         if !appearance.armors.is_empty() {
-            draw_armor_pieces(&mut px, body_left, body_y, body_w, &appearance.armors, appearance.palette.armor);
+            draw_armor_pieces(
+                &mut px,
+                body_left,
+                body_y,
+                body_w,
+                &appearance.armors,
+                appearance.palette.armor,
+            );
         }
-        hline(&mut px, body_left, body_left + body_w - 1, leg_y, shade(appearance.palette.boots, 1.1));
+        hline(
+            &mut px,
+            body_left,
+            body_left + body_w - 1,
+            leg_y,
+            shade(appearance.palette.boots, 1.1),
+        );
 
         for y in 0..9 {
             let t = y as f32 / 8.0;
             let y_off = (side_front_leg as f32 * t).round() as i32;
-            let color = if y > 5 { pants_dark } else { appearance.palette.pants };
+            let color = if y > 5 {
+                pants_dark
+            } else {
+                appearance.palette.pants
+            };
             rect(&mut px, front_leg_x, leg_y + y + y_off, 4, 1, color);
         }
         let foot_y = leg_y + 8 + side_front_leg;
-        hline(&mut px, body_left + 2, body_left + 9, foot_y, appearance.palette.boots);
+        hline(
+            &mut px,
+            body_left + 2,
+            body_left + 9,
+            foot_y,
+            appearance.palette.boots,
+        );
         pixel(&mut px, body_left + 9, foot_y + 1, boots_dark);
 
         for y in 0..8 {
@@ -768,10 +855,23 @@ fn draw_frame(
             );
         }
         if appearance.offhand != OffhandStyle::None {
-            draw_offhand_shape(&mut px, hand_x - 1, body_y + 8, appearance.offhand, appearance.palette.weapon);
+            draw_offhand_shape(
+                &mut px,
+                hand_x - 1,
+                body_y + 8,
+                appearance.offhand,
+                appearance.palette.weapon,
+            );
         }
 
-        rect(&mut px, body_left + 3, body_y - 1, 3, 1, appearance.palette.skin);
+        rect(
+            &mut px,
+            body_left + 3,
+            body_y - 1,
+            3,
+            1,
+            appearance.palette.skin,
+        );
         draw_head_side(&mut px, appearance, body_left, body_y - 6);
         if dir == 1 {
             mirror_horizontally(&mut px);
@@ -792,12 +892,35 @@ fn draw_frame(
         let t = y as f32 / 8.0;
         let left_off = (leg_swing_left as f32 * t).round() as i32;
         let right_off = (leg_swing_right as f32 * t).round() as i32;
-        let color = if y > 5 { pants_dark } else { appearance.palette.pants };
+        let color = if y > 5 {
+            pants_dark
+        } else {
+            appearance.palette.pants
+        };
         rect(&mut px, left_leg_x, leg_y + y + left_off, leg_w, 1, color);
-        rect(&mut px, right_leg_x, leg_y + y + right_off, leg_w, 1, pants_dark);
+        rect(
+            &mut px,
+            right_leg_x,
+            leg_y + y + right_off,
+            leg_w,
+            1,
+            pants_dark,
+        );
     }
-    hline(&mut px, left_leg_x - 1, left_leg_x + leg_w, leg_y + 8 + leg_swing_left, appearance.palette.boots);
-    hline(&mut px, right_leg_x - 1, right_leg_x + leg_w, leg_y + 8 + leg_swing_right, boots_dark);
+    hline(
+        &mut px,
+        left_leg_x - 1,
+        left_leg_x + leg_w,
+        leg_y + 8 + leg_swing_left,
+        appearance.palette.boots,
+    );
+    hline(
+        &mut px,
+        right_leg_x - 1,
+        right_leg_x + leg_w,
+        leg_y + 8 + leg_swing_right,
+        boots_dark,
+    );
 
     for y in 0..13 {
         let row_w = if y < 2 {
@@ -809,7 +932,11 @@ fn draw_frame(
         };
         let row_x = 24 - row_w / 2;
         let color = if appearance.clothes == ClothesStyle::Bare {
-            if y > 4 { shade(appearance.palette.skin, 0.75) } else { appearance.palette.skin }
+            if y > 4 {
+                shade(appearance.palette.skin, 0.75)
+            } else {
+                appearance.palette.skin
+            }
         } else if y > 8 {
             shirt_dark
         } else {
@@ -821,9 +948,22 @@ fn draw_frame(
         draw_clothes_detail_front(&mut px, appearance, body_y, body_x, body_w);
     }
     if !appearance.armors.is_empty() {
-        draw_armor_pieces(&mut px, body_x, body_y, body_w, &appearance.armors, appearance.palette.armor);
+        draw_armor_pieces(
+            &mut px,
+            body_x,
+            body_y,
+            body_w,
+            &appearance.armors,
+            appearance.palette.armor,
+        );
     }
-    hline(&mut px, body_x, body_x + body_w - 1, leg_y, shade(appearance.palette.boots, 1.1));
+    hline(
+        &mut px,
+        body_x,
+        body_x + body_w - 1,
+        leg_y,
+        shade(appearance.palette.boots, 1.1),
+    );
     if dir == 0 {
         pixel(&mut px, 24, leg_y, hex("#d4a843"));
         pixel(&mut px, 23, leg_y, hex("#c49333"));
@@ -836,14 +976,32 @@ fn draw_frame(
             shade(appearance.palette.shirt, 0.8)
         };
         for y in 0..7 {
-            let color = if y > 4 { shade(appearance.palette.skin, 0.75) } else { arm_color };
+            let color = if y > 4 {
+                shade(appearance.palette.skin, 0.75)
+            } else {
+                arm_color
+            };
             rect(&mut px, body_x - 3, arm_y + y + arm_swing_left, 2, 1, color);
-            rect(&mut px, body_x + body_w + 1, arm_y + y + arm_swing_right, 2, 1, color);
+            rect(
+                &mut px,
+                body_x + body_w + 1,
+                arm_y + y + arm_swing_right,
+                2,
+                1,
+                color,
+            );
         }
     }
 
     if appearance.has_cape {
-        draw_cape_front_back(&mut px, appearance.palette.cape, dir == 3, body_x, body_w, body_y);
+        draw_cape_front_back(
+            &mut px,
+            appearance.palette.cape,
+            dir == 3,
+            body_x,
+            body_w,
+            body_y,
+        );
     }
 
     if dir == 0 {
@@ -853,14 +1011,45 @@ fn draw_frame(
             appearance.palette.shirt
         };
         for y in 0..7 {
-            let color = if y > 4 { shade(appearance.palette.skin, 0.75) } else { arm_color };
+            let color = if y > 4 {
+                shade(appearance.palette.skin, 0.75)
+            } else {
+                arm_color
+            };
             rect(&mut px, body_x - 3, arm_y + y + arm_swing_left, 2, 1, color);
-            rect(&mut px, body_x + body_w + 1, arm_y + y + arm_swing_right, 2, 1, color);
+            rect(
+                &mut px,
+                body_x + body_w + 1,
+                arm_y + y + arm_swing_right,
+                2,
+                1,
+                color,
+            );
         }
-        pixel(&mut px, body_x - 3, arm_y + 6 + arm_swing_left, appearance.palette.skin);
-        pixel(&mut px, body_x - 2, arm_y + 7 + arm_swing_left, appearance.palette.skin);
-        pixel(&mut px, body_x + body_w + 2, arm_y + 6 + arm_swing_right, appearance.palette.skin);
-        pixel(&mut px, body_x + body_w + 1, arm_y + 7 + arm_swing_right, appearance.palette.skin);
+        pixel(
+            &mut px,
+            body_x - 3,
+            arm_y + 6 + arm_swing_left,
+            appearance.palette.skin,
+        );
+        pixel(
+            &mut px,
+            body_x - 2,
+            arm_y + 7 + arm_swing_left,
+            appearance.palette.skin,
+        );
+        pixel(
+            &mut px,
+            body_x + body_w + 2,
+            arm_y + 6 + arm_swing_right,
+            appearance.palette.skin,
+        );
+        pixel(
+            &mut px,
+            body_x + body_w + 1,
+            arm_y + 7 + arm_swing_right,
+            appearance.palette.skin,
+        );
     }
 
     if appearance.shield_on && dir == 0 {
@@ -893,13 +1082,27 @@ fn draw_frame(
         } else {
             (body_x + body_w + 2, arm_y + 6 + arm_swing_right)
         };
-        draw_offhand_shape(&mut px, ox, oy, appearance.offhand, appearance.palette.weapon);
+        draw_offhand_shape(
+            &mut px,
+            ox,
+            oy,
+            appearance.offhand,
+            appearance.palette.weapon,
+        );
     }
 
     if dir == 0 {
         hline(&mut px, 22, 25, body_y - 1, appearance.palette.skin);
     }
-    draw_head_front_back(&mut px, appearance, dir == 3, body_x + 1, body_y - 6, body_w - 2, hair_dark);
+    draw_head_front_back(
+        &mut px,
+        appearance,
+        dir == 3,
+        body_x + 1,
+        body_y - 6,
+        body_w - 2,
+        hair_dark,
+    );
     px
 }
 
@@ -912,10 +1115,29 @@ fn draw_clothes_detail_front(
 ) {
     match appearance.clothes {
         ClothesStyle::Robe => {
-            hline(px, body_x - 1, body_x + body_w, body_y + 12, shade(appearance.palette.shirt, 0.55));
-            hline(px, body_x - 2, body_x + body_w + 1, body_y + 11, shade(appearance.palette.shirt, 0.5));
+            hline(
+                px,
+                body_x - 1,
+                body_x + body_w,
+                body_y + 12,
+                shade(appearance.palette.shirt, 0.55),
+            );
+            hline(
+                px,
+                body_x - 2,
+                body_x + body_w + 1,
+                body_y + 11,
+                shade(appearance.palette.shirt, 0.5),
+            );
         }
-        ClothesStyle::Vest => rect(px, body_x + 2, body_y + 1, body_w - 4, 9, shade(appearance.palette.shirt, 0.65)),
+        ClothesStyle::Vest => rect(
+            px,
+            body_x + 2,
+            body_y + 1,
+            body_w - 4,
+            9,
+            shade(appearance.palette.shirt, 0.65),
+        ),
         _ => {}
     }
 }
@@ -929,10 +1151,29 @@ fn draw_clothes_detail_side(
 ) {
     match appearance.clothes {
         ClothesStyle::Robe => {
-            hline(px, body_x - 1, body_x + body_w + 1, body_y + 12, shade(appearance.palette.shirt, 0.5));
-            hline(px, body_x - 2, body_x + body_w + 2, body_y + 11, shade(appearance.palette.shirt, 0.45));
+            hline(
+                px,
+                body_x - 1,
+                body_x + body_w + 1,
+                body_y + 12,
+                shade(appearance.palette.shirt, 0.5),
+            );
+            hline(
+                px,
+                body_x - 2,
+                body_x + body_w + 2,
+                body_y + 11,
+                shade(appearance.palette.shirt, 0.45),
+            );
         }
-        ClothesStyle::Vest => rect(px, body_x + 1, body_y + 1, body_w - 2, 9, shade(appearance.palette.shirt, 0.65)),
+        ClothesStyle::Vest => rect(
+            px,
+            body_x + 1,
+            body_y + 1,
+            body_w - 2,
+            9,
+            shade(appearance.palette.shirt, 0.65),
+        ),
         _ => {}
     }
 }
@@ -1023,9 +1264,48 @@ fn draw_head_front_back(
 ) {
     if back {
         let rows: &[(i32, i32)] = match appearance.face {
-            FaceShape::Round => &[(3, 3), (3, 3), (3, 3), (2, 2), (1, 1), (0, 0), (0, 0), (0, 0), (1, 1), (1, 1), (2, 2), (3, 3)],
-            FaceShape::Square => &[(3, 3), (3, 3), (3, 3), (1, 1), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (1, 1), (2, 2)],
-            FaceShape::Narrow => &[(3, 3), (3, 3), (3, 3), (2, 2), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (2, 2), (3, 3)],
+            FaceShape::Round => &[
+                (3, 3),
+                (3, 3),
+                (3, 3),
+                (2, 2),
+                (1, 1),
+                (0, 0),
+                (0, 0),
+                (0, 0),
+                (1, 1),
+                (1, 1),
+                (2, 2),
+                (3, 3),
+            ],
+            FaceShape::Square => &[
+                (3, 3),
+                (3, 3),
+                (3, 3),
+                (1, 1),
+                (0, 0),
+                (0, 0),
+                (0, 0),
+                (0, 0),
+                (0, 0),
+                (0, 0),
+                (1, 1),
+                (2, 2),
+            ],
+            FaceShape::Narrow => &[
+                (3, 3),
+                (3, 3),
+                (3, 3),
+                (2, 2),
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (2, 2),
+                (3, 3),
+            ],
         };
         for (row, (li, ri)) in rows.iter().enumerate() {
             let x1 = x + *li;
@@ -1067,9 +1347,48 @@ fn draw_head_front_back(
     };
     let face_x = 24 - face_w / 2;
     let rows: &[(i32, i32)] = match appearance.face {
-        FaceShape::Round => &[(3, 3), (3, 3), (3, 3), (2, 2), (1, 1), (0, 0), (0, 0), (0, 0), (1, 1), (1, 1), (2, 2), (3, 3)],
-        FaceShape::Square => &[(3, 3), (3, 3), (3, 3), (1, 1), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (1, 1), (2, 2)],
-        FaceShape::Narrow => &[(3, 3), (3, 3), (3, 3), (2, 2), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (2, 2), (3, 3)],
+        FaceShape::Round => &[
+            (3, 3),
+            (3, 3),
+            (3, 3),
+            (2, 2),
+            (1, 1),
+            (0, 0),
+            (0, 0),
+            (0, 0),
+            (1, 1),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+        ],
+        FaceShape::Square => &[
+            (3, 3),
+            (3, 3),
+            (3, 3),
+            (1, 1),
+            (0, 0),
+            (0, 0),
+            (0, 0),
+            (0, 0),
+            (0, 0),
+            (0, 0),
+            (1, 1),
+            (2, 2),
+        ],
+        FaceShape::Narrow => &[
+            (3, 3),
+            (3, 3),
+            (3, 3),
+            (2, 2),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+        ],
     };
     for row in 3..12 {
         let (li, ri) = rows[row];
@@ -1082,11 +1401,35 @@ fn draw_head_front_back(
     pixel(px, face_x - 1, y + 5, appearance.palette.skin);
     pixel(px, face_x + face_w, y + 5, appearance.palette.skin);
     pixel(px, face_x + 1, y + 8, shade(appearance.palette.skin, 0.75));
-    pixel(px, face_x + face_w - 2, y + 8, shade(appearance.palette.skin, 0.75));
+    pixel(
+        px,
+        face_x + face_w - 2,
+        y + 8,
+        shade(appearance.palette.skin, 0.75),
+    );
     draw_eyes_front(px, appearance, y, face_x, face_w);
-    pixel(px, face_x + face_w / 2, y + 8, shade(appearance.palette.skin, 0.75));
-    draw_hair_front(px, appearance.hair_style, y, face_x, face_w, appearance.palette.hair);
-    draw_helmet_shape(px, appearance.helmet, y, face_x, face_w, appearance.palette.armor);
+    pixel(
+        px,
+        face_x + face_w / 2,
+        y + 8,
+        shade(appearance.palette.skin, 0.75),
+    );
+    draw_hair_front(
+        px,
+        appearance.hair_style,
+        y,
+        face_x,
+        face_w,
+        appearance.palette.hair,
+    );
+    draw_helmet_shape(
+        px,
+        appearance.helmet,
+        y,
+        face_x,
+        face_w,
+        appearance.palette.armor,
+    );
 }
 
 fn draw_head_side(px: &mut [Color], appearance: &CharacterAppearance, x: i32, y: i32) {
@@ -1104,7 +1447,14 @@ fn draw_head_side(px: &mut [Color], appearance: &CharacterAppearance, x: i32, y:
         (2, 7),
     ];
     for (row, (ox, width)) in skull_rows.iter().enumerate() {
-        rect(px, x + *ox, y + row as i32, *width, 1, appearance.palette.skin);
+        rect(
+            px,
+            x + *ox,
+            y + row as i32,
+            *width,
+            1,
+            appearance.palette.skin,
+        );
     }
     pixel(px, x + 9, y + 7, shade(appearance.palette.skin, 0.75));
     pixel(px, x + 9, y + 8, shade(appearance.palette.skin, 0.75));
@@ -1116,11 +1466,25 @@ fn draw_head_side(px: &mut [Color], appearance: &CharacterAppearance, x: i32, y:
     pixel(px, x + 10, y + 6, shade(appearance.palette.skin, 0.75));
     pixel(px, x + 11, y + 7, shade(appearance.palette.skin, 0.75));
     draw_face_side(px, appearance, y, x);
-    draw_hair(px, appearance.hair_style, x, y, 11, appearance.palette.hair, true);
+    draw_hair(
+        px,
+        appearance.hair_style,
+        x,
+        y,
+        11,
+        appearance.palette.hair,
+        true,
+    );
     draw_helmet_shape(px, appearance.helmet, y, x, 11, appearance.palette.armor);
 }
 
-fn draw_eyes_front(px: &mut [Color], appearance: &CharacterAppearance, head_y: i32, face_x: i32, face_w: i32) {
+fn draw_eyes_front(
+    px: &mut [Color],
+    appearance: &CharacterAppearance,
+    head_y: i32,
+    face_x: i32,
+    face_w: i32,
+) {
     let lx = face_x + ((face_w as f32 * 0.26).floor() as i32);
     let rx = face_x + ((face_w as f32 * 0.60).floor() as i32);
     let mx = face_x + face_w / 2;
@@ -1270,7 +1634,14 @@ fn draw_face_side(px: &mut [Color], appearance: &CharacterAppearance, head_y: i3
     }
 }
 
-fn draw_hair_front(px: &mut [Color], style: HairStyle, head_y: i32, face_x: i32, face_w: i32, color: Color) {
+fn draw_hair_front(
+    px: &mut [Color],
+    style: HairStyle,
+    head_y: i32,
+    face_x: i32,
+    face_w: i32,
+    color: Color,
+) {
     if style == HairStyle::Bald {
         return;
     }
@@ -1366,7 +1737,13 @@ fn draw_helmet_shape(px: &mut [Color], style: HelmetStyle, x: i32, y: i32, w: i3
         HelmetStyle::Pointy => {
             for row in 0..6 {
                 let row_w = row + 1;
-                hline(px, x + w / 2 - row_w / 2, x + w / 2 + row_w / 2, y - 6 + row, shade(color, 0.9));
+                hline(
+                    px,
+                    x + w / 2 - row_w / 2,
+                    x + w / 2 + row_w / 2,
+                    y - 6 + row,
+                    shade(color, 0.9),
+                );
             }
         }
         HelmetStyle::Hood => rect(px, x - 1, y, w + 2, 5, shade(color, 0.82)),
@@ -1469,7 +1846,14 @@ fn draw_shield_shape(px: &mut [Color], x: i32, y: i32, style: ShieldStyle, color
     }
 }
 
-fn draw_weapon_shape(px: &mut [Color], x: i32, y: i32, weapon: WeaponStyle, color: Color, facing: i32) {
+fn draw_weapon_shape(
+    px: &mut [Color],
+    x: i32,
+    y: i32,
+    weapon: WeaponStyle,
+    color: Color,
+    facing: i32,
+) {
     let dark = shade(color, 0.6);
     match weapon {
         WeaponStyle::None => {}
