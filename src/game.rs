@@ -25,6 +25,22 @@ pub enum MapMode {
     Dungeon,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InteractionSource {
+    CurrentTile(i32, i32),
+    FrontTile(i32, i32),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TileInteraction {
+    EnterDungeon,
+    EnterInterior,
+    ExitDungeon,
+    ExitInterior,
+    CaveInteract,
+    Victory,
+}
+
 pub struct Game {
     pub state: GameState,
     pub frame: i32,
@@ -52,6 +68,7 @@ pub struct Game {
     pub inventory_scroll_timer: i32,
     pub inventory_scroll_delay: i32,
     pub inventory_map_mode: MapMode,
+    blocked_interaction: Option<InteractionSource>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,6 +107,7 @@ impl Game {
             inventory_scroll_timer: 0,
             inventory_scroll_delay: 0,
             inventory_map_mode: MapMode::Overworld,
+            blocked_interaction: None,
         };
         game.spawn_for_screen();
         game
@@ -121,6 +139,7 @@ impl Game {
             GameState::DungeonExit => self.update_dungeon_exit(),
             GameState::Message => {
                 if start_pressed() {
+                    self.blocked_interaction = self.active_interaction_source();
                     self.state = GameState::Playing;
                 }
             }
@@ -262,36 +281,53 @@ impl Game {
             self.start_transition(dir, nx, ny);
             return;
         }
-        if start_pressed() && self.try_use_ladder_point() {
-            return;
+
+        self.clear_blocked_interaction();
+
+        if start_pressed() {
+            let (tile_x, tile_y) = self.player_tile();
+            let ladder_source = InteractionSource::CurrentTile(tile_x, tile_y);
+            if !self.is_interaction_blocked(ladder_source) && self.try_use_ladder_point() {
+                return;
+            }
+
+            let (front_x, front_y, _) = self.front_tile();
+            let npc_source = InteractionSource::FrontTile(front_x, front_y);
+            if !self.is_interaction_blocked(npc_source) && self.try_interact_npc() {
+                return;
+            }
         }
-        if start_pressed() && self.try_interact_npc() {
-            return;
-        }
+
         match self.check_tile_interaction() {
-            Some("enter_dungeon") => {
+            Some((TileInteraction::EnterDungeon, source)) if !self.is_interaction_blocked(source) => {
                 if self.can_enter_current_dungeon() {
                     self.enter_dungeon();
                 }
                 return;
             }
-            Some("enter_interior") if start_pressed() => {
+            Some((TileInteraction::EnterInterior, source))
+                if !self.is_interaction_blocked(source) && start_pressed() =>
+            {
                 self.enter_interior();
                 return;
             }
-            Some("exit_dungeon") => {
+            Some((TileInteraction::ExitDungeon, source)) if !self.is_interaction_blocked(source) => {
                 self.exit_dungeon();
                 return;
             }
-            Some("exit_interior") if start_pressed() => {
+            Some((TileInteraction::ExitInterior, source))
+                if !self.is_interaction_blocked(source) && start_pressed() =>
+            {
                 self.exit_interior();
                 return;
             }
-            Some("cave_interact") if start_pressed() => {
+            Some((TileInteraction::CaveInteract, source))
+                if !self.is_interaction_blocked(source) && start_pressed() =>
+            {
                 self.handle_cave();
                 return;
             }
-            Some("victory") => {
+            Some((TileInteraction::Victory, source)) if !self.is_interaction_blocked(source) => {
                 self.state = GameState::Victory;
                 self.frame = 0;
                 return;
@@ -685,13 +721,14 @@ impl Game {
         }
     }
 
-    fn check_tile_interaction(&self) -> Option<&'static str> {
-        let cx = ((self.player.x + 8.0) / TILE).floor() as i32;
-        let cy = ((self.player.y + 8.0) / TILE).floor() as i32;
+    fn check_tile_interaction(&self) -> Option<(TileInteraction, InteractionSource)> {
+        let (cx, cy) = self.player_tile();
         let (fx, fy, front_tile) = self.front_tile();
 
         match front_tile {
-            TileType::HouseDoor if self.world.in_interior => return Some("exit_interior"),
+            TileType::HouseDoor if self.world.in_interior => {
+                return Some((TileInteraction::ExitInterior, InteractionSource::FrontTile(fx, fy)));
+            }
             TileType::Cave
                 if !self.world.in_dungeon
                     && !self.world.in_interior
@@ -703,7 +740,7 @@ impl Game {
                     )
                     .is_some() =>
             {
-                return Some("enter_interior");
+                return Some((TileInteraction::EnterInterior, InteractionSource::FrontTile(fx, fy)));
             }
             TileType::HouseDoor
                 if !self.world.in_dungeon
@@ -716,15 +753,17 @@ impl Game {
                     )
                     .is_some() =>
             {
-                return Some("enter_interior");
+                return Some((TileInteraction::EnterInterior, InteractionSource::FrontTile(fx, fy)));
             }
             _ => {}
         }
 
         match self.world.get_tile(cx, cy) {
-            TileType::Dungeon => Some("enter_dungeon"),
-            TileType::Stairs => Some("exit_dungeon"),
-            TileType::Door if self.world.in_interior => Some("exit_interior"),
+            TileType::Dungeon => Some((TileInteraction::EnterDungeon, InteractionSource::CurrentTile(cx, cy))),
+            TileType::Stairs => Some((TileInteraction::ExitDungeon, InteractionSource::CurrentTile(cx, cy))),
+            TileType::Door if self.world.in_interior => {
+                Some((TileInteraction::ExitInterior, InteractionSource::CurrentTile(cx, cy)))
+            }
             TileType::Door
                 if !self.world.in_dungeon
                     && !self.world.in_interior
@@ -736,7 +775,7 @@ impl Game {
                     )
                     .is_some() =>
             {
-                Some("enter_interior")
+                Some((TileInteraction::EnterInterior, InteractionSource::CurrentTile(cx, cy)))
             }
             TileType::Cave
                 if !self.world.in_dungeon
@@ -749,12 +788,56 @@ impl Game {
                     )
                     .is_some() =>
             {
-                Some("enter_interior")
+                Some((TileInteraction::EnterInterior, InteractionSource::CurrentTile(cx, cy)))
             }
-            TileType::Cave => Some("cave_interact"),
-            TileType::Goal => Some("victory"),
+            TileType::Cave => Some((TileInteraction::CaveInteract, InteractionSource::CurrentTile(cx, cy))),
+            TileType::Goal => Some((TileInteraction::Victory, InteractionSource::CurrentTile(cx, cy))),
             _ => None,
         }
+    }
+
+    fn player_tile(&self) -> (i32, i32) {
+        (
+            ((self.player.x + 8.0) / TILE).floor() as i32,
+            ((self.player.y + 8.0) / TILE).floor() as i32,
+        )
+    }
+
+    fn active_interaction_source(&self) -> Option<InteractionSource> {
+        let (tile_x, tile_y) = self.player_tile();
+        let (front_x, front_y, _) = self.front_tile();
+
+        if self.props.iter().any(|prop| {
+            matches!(prop.kind, PropKind::LadderPoint)
+                && prop.tile_x == tile_x
+                && prop.tile_y == tile_y
+                && prop.target_tile_x.is_some()
+                && prop.target_tile_y.is_some()
+        }) {
+            return Some(InteractionSource::CurrentTile(tile_x, tile_y));
+        }
+
+        if self.props.iter().any(|prop| {
+            matches!(prop.kind, PropKind::Npc(_))
+                && prop.tile_x == front_x
+                && prop.tile_y == front_y
+        }) {
+            return Some(InteractionSource::FrontTile(front_x, front_y));
+        }
+
+        self.check_tile_interaction().map(|(_, source)| source)
+    }
+
+    fn clear_blocked_interaction(&mut self) {
+        if self.blocked_interaction.is_some()
+            && self.active_interaction_source() != self.blocked_interaction
+        {
+            self.blocked_interaction = None;
+        }
+    }
+
+    fn is_interaction_blocked(&self, source: InteractionSource) -> bool {
+        self.blocked_interaction == Some(source)
     }
 
     fn can_enter_current_dungeon(&mut self) -> bool {
