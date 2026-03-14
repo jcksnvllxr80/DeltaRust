@@ -15,6 +15,9 @@ fn px(v: f32) -> f32 {
 
 const PICKUP_RENDER_SCALE: f32 = 2.0;
 
+const MAP_TILE_SIZE: f32 = 18.0;
+const MAP_TILE_GAP: f32 = 2.0;
+
 pub fn draw_game(
     sprites: &Sprites,
     frame: i32,
@@ -56,7 +59,9 @@ pub fn draw_inventory(
     world: &WorldSnapshot,
     player: &Player,
     show_map_tab: bool,
+    map_mode: crate::game::MapMode,
     inventory_selection: usize,
+    frame: i32,
 ) {
     clear_background(color_u8!(13, 16, 24, 255));
 
@@ -135,22 +140,43 @@ pub fn draw_inventory(
             px(1.0),
             color_u8!(90, 103, 124, 255),
         );
+
+        // When in a dungeon, show a small vertical mode switcher on the right.
+        // This avoids overlaying the map itself.
+        let mut map_x = content_x + px(18.0);
+        let mut map_w = content_w - px(36.0);
+        let mut map_y = content_y + px(10.0);
+        let mut map_h = content_h - px(20.0);
+
         if world.in_dungeon {
-            draw_dungeon_map_panel(
-                world,
-                content_x + px(18.0),
-                content_y + px(24.0),
-                content_w - px(36.0),
-                content_h - px(40.0),
+            let btn_w = px(80.0);
+            let btn_h = px(18.0);
+            let btn_x = content_x + content_w - btn_w - px(12.0);
+            let btn_y = content_y + px(18.0);
+            draw_inventory_tab(
+                btn_x,
+                btn_y,
+                btn_w,
+                btn_h,
+                "OVERWORLD",
+                map_mode == crate::game::MapMode::Overworld,
             );
+            draw_inventory_tab(
+                btn_x,
+                btn_y + btn_h + px(6.0),
+                btn_w,
+                btn_h,
+                "DUNGEON",
+                map_mode == crate::game::MapMode::Dungeon,
+            );
+
+            map_w -= btn_w + px(16.0);
+        }
+
+        if world.in_dungeon && map_mode == crate::game::MapMode::Dungeon {
+            draw_dungeon_map_panel(world, map_x, map_y, map_w, map_h, frame);
         } else {
-            draw_overworld_map_panel(
-                world,
-                content_x + px(18.0),
-                content_y + px(24.0),
-                content_w - px(36.0),
-                content_h - px(40.0),
-            );
+            draw_overworld_map_panel(world, map_x, map_y, map_w, map_h, frame);
         }
     } else {
         let list_w = px(250.0);
@@ -1908,11 +1934,12 @@ fn draw_overworld_map_panel(
     area_y: f32,
     area_w: f32,
     area_h: f32,
+    frame: i32,
 ) {
-    let gap_x = px(2.0);
-    let gap_y = px(2.0);
-    let cell_w = ((area_w - gap_x * (WORLD_W as f32 - 1.0)) / WORLD_W as f32).max(px(3.0));
-    let cell_h = ((area_h - gap_y * (WORLD_H as f32 - 1.0)) / WORLD_H as f32).max(px(3.0));
+    let gap_x = px(MAP_TILE_GAP);
+    let gap_y = px(MAP_TILE_GAP);
+    let cell_w = px(MAP_TILE_SIZE);
+    let cell_h = px(MAP_TILE_SIZE);
     let minimap_w = WORLD_W as f32 * cell_w + (WORLD_W as f32 - 1.0) * gap_x;
     let minimap_h = WORLD_H as f32 * cell_h + (WORLD_H as f32 - 1.0) * gap_y;
     let base_x = area_x + (area_w - minimap_w) / 2.0;
@@ -1930,7 +1957,10 @@ fn draw_overworld_map_panel(
                 cell_w,
                 cell_h,
                 if current {
-                    color_u8!(120, 212, 120, 255)
+                    // Neon yellow indicates the player's current screen (pulsing)
+                    let pulse = ((frame as f32 * 0.12).sin() * 0.5 + 0.5) as f32;
+                    let glow = (200.0 + pulse * 55.0) as u8;
+                    color_u8!(glow, glow, 64, 255)
                 } else if visited {
                     biome_color(world_data::location_name(sx, sy, false, 0, false, "").as_str())
                 } else {
@@ -1977,9 +2007,12 @@ fn draw_dungeon_map_panel(
     area_y: f32,
     area_w: f32,
     area_h: f32,
+    frame: i32,
 ) {
-    let gap_x = px(10.0);
-    let gap_y = px(8.0);
+    const MAP_CELL: f32 = 18.0;
+    const MAP_GAP: f32 = 2.0;
+    let gap_x = px(MAP_GAP);
+    let gap_y = px(MAP_GAP);
     let mut min_x: i32 = 99;
     let mut max_x: i32 = 0;
     let mut min_y: i32 = 99;
@@ -1994,8 +2027,12 @@ fn draw_dungeon_map_panel(
     }
     let cols = (max_x - min_x + 1).max(1) as f32;
     let rows = (max_y - min_y + 1).max(1) as f32;
-    let cell_w = ((area_w - gap_x * (cols - 1.0)) / cols).max(px(18.0));
-    let cell_h = ((area_h - gap_y * (rows - 1.0)) / rows).max(px(14.0));
+
+    // Use a fixed cell scale so the dungeon map size and zoom doesn't jump
+    // depending on the current dungeon layout.
+    let cell_w = px(MAP_TILE_SIZE);
+    let cell_h = px(MAP_TILE_SIZE);
+
     let minimap_w = cols * cell_w + (cols - 1.0) * gap_x;
     let minimap_h = rows * cell_h + (rows - 1.0) * gap_y;
     let base_x = area_x + (area_w - minimap_w) / 2.0;
@@ -2015,7 +2052,10 @@ fn draw_dungeon_map_panel(
                 cell_w,
                 cell_h,
                 if current {
-                    color_u8!(120, 212, 120, 255)
+                    // Neon yellow indicates the player's current room (pulsing)
+                    let pulse = ((frame as f32 * 0.12).sin() * 0.5 + 0.5) as f32;
+                    let glow = (200.0 + pulse * 55.0) as u8;
+                    color_u8!(glow, glow, 64, 255)
                 } else if visited {
                     color_u8!(68, 68, 102, 255)
                 } else {

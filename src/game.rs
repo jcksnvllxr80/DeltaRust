@@ -19,6 +19,12 @@ fn px(value: f32) -> f32 {
     value * PIXEL_SCALE
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MapMode {
+    Overworld,
+    Dungeon,
+}
+
 pub struct Game {
     pub state: GameState,
     pub frame: i32,
@@ -45,6 +51,7 @@ pub struct Game {
     pub inventory_scroll_dir: i8,
     pub inventory_scroll_timer: i32,
     pub inventory_scroll_delay: i32,
+    pub inventory_map_mode: MapMode,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,6 +89,7 @@ impl Game {
             inventory_scroll_dir: 0,
             inventory_scroll_timer: 0,
             inventory_scroll_delay: 0,
+            inventory_map_mode: MapMode::Overworld,
         };
         game.spawn_for_screen();
         game
@@ -140,7 +148,9 @@ impl Game {
                     &self.world.snapshot(),
                     &self.player,
                     self.inventory_tab == InventoryTab::Map,
+                    self.inventory_map_mode,
                     self.inventory_selection,
+                    self.frame,
                 )
             }
             GameState::Transition => render::draw_transition(
@@ -310,6 +320,13 @@ impl Game {
                 InventoryTab::Inventory => InventoryTab::Map,
                 InventoryTab::Map => InventoryTab::Inventory,
             };
+            if self.inventory_tab == InventoryTab::Map {
+                self.inventory_map_mode = if self.world.in_dungeon {
+                    MapMode::Dungeon
+                } else {
+                    MapMode::Overworld
+                };
+            }
             return;
         }
 
@@ -326,11 +343,54 @@ impl Game {
             }
             if map_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Map;
+                self.inventory_map_mode = if self.world.in_dungeon {
+                    MapMode::Dungeon
+                } else {
+                    MapMode::Overworld
+                };
                 return;
             }
         }
 
         if self.inventory_tab == InventoryTab::Map {
+            // When in a dungeon, allow switching between over-world and dungeon maps.
+            if self.world.in_dungeon {
+                if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+                    self.inventory_map_mode = MapMode::Overworld;
+                }
+                if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+                    self.inventory_map_mode = MapMode::Dungeon;
+                }
+
+                if is_mouse_button_pressed(MouseButton::Left) {
+                    let (mx, my) = mouse_position();
+                    let outer_x = px(16.0);
+                    let outer_y = px(14.0);
+                    // Buttons sit below the inventory/map tabs
+                    let button_y = outer_y + px(60.0);
+                    let overworld_btn = Rect::new(
+                        outer_x + px(12.0),
+                        button_y,
+                        px(110.0),
+                        px(18.0),
+                    );
+                    let dungeon_btn = Rect::new(
+                        outer_x + px(12.0) + px(110.0) + px(8.0),
+                        button_y,
+                        px(110.0),
+                        px(18.0),
+                    );
+                    if overworld_btn.contains(vec2(mx, my)) {
+                        self.inventory_map_mode = MapMode::Overworld;
+                    }
+                    if dungeon_btn.contains(vec2(mx, my)) {
+                        self.inventory_map_mode = MapMode::Dungeon;
+                    }
+                }
+            } else {
+                self.inventory_map_mode = MapMode::Overworld;
+            }
+
             if start_pressed() {
                 self.inventory_tab = InventoryTab::Inventory;
             }
