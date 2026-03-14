@@ -153,14 +153,22 @@ pub fn draw_inventory(
             );
         }
     } else {
-        let list_w = px(210.0);
+        let list_w = px(250.0);
         let details_x = content_x + list_w + px(12.0);
         let details_w = content_w - list_w - px(12.0);
         let entries = player.inventory_entries();
+        let selected_index = inventory_selection.min(entries.len().saturating_sub(1));
         let selected = entries
-            .get(inventory_selection.min(entries.len().saturating_sub(1)))
+            .get(selected_index)
             .copied()
             .unwrap_or(player.inventory_entry(InventoryItem::Sword));
+        let row_h = px(19.0);
+        let list_start_y = content_y + px(38.0);
+        let visible_rows = (((content_h - px(54.0)) / row_h).floor() as usize).max(1);
+        let max_scroll = entries.len().saturating_sub(visible_rows);
+        let scroll_offset = selected_index
+            .saturating_sub(visible_rows / 2)
+            .min(max_scroll);
 
         draw_rectangle(content_x, content_y, list_w, content_h, color_u8!(31, 38, 51, 255));
         draw_rectangle_lines(
@@ -188,18 +196,43 @@ pub fn draw_inventory(
             px(14.0),
             color_u8!(197, 170, 119, 255),
         );
-        let mut line_y = content_y + px(38.0);
-        for (index, entry) in entries.iter().enumerate() {
+        for (row_index, (index, entry)) in entries
+            .iter()
+            .enumerate()
+            .skip(scroll_offset)
+            .take(visible_rows)
+            .enumerate()
+        {
             draw_inventory_entry_row(
                 sprites,
                 player,
                 content_x + px(8.0),
-                line_y,
+                list_start_y + row_index as f32 * row_h,
                 list_w - px(16.0),
                 entry,
-                index == inventory_selection,
+                index == selected_index,
             );
-            line_y += px(19.0);
+        }
+
+        if entries.len() > visible_rows {
+            let track_x = content_x + list_w - px(8.0);
+            let track_y = content_y + px(30.0);
+            let track_h = content_h - px(44.0);
+            let thumb_h = (track_h * visible_rows as f32 / entries.len() as f32).max(px(18.0));
+            let thumb_travel = (track_h - thumb_h).max(0.0);
+            let thumb_y = if max_scroll == 0 {
+                track_y
+            } else {
+                track_y + thumb_travel * scroll_offset as f32 / max_scroll as f32
+            };
+            draw_rectangle(track_x, track_y, px(2.0), track_h, color_u8!(50, 58, 74, 255));
+            draw_rectangle(
+                track_x - px(1.0),
+                thumb_y,
+                px(4.0),
+                thumb_h,
+                color_u8!(168, 177, 194, 255),
+            );
         }
 
         draw_text(
@@ -254,6 +287,7 @@ fn draw_inventory_entry_row(
         player,
         x + px(4.0),
         y,
+        w - px(24.0),
         entry.label,
         entry.owned,
         entry.count,
@@ -279,10 +313,19 @@ fn draw_inventory_detail_panel(
     player: &Player,
     x: f32,
     y: f32,
-    _w: f32,
+    w: f32,
     entry: InventoryEntry,
 ) {
-    draw_inventory_stat(sprites, player, x, y + px(12.0), entry.label, entry.owned, entry.count);
+    draw_inventory_stat(
+        sprites,
+        player,
+        x,
+        y + px(12.0),
+        w,
+        entry.label,
+        entry.owned,
+        entry.count,
+    );
     let status = if entry.equipable {
         let equipped = match entry.item {
             InventoryItem::Bombs => player.equipped_item == EquippedItem::Bombs,
@@ -303,7 +346,7 @@ fn draw_inventory_detail_panel(
     };
     draw_text(&status, x, y + px(42.0), px(12.0), color_u8!(196, 196, 196, 255));
 
-    let wrapped = wrap_text(entry.description, 32);
+    let wrapped = wrap_text_to_width(entry.description, w, px(12.0));
     for (i, line) in wrapped.iter().enumerate() {
         draw_text(
             line,
@@ -313,25 +356,26 @@ fn draw_inventory_detail_panel(
             LIGHTGRAY,
         );
     }
+    let info_y = y + px(72.0) + wrapped.len() as f32 * px(14.0) + px(16.0);
 
     draw_text(
         &format!("Quick slot: {}", equipped_item_label(player.equipped_item)),
         x,
-        y + px(150.0),
+        info_y,
         px(12.0),
         color_u8!(255, 215, 120, 255),
     );
     draw_text(
         &format!("HP {} / {}", player.hp, player.max_hp),
         x,
-        y + px(174.0),
+        info_y + px(24.0),
         px(12.0),
         WHITE,
     );
     draw_text(
         &format!("Gems {}   Keys {}", player.gems, player.keys),
         x,
-        y + px(192.0),
+        info_y + px(42.0),
         px(12.0),
         WHITE,
     );
@@ -345,19 +389,22 @@ fn equipped_item_label(item: EquippedItem) -> &'static str {
     }
 }
 
-fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
+fn wrap_text_to_width(text: &str, max_width: f32, font_size: f32) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {
-        let pending_len = current.len() + if current.is_empty() { 0 } else { 1 } + word.len();
-        if pending_len > max_chars && !current.is_empty() {
+        let pending = if current.is_empty() {
+            word.to_string()
+        } else {
+            format!("{current} {word}")
+        };
+        if measure_text(&pending, None, font_size as u16, 1.0).width > max_width
+            && !current.is_empty()
+        {
             lines.push(current);
             current = word.to_string();
         } else {
-            if !current.is_empty() {
-                current.push(' ');
-            }
-            current.push_str(word);
+            current = pending;
         }
     }
     if !current.is_empty() {
@@ -1985,6 +2032,7 @@ fn draw_inventory_stat(
     player: &Player,
     x: f32,
     y: f32,
+    w: f32,
     label: &str,
     active: bool,
     count: Option<i32>,
@@ -2000,7 +2048,7 @@ fn draw_inventory_stat(
         "Bombs" if player.has_bombs => {
             let _ = sprites.draw_hud_bomb(x, y - px(10.0), px(22.0));
         }
-        "Pieces" => {
+        "Dragon Pieces" => {
             draw_dragon_piece_icon(x + px(3.0), y - px(11.0), px(0.85));
         }
         "Keys" if player.keys > 0 => {
@@ -2020,7 +2068,7 @@ fn draw_inventory_stat(
         }
         _ => {}
     }
-    draw_text(label, x + px(28.0), y, px(14.0), color);
+    let font_size = px(14.0);
     let value = match count {
         Some(amount) => format!("x{amount}"),
         None => {
@@ -2031,7 +2079,37 @@ fn draw_inventory_stat(
             }
         }
     };
-    draw_text(&value, x + px(88.0), y, px(14.0), color);
+    let value_width = measure_text(&value, None, font_size as u16, 1.0).width;
+    let value_x = x + w - px(4.0) - value_width;
+    let label_max_width = (value_x - (x + px(28.0)) - px(10.0)).max(px(40.0));
+    let fitted_label = fit_text_to_width(label, label_max_width, font_size);
+    draw_text(&fitted_label, x + px(28.0), y, font_size, color);
+    draw_text(&value, value_x, y, font_size, color);
+}
+
+fn fit_text_to_width(text: &str, max_width: f32, font_size: f32) -> String {
+    if measure_text(text, None, font_size as u16, 1.0).width <= max_width {
+        return text.to_string();
+    }
+
+    let ellipsis = "...";
+    let ellipsis_width = measure_text(ellipsis, None, font_size as u16, 1.0).width;
+    if ellipsis_width >= max_width {
+        return ellipsis.to_string();
+    }
+
+    let mut fitted = String::new();
+    for ch in text.chars() {
+        let mut candidate = fitted.clone();
+        candidate.push(ch);
+        candidate.push_str(ellipsis);
+        if measure_text(&candidate, None, font_size as u16, 1.0).width > max_width {
+            break;
+        }
+        fitted.push(ch);
+    }
+    fitted.push_str(ellipsis);
+    fitted
 }
 
 fn biome_color(name: &str) -> Color {

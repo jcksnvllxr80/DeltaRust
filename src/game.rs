@@ -42,6 +42,9 @@ pub struct Game {
     pub creator: CharacterCreator,
     pub inventory_tab: InventoryTab,
     pub inventory_selection: usize,
+    pub inventory_scroll_dir: i8,
+    pub inventory_scroll_timer: i32,
+    pub inventory_scroll_delay: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,6 +79,9 @@ impl Game {
             creator: CharacterCreator::new(appearance),
             inventory_tab: InventoryTab::Inventory,
             inventory_selection: 0,
+            inventory_scroll_dir: 0,
+            inventory_scroll_timer: 0,
+            inventory_scroll_delay: 0,
         };
         game.spawn_for_screen();
         game
@@ -306,6 +312,24 @@ impl Game {
             };
             return;
         }
+
+        // Tab clicks
+        if is_mouse_button_pressed(MouseButton::Left) {
+            let (mx, my) = mouse_position();
+            let outer_x = px(16.0);
+            let outer_y = px(14.0);
+            let inv_tab = Rect::new(outer_x + px(12.0), outer_y + px(30.0), px(100.0), px(22.0));
+            let map_tab = Rect::new(outer_x + px(118.0), outer_y + px(30.0), px(80.0), px(22.0));
+            if inv_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::Inventory;
+                return;
+            }
+            if map_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::Map;
+                return;
+            }
+        }
+
         if self.inventory_tab == InventoryTab::Map {
             if start_pressed() {
                 self.inventory_tab = InventoryTab::Inventory;
@@ -313,13 +337,50 @@ impl Game {
             return;
         }
         let entry_count = self.player.inventory_entries().len();
-        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
-            self.inventory_selection = self.inventory_selection.saturating_sub(1);
+        const INITIAL_SCROLL_DELAY: i32 = 45; // frames before repeat starts
+        const REPEAT_SCROLL_DELAY: i32 = 15; // frames between repeated moves
+
+        // Mouse wheel scroll support (vertical axis). Positive scrolls up.
+        let wheel_delta = mouse_wheel().1;
+        if wheel_delta != 0.0 {
+            if wheel_delta > 0.0 {
+                self.inventory_selection = self.inventory_selection.saturating_sub(1);
+            } else if self.inventory_selection + 1 < entry_count {
+                self.inventory_selection += 1;
+            }
+            self.inventory_scroll_dir = 0;
+            self.inventory_scroll_timer = 0;
+            self.inventory_scroll_delay = INITIAL_SCROLL_DELAY;
         }
-        if (is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S))
-            && self.inventory_selection + 1 < entry_count
-        {
-            self.inventory_selection += 1;
+
+        let current_dir = if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
+            -1
+        } else if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
+            1
+        } else {
+            0
+        };
+
+        if current_dir == 0 {
+            self.inventory_scroll_dir = 0;
+            self.inventory_scroll_timer = 0;
+            self.inventory_scroll_delay = INITIAL_SCROLL_DELAY;
+        } else {
+            if current_dir != self.inventory_scroll_dir {
+                self.inventory_scroll_dir = current_dir;
+                self.inventory_scroll_timer = 0;
+                self.inventory_scroll_delay = INITIAL_SCROLL_DELAY;
+            }
+            if self.inventory_scroll_timer <= 0 {
+                if current_dir < 0 {
+                    self.inventory_selection = self.inventory_selection.saturating_sub(1);
+                } else if self.inventory_selection + 1 < entry_count {
+                    self.inventory_selection += 1;
+                }
+                self.inventory_scroll_timer = self.inventory_scroll_delay;
+                self.inventory_scroll_delay = REPEAT_SCROLL_DELAY;
+            }
+            self.inventory_scroll_timer = (self.inventory_scroll_timer - 1).max(0);
         }
         if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
             self.toggle_selected_inventory_item();
