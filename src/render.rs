@@ -9,6 +9,8 @@ use crate::sprites::{HeartState, Sprites};
 use crate::world_data;
 use macroquad::prelude::*;
 
+const GAME_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn px(v: f32) -> f32 {
     v * PIXEL_SCALE
 }
@@ -95,6 +97,18 @@ pub fn draw_inventory(
         outer_x + outer_w - px(210.0),
         outer_y + px(22.0),
         px(12.0),
+        LIGHTGRAY,
+    );
+
+    // version (from Cargo.toml)
+    let version = format!("v{}", GAME_VERSION);
+    let version_font = px(10.0);
+    let version_dims = measure_text(&version, None, version_font as u16, 1.0);
+    draw_text(
+        &version,
+        outer_x + outer_w - px(10.0) - version_dims.width,
+        outer_y + px(14.0),
+        version_font,
         LIGHTGRAY,
     );
 
@@ -695,6 +709,18 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize) {
             LIGHTGRAY,
         );
     }
+
+    // version (from Cargo.toml)
+    let version = format!("v{}", GAME_VERSION);
+    let version_font = px(10.0);
+    let version_dims = measure_text(&version, None, version_font as u16, 1.0);
+    draw_text(
+        &version,
+        GAME_W - px(10.0) - version_dims.width,
+        px(14.0),
+        version_font,
+        LIGHTGRAY,
+    );
 }
 
 pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, frame: i32) {
