@@ -1,4 +1,4 @@
-use crate::constants::{ATTACK_DURATION, PIXEL_SCALE, PLAYER_MAX_HP, TILE};
+use crate::constants::{ATTACK_DURATION, PIXEL_SCALE, PLAYER_FULL_HEARTS_HP, PLAYER_MAX_HP, TILE};
 use macroquad::prelude::Rect;
 use std::collections::{HashMap, HashSet};
 
@@ -316,6 +316,35 @@ impl Player {
             walk_timer: 0,
             last_axis: None,
         }
+    }
+
+    pub fn grant_all_items(&mut self) {
+        self.has_sword = true;
+        self.has_bombs = true;
+        self.has_boss_key = true;
+        self.keys = 9999;
+        self.gems = 9999;
+        self.dragon_pieces = 7;
+        self.bomb_count = self.max_bombs;
+        self.has_ancient_key = true;
+        self.has_tide_chart = true;
+        self.has_ember_crystal = true;
+        self.has_void_compass = true;
+        self.has_star_sigil = true;
+        self.has_dragon_codex = true;
+        self.has_crystal_of_seeing = true;
+        self.has_ladder = true;
+        self.has_hammer = true;
+        self.has_raft = true;
+        self.has_strong_arm_glove = true;
+        self.has_portal_tool = true;
+        self.main_item = EquippedItem::Sword;
+        self.side_item = EquippedItem::Bombs;
+    }
+
+    pub fn grant_full_hearts(&mut self) {
+        self.max_hp = PLAYER_FULL_HEARTS_HP;
+        self.hp = self.max_hp;
     }
 
     pub fn inventory_entries(&self) -> Vec<InventoryEntry> {

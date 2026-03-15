@@ -118,6 +118,12 @@ pub fn draw_inventory(
         LIGHTGRAY,
     );
 
+    let panel_bg = if show_map_tab {
+        color_u8!(18, 22, 30, 255)
+    } else {
+        color_u8!(31, 38, 51, 255)
+    };
+
     draw_inventory_tab(
         outer_x + px(12.0),
         outer_y + px(30.0),
@@ -125,6 +131,7 @@ pub fn draw_inventory(
         px(22.0),
         "INVENTORY",
         !show_map_tab,
+        panel_bg,
     );
     draw_inventory_tab(
         outer_x + px(118.0),
@@ -133,6 +140,7 @@ pub fn draw_inventory(
         px(22.0),
         "MAP",
         show_map_tab,
+        panel_bg,
     );
 
     let location = world_data::location_name(
@@ -158,13 +166,32 @@ pub fn draw_inventory(
             content_h,
             color_u8!(18, 22, 30, 255),
         );
-        draw_rectangle_lines(
+        // omit top border (tabs already sit above this panel)
+        let border_color = color_u8!(90, 103, 124, 255);
+        let t = px(1.0);
+        draw_line(
             content_x,
             content_y,
-            content_w,
-            content_h,
-            px(1.0),
-            color_u8!(90, 103, 124, 255),
+            content_x,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x + content_w,
+            content_y,
+            content_x + content_w,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x,
+            content_y + content_h,
+            content_x + content_w,
+            content_y + content_h,
+            t,
+            border_color,
         );
 
         // When in a dungeon, show a small vertical mode switcher on the right.
@@ -179,6 +206,7 @@ pub fn draw_inventory(
             let btn_h = px(18.0);
             let btn_x = content_x + content_w - btn_w - px(12.0);
             let btn_y = content_y + px(18.0);
+            let map_panel_bg = color_u8!(18, 22, 30, 255);
             draw_inventory_tab(
                 btn_x,
                 btn_y,
@@ -186,6 +214,7 @@ pub fn draw_inventory(
                 btn_h,
                 "OVERWORLD",
                 map_mode == crate::game::MapMode::Overworld,
+                map_panel_bg,
             );
             draw_inventory_tab(
                 btn_x,
@@ -194,6 +223,7 @@ pub fn draw_inventory(
                 btn_h,
                 "DUNGEON",
                 map_mode == crate::game::MapMode::Dungeon,
+                map_panel_bg,
             );
 
             map_w -= btn_w + px(16.0);
@@ -229,13 +259,32 @@ pub fn draw_inventory(
             content_h,
             color_u8!(31, 38, 51, 255),
         );
-        draw_rectangle_lines(
+        // omit top border so the tabs blend smoothly into the panel.
+        let border_color = color_u8!(90, 103, 124, 255);
+        let t = px(1.0);
+        draw_line(
             content_x,
             content_y,
-            list_w,
-            content_h,
-            px(1.0),
-            color_u8!(90, 103, 124, 255),
+            content_x,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x + list_w,
+            content_y,
+            content_x + list_w,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x,
+            content_y + content_h,
+            content_x + list_w,
+            content_y + content_h,
+            t,
+            border_color,
         );
         draw_rectangle(
             details_x,
@@ -244,13 +293,32 @@ pub fn draw_inventory(
             content_h,
             color_u8!(18, 22, 30, 255),
         );
-        draw_rectangle_lines(
+        // omit top border so the tabs blend smoothly into the panel.
+        let border_color = color_u8!(90, 103, 124, 255);
+        let t = px(1.0);
+        draw_line(
             details_x,
             content_y,
-            details_w,
-            content_h,
-            px(1.0),
-            color_u8!(90, 103, 124, 255),
+            details_x,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            details_x + details_w,
+            content_y,
+            details_x + details_w,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            details_x,
+            content_y + content_h,
+            details_x + details_w,
+            content_y + content_h,
+            t,
+            border_color,
         );
 
         draw_text(
@@ -337,7 +405,15 @@ pub fn draw_inventory(
     }
 }
 
-fn draw_inventory_tab(x: f32, y: f32, w: f32, h: f32, label: &str, active: bool) {
+fn draw_inventory_tab(
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    label: &str,
+    active: bool,
+    panel_background: Color,
+) {
     let fill = if active {
         color_u8!(58, 69, 89, 255)
     } else {
@@ -357,6 +433,10 @@ fn draw_inventory_tab(x: f32, y: f32, w: f32, h: f32, label: &str, active: bool)
         px(12.0),
         if active { WHITE } else { LIGHTGRAY },
     );
+
+    // Cover the bottom row of the tab with the panel background so tabs
+    // visually meld into the panel (removes a 1px "trash" line).
+    draw_rectangle(x, y + h - px(1.0), w, px(1.0), panel_background);
 }
 
 fn draw_inventory_entry_row(
@@ -1718,12 +1798,106 @@ fn draw_bombs(sprites: &Sprites, bombs: &[Bomb]) {
         let x = bomb.x.round();
         let y = bomb.y.round() + HUD_H;
         if bomb.exploded {
+            let total_frames = 20.0;
+            let t = (bomb.explosion_timer as f32 / total_frames).clamp(0.0, 1.0);
+            let age = 1.0 - t;
+            let cx = x + bomb.w * 0.5;
+            let cy = y + bomb.h * 0.5;
+
+            let outer_radius = px(10.0) + age * px(28.0);
+            let mid_radius = px(7.0) + age * px(18.0);
+            let core_radius = px(4.0) + t * px(7.0);
+            let ring_radius = px(8.0) + age * px(36.0);
+            let smoke_radius = px(6.0) + age * px(24.0);
+
             draw_circle(
-                x + px(6.0),
-                y + px(6.0),
-                px(20.0) - bomb.explosion_timer as f32 * PIXEL_SCALE,
-                Color::new(1.0, 0.6, 0.0, bomb.explosion_timer as f32 / 20.0),
+                cx,
+                cy,
+                outer_radius,
+                Color::new(1.0, 0.32, 0.0, 0.16 + 0.42 * t),
             );
+            draw_circle(
+                cx,
+                cy,
+                mid_radius,
+                Color::new(1.0, 0.68, 0.05, 0.26 + 0.54 * t),
+            );
+            draw_circle(
+                cx,
+                cy,
+                core_radius,
+                Color::new(1.0, 0.96, 0.72, 0.55 + 0.45 * t),
+            );
+
+            draw_circle_lines(
+                cx,
+                cy,
+                ring_radius,
+                px(2.0),
+                Color::new(1.0, 0.88, 0.34, 0.7 * t),
+            );
+
+            for &(dx, dy, scale) in &[
+                (0.0, -1.0, 1.0),
+                (1.0, 0.0, 1.0),
+                (0.0, 1.0, 1.0),
+                (-1.0, 0.0, 1.0),
+                (0.8, -0.7, 0.75),
+                (0.8, 0.7, 0.75),
+                (-0.8, 0.7, 0.75),
+                (-0.8, -0.7, 0.75),
+            ] {
+                let tip_x = cx + dx * (px(6.0) + age * px(18.0) * scale);
+                let tip_y = cy + dy * (px(6.0) + age * px(18.0) * scale);
+                let base_left = vec2(cx - dy * px(2.4) * scale, cy + dx * px(2.4) * scale);
+                let base_right = vec2(cx + dy * px(2.4) * scale, cy - dx * px(2.4) * scale);
+                draw_triangle(
+                    base_left,
+                    vec2(tip_x, tip_y),
+                    base_right,
+                    Color::new(1.0, 0.9, 0.45, 0.22 + 0.5 * t),
+                );
+            }
+
+            for &(ox, oy, size) in &[
+                (-0.9, -0.8, 0.95),
+                (0.95, -0.65, 0.8),
+                (1.05, 0.55, 0.88),
+                (-0.8, 0.85, 0.9),
+            ] {
+                draw_circle(
+                    cx + ox * smoke_radius,
+                    cy + oy * smoke_radius,
+                    px(4.0) + age * px(5.5) * size,
+                    Color::new(0.18, 0.18, 0.2, 0.18 + 0.24 * t),
+                );
+            }
+
+            for &(dx, dy, delay) in &[
+                (-1.0, -0.2, 0.0),
+                (-0.6, -0.9, 0.08),
+                (0.2, -1.0, 0.04),
+                (0.95, -0.45, 0.1),
+                (1.0, 0.15, 0.02),
+                (0.7, 0.9, 0.09),
+                (-0.15, 1.0, 0.06),
+                (-0.95, 0.45, 0.12),
+            ] {
+                let spark_phase = (age - delay).max(0.0);
+                if spark_phase <= 0.0 {
+                    continue;
+                }
+                let sx = cx + dx * (px(10.0) + spark_phase * px(20.0));
+                let sy = cy + dy * (px(10.0) + spark_phase * px(20.0));
+                let spark_size = px(1.5) + t * px(1.5);
+                draw_rectangle(
+                    sx - spark_size * 0.5,
+                    sy - spark_size * 0.5,
+                    spark_size,
+                    spark_size,
+                    Color::new(1.0, 0.94, 0.68, 0.3 + 0.65 * t),
+                );
+            }
         } else {
             if !sprites.draw_bomb(x, y, bomb.w, bomb.h) {
                 draw_rectangle(x + px(2.0), y + px(3.0), px(8.0), px(9.0), DARKGRAY);

@@ -16,7 +16,9 @@ use crate::game::Game;
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let dev_mode = args.iter().any(|a| a == "--dev-mode" || a == "--dev");
-    let mut game = Game::new(dev_mode).await;
+    let all_items = args.iter().any(|a| a == "--all-items");
+    let full_hearts = args.iter().any(|a| a == "--full-hearts");
+    let mut game = Game::new(dev_mode, all_items, full_hearts).await;
     loop {
         game.update();
         game.draw();

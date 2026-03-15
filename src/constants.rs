@@ -12,6 +12,7 @@ pub const WORLD_W: i32 = 14;
 pub const WORLD_H: i32 = 15;
 pub const PLAYER_SPEED: f32 = 0.8 * PIXEL_SCALE;
 pub const PLAYER_MAX_HP: i32 = 6;
+pub const PLAYER_FULL_HEARTS_HP: i32 = 32;
 pub const ATTACK_DURATION: i32 = 12;
 pub const KNOCKBACK_SPEED: f32 = 2.5 * PIXEL_SCALE;
 pub const KNOCKBACK_FRAMES: i32 = 10;

@@ -5,9 +5,9 @@ use crate::constants::{
     PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState,
-    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType,
-    Transition, WorldProp,
+    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, ItemSlot,
+    NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType, Transition,
+    WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -68,6 +68,8 @@ pub struct Game {
     pub inventory_scroll_timer: i32,
     pub inventory_scroll_delay: i32,
     pub inventory_map_mode: MapMode,
+    pub all_items_mode: bool,
+    pub full_hearts_mode: bool,
     blocked_interaction: Option<InteractionSource>,
 }
 
@@ -78,7 +80,7 @@ pub enum InventoryTab {
 }
 
 impl Game {
-    pub async fn new(dev_mode: bool) -> Self {
+    pub async fn new(dev_mode: bool, all_items_mode: bool, full_hearts_mode: bool) -> Self {
         let appearance = CharacterAppearance::default();
         let mut game = Self {
             state: GameState::Title,
@@ -107,8 +109,11 @@ impl Game {
             inventory_scroll_timer: 0,
             inventory_scroll_delay: 0,
             inventory_map_mode: MapMode::Overworld,
+            all_items_mode,
+            full_hearts_mode,
             blocked_interaction: None,
         };
+        game.apply_starting_loadout();
         game.spawn_for_screen();
         game
     }
@@ -211,6 +216,7 @@ impl Game {
         let dev = self.world.dev_mode;
         self.world = World::new(dev);
         self.player = Player::new();
+        self.apply_starting_loadout();
         self.sprites.set_hero_appearance(&self.appearance);
         self.spawn_for_screen();
         self.reset_items();
@@ -220,6 +226,15 @@ impl Game {
         self.frame = 0;
         self.inventory_tab = InventoryTab::Inventory;
         self.inventory_selection = 0;
+    }
+
+    fn apply_starting_loadout(&mut self) {
+        if self.full_hearts_mode {
+            self.player.grant_full_hearts();
+        }
+        if self.all_items_mode {
+            self.player.grant_all_items();
+        }
     }
 
     fn begin_character_create(&mut self) {
