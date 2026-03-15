@@ -1,7 +1,7 @@
 use crate::audio::{Audio, MusicTrack};
 use crate::character::{CharacterAppearance, CharacterCreator};
 use crate::constants::{
-    COLS, GAME_H, GAME_W, PIXEL_SCALE, ROWS, TILE, WORLD_H, WORLD_W, attack_duration,
+    COLS, GAME_H, GAME_W, HUD_H, PIXEL_SCALE, ROWS, TILE, WORLD_H, WORLD_W, attack_duration,
     knockback_frames, knockback_speed, player_speed, trans_speed,
 };
 use crate::model::{
@@ -68,6 +68,10 @@ pub struct Game {
     pub inventory_scroll_dir: i8,
     pub inventory_scroll_timer: i32,
     pub inventory_scroll_delay: i32,
+    pub controls_scroll: f32,
+    pub controls_scroll_dir: i8,
+    pub controls_scroll_timer: i32,
+    pub controls_scroll_delay: i32,
     pub inventory_map_mode: MapMode,
     pub all_items_mode: bool,
     pub full_hearts_mode: bool,
@@ -118,6 +122,10 @@ impl Game {
             inventory_scroll_dir: 0,
             inventory_scroll_timer: 0,
             inventory_scroll_delay: 0,
+            controls_scroll: 0.0,
+            controls_scroll_dir: 0,
+            controls_scroll_timer: 0,
+            controls_scroll_delay: 0,
             inventory_map_mode: MapMode::Overworld,
             all_items_mode,
             full_hearts_mode,
@@ -223,6 +231,7 @@ impl Game {
                 self.save_slot_selection,
                 &self.save_slots(),
                 self.pending_load_slot,
+                self.controls_scroll,
             ),
             GameState::Transition => render::draw_transition(
                 &self.sprites,
@@ -501,6 +510,9 @@ impl Game {
                     MapMode::Overworld
                 };
             }
+            if self.inventory_tab == InventoryTab::Controls {
+                self.controls_scroll = 0.0;
+            }
             crate::log_verbose!(
                 "inventory_tab_switched tab={:?} map_mode={:?}",
                 self.inventory_tab,
@@ -547,6 +559,7 @@ impl Game {
             if controls_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Controls;
                 self.pending_load_slot = None;
+                self.controls_scroll = 0.0;
                 crate::log_verbose!("inventory_tab_clicked tab=Controls");
                 return;
             }
@@ -614,7 +627,57 @@ impl Game {
         }
 
         if self.inventory_tab == InventoryTab::Controls {
-            // Controls tab is display-only; no input handling needed.
+            // Controls panel supports scrolling when content exceeds visible height.
+            const INITIAL_SCROLL_DELAY: i32 = 45;
+            const REPEAT_SCROLL_DELAY: i32 = 15;
+            let row_h = 22.0 * PIXEL_SCALE;
+            let section_gap = 14.0 * PIXEL_SCALE;
+            let content_h = (GAME_H + HUD_H - 28.0 * PIXEL_SCALE) - 63.0 * PIXEL_SCALE;
+            let visible_height = content_h - 36.0 * PIXEL_SCALE;
+            // There are 6 section headers and 15 data rows, so 21 total lines.
+            let total_height = section_gap * 6.0 + row_h * 21.0;
+            // Add a bit of buffer so the final row can fully scroll into view.
+            let max_scroll = (total_height - visible_height + row_h * 1.5).max(0.0);
+
+            // Key repeat scrolling (hold up/down)
+            let current_dir = if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
+                -1
+            } else if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
+                1
+            } else {
+                0
+            };
+            if current_dir == 0 {
+                self.controls_scroll_dir = 0;
+                self.controls_scroll_timer = 0;
+                self.controls_scroll_delay = INITIAL_SCROLL_DELAY;
+            } else {
+                if current_dir != self.controls_scroll_dir {
+                    self.controls_scroll_dir = current_dir;
+                    self.controls_scroll_timer = 0;
+                    self.controls_scroll_delay = INITIAL_SCROLL_DELAY;
+                }
+                if self.controls_scroll_timer <= 0 {
+                    if self.controls_scroll_dir < 0 {
+                        self.controls_scroll = (self.controls_scroll - row_h).max(0.0);
+                    } else {
+                        self.controls_scroll = (self.controls_scroll + row_h).min(max_scroll);
+                    }
+                    self.controls_scroll_timer = self.controls_scroll_delay;
+                    self.controls_scroll_delay = REPEAT_SCROLL_DELAY;
+                }
+                self.controls_scroll_timer = (self.controls_scroll_timer - 1).max(0);
+            }
+
+            // Mouse wheel scrolling
+            let wheel_delta = mouse_wheel().1;
+            if wheel_delta > 0.0 {
+                self.controls_scroll = (self.controls_scroll - row_h).max(0.0);
+            } else if wheel_delta < 0.0 {
+                self.controls_scroll = (self.controls_scroll + row_h).min(max_scroll);
+            }
+
+            self.controls_scroll = self.controls_scroll.clamp(0.0, max_scroll);
             return;
         }
 

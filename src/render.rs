@@ -139,6 +139,7 @@ pub fn draw_inventory(
     save_slot_selection: usize,
     save_slots: &[SaveSlotSummary],
     pending_load_slot: Option<usize>,
+    controls_scroll: f32,
 ) {
     clear_background(color_u8!(13, 16, 24, 255));
 
@@ -357,7 +358,7 @@ pub fn draw_inventory(
             pending_load_slot,
         );
     } else if active_tab == InventoryTab::Controls {
-        draw_controls_panel(content_x, content_y, content_w, content_h);
+        draw_controls_panel(content_x, content_y, content_w, content_h, controls_scroll);
     } else {
         let border_color = color_u8!(90, 103, 124, 255);
         let t = px(1.0);
@@ -788,71 +789,101 @@ fn draw_save_load_panel(
     }
 }
 
-fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h: f32) {
+fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h: f32, scroll_y: f32) {
     let border_color = color_u8!(90, 103, 124, 255);
     let t = px(1.0);
     draw_rectangle(content_x, content_y, content_w, content_h, color_u8!(18, 22, 30, 255));
     draw_rectangle_lines(content_x, content_y, content_w, content_h, t, border_color);
 
+    // Clip controls content to the panel area by only drawing rows that intersect the visible region.
+    // Leave padding so the last row isn't clipped.
+    let visible_top = content_y + px(30.0);
+    let visible_bottom = content_y + content_h - px(16.0);
+
     let header_color = color_u8!(197, 170, 119, 255);
     let value_color = color_u8!(214, 214, 214, 255);
     let dim_color = color_u8!(140, 148, 166, 255);
-    let col_label_size = px(11.0);
-    let col_value_size = px(13.0);
+    let header_size = px(11.0);
+    let value_size = px(13.0);
     let row_h = px(22.0);
     let section_gap = px(14.0);
-    let col_w = content_w / 2.0 - px(24.0);
     let col1_x = content_x + px(16.0);
-    let col2_x = content_x + content_w / 2.0 + px(8.0);
-    let mut y1 = content_y + px(18.0);
-    let mut y2 = content_y + px(18.0);
+    let col2_x = content_x + content_w * 0.55;
+    let mut y = content_y + px(30.0) - scroll_y;
 
-    let draw_section_header = |x: f32, y: f32, title: &str| {
-        draw_text(title, x, y + px(12.0), col_label_size, header_color);
-        draw_line(x, y + px(14.0), x + col_w, y + px(14.0), px(1.0), border_color);
+    let is_visible = |y: f32| -> bool {
+        let row_top = y;
+        let row_bottom = y + row_h;
+        row_bottom >= visible_top && row_top <= visible_bottom
     };
-    let draw_row = |x: f32, y: f32, key: &str, action: &str| {
-        let key_dims = measure_text(key, None, col_value_size as u16, 1.0);
-        draw_text(key, x, y + px(13.0), col_value_size, value_color);
-        draw_text(action, x + key_dims.width + px(8.0), y + px(13.0), col_value_size, dim_color);
+    let draw_section_header = |y: f32, title: &str| {
+        if !is_visible(y) {
+            return;
+        }
+        draw_text(title, col1_x, y + px(12.0), header_size, header_color);
+        draw_line(col1_x, y + px(14.0), content_x + content_w - px(16.0), y + px(14.0), px(1.0), border_color);
+    };
+    let draw_row = |y: f32, action: &str, key: &str| {
+        if !is_visible(y) {
+            return;
+        }
+        draw_text(action, col1_x, y + px(13.0), value_size, value_color);
+        draw_text(key, col2_x, y + px(13.0), value_size, dim_color);
     };
 
-    // Column 1
-    draw_section_header(col1_x, y1, "MOVEMENT");
-    y1 += section_gap;
-    draw_row(col1_x, y1, "WASD / Arrows", "move"); y1 += row_h;
-    draw_row(col1_x, y1, "Enter / Z / Space", "interact / confirm"); y1 += row_h;
-    draw_row(col1_x, y1, "X", "use side item"); y1 += row_h + section_gap;
+    draw_section_header(y, "MOVEMENT");
+    y += section_gap;
+    draw_row(y, "move", "WASD / Arrows"); y += row_h;
+    draw_row(y, "interact / confirm", "Enter / Z / Space"); y += row_h;
+    draw_row(y, "use side item", "X"); y += row_h + section_gap;
 
-    draw_section_header(col1_x, y1, "MENU NAVIGATION");
-    y1 += section_gap;
-    draw_row(col1_x, y1, "I / Tab", "open / close inventory"); y1 += row_h;
-    draw_row(col1_x, y1, "Tab / Q / E", "switch tab"); y1 += row_h;
-    draw_row(col1_x, y1, "W / S, Up / Down", "navigate list"); y1 += row_h;
-    draw_row(col1_x, y1, "ESC", "close / cancel"); y1 += row_h + section_gap;
+    draw_section_header(y, "MENU NAVIGATION");
+    y += section_gap;
+    draw_row(y, "open / close inventory", "I / Tab"); y += row_h;
+    draw_row(y, "switch tab", "Tab / Q / E"); y += row_h;
+    draw_row(y, "navigate list", "W / S, Up / Down"); y += row_h;
+    draw_row(y, "close / cancel", "ESC"); y += row_h + section_gap;
 
-    draw_section_header(col1_x, y1, "ITEMS");
-    y1 += section_gap;
-    draw_row(col1_x, y1, "Z / Enter / Space", "assign to MAIN slot"); y1 += row_h;
-    draw_row(col1_x, y1, "X", "assign to SIDE slot");
-    let _ = y1;
+    draw_section_header(y, "ITEMS");
+    y += section_gap;
+    draw_row(y, "assign to MAIN slot", "Z / Enter / Space"); y += row_h;
+    draw_row(y, "assign to SIDE slot", "X");
+    y += row_h + section_gap;
 
-    // Column 2
-    draw_section_header(col2_x, y2, "SAVE / LOAD");
-    y2 += section_gap;
-    draw_row(col2_x, y2, "Z / Enter", "save to selected slot"); y2 += row_h;
-    draw_row(col2_x, y2, "L", "load selected slot"); y2 += row_h;
-    draw_row(col2_x, y2, "Y / Enter", "confirm load dialog"); y2 += row_h;
-    draw_row(col2_x, y2, "N / ESC / X", "cancel dialog"); y2 += row_h + section_gap;
+    draw_section_header(y, "SAVE / LOAD");
+    y += section_gap;
+    draw_row(y, "save to selected slot", "Z / Enter"); y += row_h;
+    draw_row(y, "load selected slot", "L"); y += row_h;
+    draw_row(y, "confirm load dialog", "Y / Enter"); y += row_h;
+    draw_row(y, "cancel dialog", "N / ESC / X"); y += row_h + section_gap;
 
-    draw_section_header(col2_x, y2, "MAP");
-    y2 += section_gap;
-    draw_row(col2_x, y2, "W / S, Up / Down", "switch map view"); y2 += row_h + section_gap;
+    draw_section_header(y, "MAP");
+    y += section_gap;
+    draw_row(y, "switch map view", "W / S, Up / Down"); y += row_h + section_gap;
 
-    draw_section_header(col2_x, y2, "DEBUG");
-    y2 += section_gap;
-    draw_row(col2_x, y2, "~", "toggle dev console"); y2 += row_h;
-    let _ = y2;
+    draw_section_header(y, "DEBUG");
+    y += section_gap;
+    draw_row(y, "toggle dev console", "~"); y += row_h;
+    let _ = y;
+
+    // Scrollbar
+    let track_x = content_x + content_w - px(12.0);
+    let track_y = content_y + px(18.0);
+    let track_h = content_h - px(36.0);
+    draw_rectangle(track_x, track_y, px(4.0), track_h, color_u8!(50, 58, 74, 255));
+
+    // Use the final y position (before scroll) to compute total content height.
+    // The `y` variable includes scroll offset, so add scroll_y back to get the unscrolled position.
+    // Mirror the scroll range logic used in game.rs so the thumb stays within the track.
+    let total_height = section_gap * 6.0 + row_h * 21.0;
+    let visible_height = track_h;
+    if total_height > visible_height {
+        let max_scroll = (total_height - visible_height + row_h * 1.5).max(0.0);
+        let thumb_h = (visible_height * visible_height / total_height).max(px(18.0));
+        let thumb_y = track_y + (scroll_y / max_scroll) * (visible_height - thumb_h);
+        let thumb_y = thumb_y.clamp(track_y, track_y + visible_height - thumb_h);
+        draw_rectangle(track_x - px(1.0), thumb_y, px(6.0), thumb_h, color_u8!(168, 177, 194, 255));
+    }
 }
 
 fn draw_inventory_tab(
@@ -1312,7 +1343,7 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     let menu_start_y = px(18.0);
     let menu_panel_h = menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
     let menu_panel_x = cx - menu_panel_w / 2.0;
-    let menu_panel_y = 2.25 * GAME_H / 3.0;
+    let menu_panel_y = 3.0 * total_h / 4.0;
     draw_rectangle(
         menu_panel_x,
         menu_panel_y - px(8.0),
@@ -1370,7 +1401,7 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     draw_text(
         &version,
         GAME_W / 2.0 - version_dims.width / 2.0,
-        total_h - px(14.0),
+        total_h - px(8.0),
         version_font,
         LIGHTGRAY,
     );
