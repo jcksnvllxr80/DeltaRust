@@ -1,8 +1,8 @@
 use crate::audio::{Audio, MusicTrack};
 use crate::character::{CharacterAppearance, CharacterCreator};
 use crate::constants::{
-    ATTACK_DURATION, COLS, GAME_H, GAME_W, KNOCKBACK_FRAMES, KNOCKBACK_SPEED, PIXEL_SCALE,
-    PLAYER_SPEED, ROWS, TILE, TRANS_SPEED,
+    attack_duration, COLS, GAME_H, GAME_W, knockback_frames, knockback_speed, PIXEL_SCALE,
+    player_speed, ROWS, TILE, trans_speed,
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, ItemSlot,
@@ -19,13 +19,13 @@ fn px(value: f32) -> f32 {
     value * PIXEL_SCALE
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MapMode {
     Overworld,
     Dungeon,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum InteractionSource {
     CurrentTile(i32, i32),
     FrontTile(i32, i32),
@@ -115,6 +115,12 @@ impl Game {
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
+        crate::log_info!(
+            "game initialized dev_mode={} all_items_mode={} full_hearts_mode={}",
+            dev_mode,
+            all_items_mode,
+            full_hearts_mode
+        );
         game
     }
 
@@ -144,12 +150,18 @@ impl Game {
             GameState::DungeonExit => self.update_dungeon_exit(),
             GameState::Message => {
                 if start_pressed() {
+                    crate::log_debug!(
+                        "dismiss_message blocked_source={:?} text={:?}",
+                        self.active_interaction_source(),
+                        self.message_text.replace('\n', " | ")
+                    );
                     self.blocked_interaction = self.active_interaction_source();
                     self.state = GameState::Playing;
                 }
             }
             GameState::GameOver | GameState::Victory => {
                 if is_key_pressed(KeyCode::Enter) || is_key_pressed(KeyCode::Z) {
+                    crate::log_info!("returning to title from {:?}", self.state);
                     self.state = GameState::Title;
                     self.frame = 0;
                 }
@@ -226,6 +238,12 @@ impl Game {
         self.frame = 0;
         self.inventory_tab = InventoryTab::Inventory;
         self.inventory_selection = 0;
+        crate::log_info!(
+            "start_new_game dev_mode={} all_items_mode={} full_hearts_mode={}",
+            dev,
+            self.all_items_mode,
+            self.full_hearts_mode
+        );
     }
 
     fn apply_starting_loadout(&mut self) {
@@ -242,6 +260,7 @@ impl Game {
         self.sprites.set_hero_appearance(&self.creator.appearance);
         self.state = GameState::CharacterCreate;
         self.frame = 0;
+        crate::log_info!("enter_character_create");
     }
 
     fn update_character_create(&mut self) {
@@ -264,6 +283,7 @@ impl Game {
         if is_key_pressed(KeyCode::R) {
             self.creator.randomize();
             changed = true;
+            crate::log_debug!("character_creator_randomized");
         }
         if changed {
             self.sprites.set_hero_appearance(&self.creator.appearance);
@@ -272,6 +292,7 @@ impl Game {
             self.sprites.set_hero_appearance(&self.appearance);
             self.state = GameState::Title;
             self.frame = 0;
+            crate::log_info!("character_create_cancelled");
             return;
         }
         if start_pressed() {
@@ -280,6 +301,7 @@ impl Game {
             self.state = GameState::Title;
             self.title_menu_selection = 0;
             self.frame = 0;
+            crate::log_info!("character_create_saved");
         }
     }
 
@@ -288,6 +310,7 @@ impl Game {
             self.inventory_tab = InventoryTab::Inventory;
             self.inventory_selection = 0;
             self.state = GameState::Inventory;
+            crate::log_debug!("open_inventory selection_reset=true");
             return;
         }
         if let Some((dir, nx, ny)) = self.update_player() {
@@ -347,6 +370,7 @@ impl Game {
             Some((TileInteraction::Victory, source)) if !self.is_interaction_blocked(source) => {
                 self.state = GameState::Victory;
                 self.frame = 0;
+                crate::log_info!("victory_triggered screen=({}, {})", self.world.screen_x, self.world.screen_y);
                 return;
             }
             _ => {}
@@ -360,12 +384,14 @@ impl Game {
         if self.player.hp <= 0 {
             self.state = GameState::GameOver;
             self.frame = 0;
+            crate::log_warn!("game_over screen=({}, {})", self.world.screen_x, self.world.screen_y);
         }
     }
 
     fn update_inventory(&mut self) {
         if inventory_pressed() || is_key_pressed(KeyCode::Escape) {
             self.state = GameState::Playing;
+            crate::log_debug!("close_inventory");
             return;
         }
         if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
@@ -381,6 +407,11 @@ impl Game {
                     MapMode::Overworld
                 };
             }
+            crate::log_verbose!(
+                "inventory_tab_switched tab={:?} map_mode={:?}",
+                self.inventory_tab,
+                self.inventory_map_mode
+            );
             return;
         }
 
@@ -393,6 +424,7 @@ impl Game {
             let map_tab = Rect::new(outer_x + px(118.0), outer_y + px(30.0), px(80.0), px(22.0));
             if inv_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Inventory;
+                crate::log_verbose!("inventory_tab_clicked tab=Inventory");
                 return;
             }
             if map_tab.contains(vec2(mx, my)) {
@@ -402,6 +434,10 @@ impl Game {
                 } else {
                     MapMode::Overworld
                 };
+                crate::log_verbose!(
+                    "inventory_tab_clicked tab=Map map_mode={:?}",
+                    self.inventory_map_mode
+                );
                 return;
             }
         }
@@ -411,9 +447,11 @@ impl Game {
             if self.world.in_dungeon {
                 if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
                     self.inventory_map_mode = MapMode::Overworld;
+                    crate::log_verbose!("inventory_map_mode=Overworld");
                 }
                 if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
                     self.inventory_map_mode = MapMode::Dungeon;
+                    crate::log_verbose!("inventory_map_mode=Dungeon");
                 }
 
                 if is_mouse_button_pressed(MouseButton::Left) {
@@ -432,9 +470,11 @@ impl Game {
                     );
                     if overworld_btn.contains(vec2(mx, my)) {
                         self.inventory_map_mode = MapMode::Overworld;
+                        crate::log_verbose!("inventory_map_button=Overworld");
                     }
                     if dungeon_btn.contains(vec2(mx, my)) {
                         self.inventory_map_mode = MapMode::Dungeon;
+                        crate::log_verbose!("inventory_map_button=Dungeon");
                     }
                 }
             } else {
@@ -629,7 +669,7 @@ impl Game {
     }
 
     fn update_transition(&mut self) {
-        self.transition.progress += TRANS_SPEED;
+        self.transition.progress += trans_speed();
         let total = match self.transition.dir {
             Some(Dir::Left | Dir::Right) => GAME_W,
             Some(Dir::Up | Dir::Down) => GAME_H,
@@ -644,12 +684,19 @@ impl Game {
             self.reset_items();
             self.load_screen_items();
             self.state = GameState::Playing;
+            crate::log_debug!(
+                "transition_complete dir={:?} new_screen=({}, {})",
+                self.transition.dir,
+                self.transition.new_screen_x,
+                self.transition.new_screen_y
+            );
         }
     }
 
     fn update_dungeon_enter(&mut self) {
         self.transition.progress += 4.0;
         if self.transition.progress >= 60.0 {
+            crate::log_info!("dungeon_enter_complete id={}", self.pending_dungeon);
             self.world.enter_dungeon(self.pending_dungeon);
             self.player.x = 7.0 * TILE;
             self.player.y = 9.0 * TILE;
@@ -667,6 +714,11 @@ impl Game {
     fn update_dungeon_exit(&mut self) {
         self.transition.progress += 4.0;
         if self.transition.progress >= 60.0 {
+            crate::log_info!(
+                "dungeon_exit_complete target_screen=({}, {})",
+                self.dungeon_overworld_x,
+                self.dungeon_overworld_y
+            );
             self.world
                 .exit_dungeon(self.dungeon_overworld_x, self.dungeon_overworld_y);
             self.player.x = 5.0 * TILE;
@@ -701,7 +753,7 @@ impl Game {
         }
         if self.player.attack_timer > 0 {
             self.player.attack_timer -= 1;
-            if self.player.attack_timer == ATTACK_DURATION - 3 {
+            if self.player.attack_timer == attack_duration() - 3 {
                 self.sword_hit_check();
             }
             if self.player.attack_timer <= 0 {
@@ -722,22 +774,22 @@ impl Game {
         let mut dx = 0.0;
         let mut dy = 0.0;
         if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-            dy = -PLAYER_SPEED;
+            dy = -player_speed();
             self.player.dir = Dir::Up;
             self.player.last_axis = Some('y');
         }
         if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
-            dy = PLAYER_SPEED;
+            dy = player_speed();
             self.player.dir = Dir::Down;
             self.player.last_axis = Some('y');
         }
         if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-            dx = -PLAYER_SPEED;
+            dx = -player_speed();
             self.player.dir = Dir::Left;
             self.player.last_axis = Some('x');
         }
         if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-            dx = PLAYER_SPEED;
+            dx = player_speed();
             self.player.dir = Dir::Right;
             self.player.last_axis = Some('x');
         }
@@ -1157,7 +1209,7 @@ impl Game {
                     TileType::Grass
                 },
             );
-            if rand::gen_range(0.0, 1.0) < 0.2 {
+            if rand::gen_range(0.0, 1.0) < crate::config::get().combat.bush_heart_drop_chance {
                 self.spawn_pickup(
                     col as f32 * TILE + px(3.0),
                     row as f32 * TILE + px(3.0),
@@ -1181,7 +1233,7 @@ impl Game {
         match item_type {
             PickupType::Bombs => {
                 self.player.has_bombs = true;
-                self.player.bomb_count = 8;
+                self.player.bomb_count = crate::config::get().combat.bomb_starting_ammo;
                 self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
                 self.show_message("You found BOMBS!");
             }
@@ -1191,7 +1243,7 @@ impl Game {
                 self.show_message("Heart Container!\nHP increased!");
             }
             PickupType::BombAmmo => {
-                self.player.bomb_count = (self.player.bomb_count + 4).min(self.player.max_bombs);
+                self.player.bomb_count = (self.player.bomb_count + crate::config::get().combat.bomb_chest_ammo).min(self.player.max_bombs);
                 self.show_message("Found 4 bombs!");
             }
             PickupType::Key => {
@@ -1370,11 +1422,23 @@ impl Game {
         self.pending_dungeon = world_data::dungeon_at(self.world.screen_x, self.world.screen_y);
         self.transition.progress = 0.0;
         self.state = GameState::DungeonEnter;
+        crate::log_info!(
+            "begin_dungeon_enter id={} from_screen=({}, {})",
+            self.pending_dungeon,
+            self.dungeon_overworld_x,
+            self.dungeon_overworld_y
+        );
     }
 
     fn exit_dungeon(&mut self) {
         self.transition.progress = 0.0;
         self.state = GameState::DungeonExit;
+        crate::log_info!(
+            "begin_dungeon_exit from_dungeon={} to_screen=({}, {})",
+            self.world.dungeon_id,
+            self.dungeon_overworld_x,
+            self.dungeon_overworld_y
+        );
     }
 
     fn enter_interior(&mut self) {
@@ -1406,6 +1470,7 @@ impl Game {
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
+        crate::log_info!("enter_interior id={} spawn=({}, {})", interior_id, spawn_x, spawn_y);
     }
 
     fn exit_interior(&mut self) {
@@ -1419,6 +1484,7 @@ impl Game {
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
+        crate::log_info!("exit_interior id={}", interior_id);
     }
 
     fn handle_cave(&mut self) {
@@ -1429,6 +1495,14 @@ impl Game {
     }
 
     fn handle_cave_kind(&mut self, cave_kind: world_data::CaveKind) {
+        crate::log_debug!(
+            "handle_cave_kind kind={:?} screen=({}, {}) interior={} dungeon={}",
+            cave_kind,
+            self.world.screen_x,
+            self.world.screen_y,
+            self.world.in_interior,
+            self.world.in_dungeon
+        );
         let cave_key = if self.world.in_interior {
             format!("cave:{}", self.world.interior_id)
         } else {
@@ -1460,9 +1534,9 @@ impl Game {
             world_data::CaveKind::Shop => {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
-                    self.player.max_bombs = 16;
+                    self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
                     self.player.bomb_count =
-                        (self.player.bomb_count + 8).min(self.player.max_bombs);
+                        (self.player.bomb_count + crate::config::get().combat.bomb_starting_ammo).min(self.player.max_bombs);
                     self.show_message("Bomb bag upgrade!\nMax bombs increased!");
                 } else {
                     self.show_message("The shop is closed.");
@@ -1551,12 +1625,12 @@ impl Game {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     if !self.player.has_bombs {
                         self.player.has_bombs = true;
-                        self.player.bomb_count = 8;
+                        self.player.bomb_count = crate::config::get().combat.bomb_starting_ammo;
                         self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
                         self.show_message("You found BOMBS!");
                     } else {
                         self.player.bomb_count =
-                            (self.player.bomb_count + 8).min(self.player.max_bombs);
+                            (self.player.bomb_count + crate::config::get().combat.bomb_starting_ammo).min(self.player.max_bombs);
                         self.show_message("Found 8 bombs!");
                     }
                 } else {
@@ -1603,7 +1677,7 @@ impl Game {
     fn update_items(&mut self) {
         for pickup in &mut self.pickups {
             pickup.timer += 1;
-            if pickup_times_out(pickup.pickup_type) && pickup.timer > 600 {
+            if pickup_times_out(pickup.pickup_type) && pickup.timer > crate::config::get().combat.pickup_lifetime_frames {
                 pickup.collected = true;
             }
         }
@@ -1613,7 +1687,7 @@ impl Game {
                 bomb.timer -= 1;
                 if bomb.timer <= 0 {
                     bomb.exploded = true;
-                    bomb.explosion_timer = 20;
+                    bomb.explosion_timer = crate::config::get().combat.bomb_explosion_frames;
                     exploded.push((bomb.x, bomb.y, bomb.w, bomb.h));
                 }
             } else {
@@ -1652,7 +1726,7 @@ impl Game {
             for col in 0..COLS {
                 let tx = col as f32 * TILE + TILE / 2.0;
                 let ty = row as f32 * TILE + TILE / 2.0;
-                if vec2(tx - cx, ty - cy).length() < 24.0
+                if vec2(tx - cx, ty - cy).length() < crate::config::get().combat.bomb_radius
                     && self.world.tiles[row][col] == TileType::Cracked
                 {
                     self.world.destroy_tile(
@@ -1738,16 +1812,16 @@ impl Game {
             return;
         }
         self.player.hp -= amount;
-        self.player.invuln_timer = 60;
-        self.player.hurt_timer = KNOCKBACK_FRAMES;
+        self.player.invuln_timer = crate::config::get().player.invuln_frames;
+        self.player.hurt_timer = knockback_frames();
         self.player.state = PlayerState::Hurt;
         self.player.knock_dx = 0.0;
         self.player.knock_dy = 0.0;
         match from_dir {
-            Dir::Up => self.player.knock_dy = KNOCKBACK_SPEED,
-            Dir::Down => self.player.knock_dy = -KNOCKBACK_SPEED,
-            Dir::Left => self.player.knock_dx = KNOCKBACK_SPEED,
-            Dir::Right => self.player.knock_dx = -KNOCKBACK_SPEED,
+            Dir::Up => self.player.knock_dy = knockback_speed(),
+            Dir::Down => self.player.knock_dy = -knockback_speed(),
+            Dir::Left => self.player.knock_dx = knockback_speed(),
+            Dir::Right => self.player.knock_dx = -knockback_speed(),
         }
         self.audio.player_hit();
     }
@@ -1787,7 +1861,7 @@ impl Game {
             EnemyType::Boss => {
                 self.spawn_pickup(enemy.x + 4.0, enemy.y + 4.0, PickupType::HeartContainer);
             }
-            _ if roll < 0.25 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart),
+            _ if roll < crate::config::get().combat.enemy_heart_drop_chance => self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart),
             _ if roll < 0.35 => self.spawn_pickup(enemy.x, enemy.y, PickupType::BombAmmo),
             _ if roll < 0.5 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Gem),
             _ => {}
@@ -1856,12 +1930,12 @@ impl Game {
             PickupType::BombAmmo => {
                 if self.player.has_bombs {
                     self.player.bomb_count =
-                        (self.player.bomb_count + 4).min(self.player.max_bombs);
+                        (self.player.bomb_count + crate::config::get().combat.bomb_chest_ammo).min(self.player.max_bombs);
                 }
             }
             PickupType::Bombs => {
                 self.player.has_bombs = true;
-                self.player.bomb_count = 8;
+                self.player.bomb_count = crate::config::get().combat.bomb_starting_ammo;
                 self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
                 self.show_message("You found BOMBS!");
             }
@@ -2069,6 +2143,13 @@ impl Game {
         }) else {
             return false;
         };
+        crate::log_debug!(
+            "use_ladder_point from=({}, {}) to=({}, {})",
+            tile_x,
+            tile_y,
+            prop.target_tile_x.unwrap(),
+            prop.target_tile_y.unwrap()
+        );
         self.player.x = prop.target_tile_x.unwrap() as f32 * TILE;
         self.player.y = prop.target_tile_y.unwrap() as f32 * TILE;
         self.show_message("You climb with the LADDER.");
@@ -2083,6 +2164,7 @@ impl Game {
         }) else {
             return false;
         };
+        crate::log_debug!("interact_npc kind={:?} at=({}, {})", npc_kind, tile_x, tile_y);
         self.handle_npc(npc_kind);
         true
     }
@@ -2184,10 +2266,10 @@ impl Game {
                 }
             }
             NpcKind::Sael => {
-                if self.player.max_bombs < 16 {
+                if self.player.max_bombs < crate::config::get().combat.bomb_max_capacity {
                     if self.spend_gems(20) {
-                        self.player.max_bombs = 16;
-                        self.player.bomb_count = self.player.bomb_count.max(8);
+                        self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
+                        self.player.bomb_count = self.player.bomb_count.max(crate::config::get().combat.bomb_starting_ammo);
                         self.show_message("Sael upgrades your bomb bag.\nMax bombs increased!");
                     } else {
                         self.show_message("Sael: Deep gear isn't cheap.\n20 gems for the upgrade.");
@@ -2254,6 +2336,7 @@ impl Game {
         self.message_text = text.to_string();
         self.audio.message();
         self.state = GameState::Message;
+        crate::log_debug!("show_message text={:?}", text.replace('\n', " | "));
     }
 
     fn spawn_pickup(&mut self, x: f32, y: f32, pickup_type: PickupType) {
@@ -2309,7 +2392,7 @@ impl Game {
             y,
             w: px(12.0),
             h: px(12.0),
-            timer: 90,
+            timer: crate::config::get().combat.bomb_fuse_frames,
             exploded: false,
             explosion_timer: 0,
         });
@@ -2331,12 +2414,13 @@ impl Game {
 }
 
 fn create_enemy(spawn: EnemySpawn) -> Enemy {
+    let ecfg = &crate::config::get().enemies;
     let (hp, speed, w, h, shoot_cooldown) = match spawn.enemy_type {
-        EnemyType::Slime => (1, 0.4 * PIXEL_SCALE, px(12.0), px(12.0), 0),
-        EnemyType::Octorok => (2, 0.6 * PIXEL_SCALE, px(14.0), px(14.0), 120),
-        EnemyType::Bat => (1, 0.4 * PIXEL_SCALE, px(10.0), px(10.0), 0),
-        EnemyType::Darknut => (3, 0.7 * PIXEL_SCALE, px(14.0), px(14.0), 0),
-        EnemyType::Boss => (12, 0.5 * PIXEL_SCALE, px(24.0), px(24.0), 60),
+        EnemyType::Slime => (ecfg.slime.hp, ecfg.slime.speed * PIXEL_SCALE, px(12.0), px(12.0), 0),
+        EnemyType::Octorok => (ecfg.octorok.hp, ecfg.octorok.speed * PIXEL_SCALE, px(14.0), px(14.0), 120),
+        EnemyType::Bat => (ecfg.bat.hp, ecfg.bat.speed * PIXEL_SCALE, px(10.0), px(10.0), 0),
+        EnemyType::Darknut => (ecfg.darknut.hp, ecfg.darknut.speed * PIXEL_SCALE, px(14.0), px(14.0), 0),
+        EnemyType::Boss => (ecfg.boss.hp, ecfg.boss.speed * PIXEL_SCALE, px(24.0), px(24.0), 60),
     };
     Enemy {
         enemy_type: spawn.enemy_type,

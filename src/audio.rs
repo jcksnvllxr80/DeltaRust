@@ -90,7 +90,7 @@ impl Audio {
             return;
         };
         sink.append(decoder.repeat_infinite());
-        sink.set_volume(0.45);
+        sink.set_volume(crate::config::get().audio.music_volume);
         self.music_sink = Some(sink);
         self.current_music = Some(track);
     }
@@ -103,31 +103,31 @@ impl Audio {
     }
 
     pub fn sword(&self) {
-        self.play_effect(SoundId::Sword, 0.7);
+        self.play_effect(SoundId::Sword, crate::config::get().audio.sfx_volume);
     }
 
     pub fn pickup(&self) {
-        self.play_effect(SoundId::Pickup, 0.7);
+        self.play_effect(SoundId::Pickup, crate::config::get().audio.sfx_volume);
     }
 
     pub fn currency(&self) {
-        self.play_effect(SoundId::Currency, 0.7);
+        self.play_effect(SoundId::Currency, crate::config::get().audio.sfx_volume);
     }
 
     pub fn door(&self) {
-        self.play_effect(SoundId::Door, 0.7);
+        self.play_effect(SoundId::Door, crate::config::get().audio.sfx_volume);
     }
 
     pub fn enemy_die(&self) {
-        self.play_effect(SoundId::EnemyDie, 0.7);
+        self.play_effect(SoundId::EnemyDie, crate::config::get().audio.sfx_volume);
     }
 
     pub fn player_hit(&self) {
-        self.play_effect(SoundId::PlayerHit, 0.7);
+        self.play_effect(SoundId::PlayerHit, crate::config::get().audio.sfx_volume);
     }
 
     pub fn message(&self) {
-        self.play_effect(SoundId::Message, 0.7);
+        self.play_effect(SoundId::Message, crate::config::get().audio.sfx_volume);
     }
 
     fn play_effect(&self, sound_id: SoundId, volume: f32) {

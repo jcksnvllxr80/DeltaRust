@@ -71,10 +71,11 @@ pub fn draw_inventory(
     let outer_y = px(14.0);
     let outer_w = GAME_W - px(32.0);
     let outer_h = GAME_H + HUD_H - px(28.0);
+    let location_font = px(10.0);
     let content_x = outer_x + px(12.0);
-    let content_y = outer_y + px(52.0);
+    let content_y = outer_y + px(64.0);
     let content_w = outer_w - px(24.0);
-    let content_h = outer_h - px(64.0);
+    let content_h = outer_h - px(76.0);
 
     draw_rectangle(
         outer_x,
@@ -154,8 +155,8 @@ pub fn draw_inventory(
     draw_text(
         &location,
         outer_x + px(14.0),
-        outer_y + px(58.0),
-        px(14.0),
+        content_y - px(2.0),
+        location_font,
         color_u8!(214, 214, 214, 255),
     );
     if show_map_tab {

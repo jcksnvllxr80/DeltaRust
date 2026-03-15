@@ -45,6 +45,12 @@ impl World {
             dungeon_data: build_dungeons(),
         };
         world.load_screen(start_x, start_y);
+        crate::log_info!(
+            "world initialized start_screen=({}, {}) dev_mode={}",
+            start_x,
+            start_y,
+            dev_mode
+        );
         world
     }
 
@@ -70,6 +76,16 @@ impl World {
         self.screen_x = sx;
         self.screen_y = sy;
         let key = screen_key(sx, sy);
+        crate::log_verbose!(
+            "load_screen screen=({}, {}) key={} dungeon={} dungeon_id={} interior={} interior_id={}",
+            sx,
+            sy,
+            key,
+            self.in_dungeon,
+            self.dungeon_id,
+            self.in_interior,
+            self.interior_id
+        );
         self.visited.insert(self.visit_key(&key));
         self.tiles = if self.in_interior {
             self.interior_data
@@ -156,6 +172,14 @@ impl World {
 
     pub fn destroy_tile(&mut self, col: usize, row: usize, new_tile: TileType) {
         self.tiles[row][col] = new_tile;
+        crate::log_debug!(
+            "destroy_tile screen=({}, {}) row={} col={} new_tile={:?}",
+            self.screen_x,
+            self.screen_y,
+            row,
+            col,
+            new_tile
+        );
         let key = screen_key(self.screen_x, self.screen_y);
         self.destroyed_tiles
             .entry(self.persist_key(&key))
@@ -164,6 +188,15 @@ impl World {
     }
 
     pub fn mark_chest_opened(&mut self, col: usize, row: usize) {
+        crate::log_debug!(
+            "mark_chest_opened screen=({}, {}) row={} col={} dungeon={} interior={}",
+            self.screen_x,
+            self.screen_y,
+            row,
+            col,
+            self.in_dungeon,
+            self.in_interior
+        );
         let key = screen_key(self.screen_x, self.screen_y);
         self.opened_chests
             .entry(self.persist_key(&key))
@@ -177,6 +210,12 @@ impl World {
     }
 
     pub fn enter_dungeon(&mut self, id: i32) {
+        crate::log_info!(
+            "world.enter_dungeon id={} from_screen=({}, {})",
+            id,
+            self.screen_x,
+            self.screen_y
+        );
         self.in_interior = false;
         self.interior_id.clear();
         self.in_dungeon = true;
@@ -186,12 +225,24 @@ impl World {
     }
 
     pub fn exit_dungeon(&mut self, x: i32, y: i32) {
+        crate::log_info!(
+            "world.exit_dungeon to_screen=({}, {}) from_dungeon={}",
+            x,
+            y,
+            self.dungeon_id
+        );
         self.in_dungeon = false;
         self.dungeon_id = 0;
         self.load_screen(x, y);
     }
 
     pub fn enter_interior(&mut self, id: &str) {
+        crate::log_info!(
+            "world.enter_interior id={} from_screen=({}, {})",
+            id,
+            self.screen_x,
+            self.screen_y
+        );
         self.in_dungeon = false;
         self.dungeon_id = 0;
         self.in_interior = true;
@@ -200,6 +251,12 @@ impl World {
     }
 
     pub fn exit_interior(&mut self) {
+        crate::log_info!(
+            "world.exit_interior id={} returning_to_screen=({}, {})",
+            self.interior_id,
+            self.screen_x,
+            self.screen_y
+        );
         self.in_interior = false;
         self.interior_id.clear();
         self.load_screen(self.screen_x, self.screen_y);

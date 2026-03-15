@@ -1,4 +1,4 @@
-use crate::constants::{ATTACK_DURATION, PIXEL_SCALE, PLAYER_FULL_HEARTS_HP, PLAYER_MAX_HP, TILE};
+use crate::constants::{attack_duration, PIXEL_SCALE, player_full_hearts_hp, player_max_hp, TILE};
 use macroquad::prelude::Rect;
 use std::collections::{HashMap, HashSet};
 
@@ -281,8 +281,8 @@ impl Player {
         Self {
             x: 7.0 * TILE,
             y: 5.0 * TILE,
-            hp: PLAYER_MAX_HP,
-            max_hp: PLAYER_MAX_HP,
+            hp: player_max_hp(),
+            max_hp: player_max_hp(),
             dir: Dir::Down,
             state: PlayerState::Idle,
             attack_timer: 0,
@@ -343,7 +343,7 @@ impl Player {
     }
 
     pub fn grant_full_hearts(&mut self) {
-        self.max_hp = PLAYER_FULL_HEARTS_HP;
+        self.max_hp = player_full_hearts_hp();
         self.hp = self.max_hp;
     }
 
@@ -506,7 +506,7 @@ impl Player {
 
     pub fn begin_attack(&mut self) {
         self.state = PlayerState::Attacking;
-        self.attack_timer = ATTACK_DURATION;
+        self.attack_timer = attack_duration();
     }
 
     pub fn hitbox(&self) -> Rect {

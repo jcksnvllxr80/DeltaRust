@@ -1,0 +1,58 @@
+# DeltaRust Configuration
+# ========================
+# All values shown are the defaults. Uncomment and change to customize.
+# CLI flags (--dev-mode, --all-items, --full-hearts, --log-level) override
+# these settings.
+
+[general]
+log_dir = "logs"
+log_time_format = "YYYY/MM/DDTHH:MM:SSZ"
+log_level = "debug"          # verbose | debug | info | warn | error | critical
+dev_mode  = false           # invulnerability, debug overlays
+all_items = false           # start with every item unlocked
+full_hearts = false         # start with maximum hearts
+
+[audio]
+# music_volume = 0.45         # 0.0 – 1.0
+# sfx_volume   = 0.7          # 0.0 – 1.0
+
+[player]
+# speed            = 0.8      # movement speed multiplier (× pixel_scale)
+# max_hp           = 6        # starting hearts
+# full_hearts_hp   = 32       # HP when full_hearts is enabled
+# attack_frames    = 12       # sword swing duration (frames)
+# invuln_frames    = 60       # invulnerability after taking damage (frames)
+# knockback_speed  = 2.5      # knockback velocity multiplier (× pixel_scale)
+# knockback_frames = 10       # knockback duration (frames)
+# transition_speed = 14.0     # screen scroll speed multiplier (× pixel_scale)
+
+[combat]
+# bomb_fuse_frames      = 90  # frames before a bomb explodes
+# bomb_explosion_frames = 20  # explosion visual duration (frames)
+# bomb_radius           = 24.0  # blast radius in pixels
+# bomb_starting_ammo    = 8   # bombs granted when first found
+# bomb_chest_ammo       = 4   # bombs granted from chests
+# bomb_max_capacity     = 16  # max bombs after bag upgrade
+# bush_heart_drop_chance  = 0.2   # 0.0 – 1.0
+# enemy_heart_drop_chance = 0.25  # 0.0 – 1.0
+# pickup_lifetime_frames  = 600   # frames before ground pickups despawn
+
+[enemies.slime]
+# hp    = 1
+# speed = 0.4
+
+[enemies.octorok]
+# hp    = 2
+# speed = 0.6
+
+[enemies.bat]
+# hp    = 1
+# speed = 0.4
+
+[enemies.darknut]
+# hp    = 3
+# speed = 0.7
+
+[enemies.boss]
+# hp    = 12
+# speed = 0.5

@@ -10,13 +10,30 @@ pub const GAME_W: f32 = TILE * COLS as f32;
 pub const GAME_H: f32 = TILE * ROWS as f32;
 pub const WORLD_W: i32 = 14;
 pub const WORLD_H: i32 = 15;
-pub const PLAYER_SPEED: f32 = 0.8 * PIXEL_SCALE;
-pub const PLAYER_MAX_HP: i32 = 6;
-pub const PLAYER_FULL_HEARTS_HP: i32 = 32;
-pub const ATTACK_DURATION: i32 = 12;
-pub const KNOCKBACK_SPEED: f32 = 2.5 * PIXEL_SCALE;
-pub const KNOCKBACK_FRAMES: i32 = 10;
-pub const TRANS_SPEED: f32 = 14.0 * PIXEL_SCALE;
+
+// --- Config-driven accessors (fall back to defaults if config not yet loaded) ---
+
+pub fn player_speed() -> f32 {
+    crate::config::get().player.speed * PIXEL_SCALE
+}
+pub fn player_max_hp() -> i32 {
+    crate::config::get().player.max_hp
+}
+pub fn player_full_hearts_hp() -> i32 {
+    crate::config::get().player.full_hearts_hp
+}
+pub fn attack_duration() -> i32 {
+    crate::config::get().player.attack_frames
+}
+pub fn knockback_speed() -> f32 {
+    crate::config::get().player.knockback_speed * PIXEL_SCALE
+}
+pub fn knockback_frames() -> i32 {
+    crate::config::get().player.knockback_frames
+}
+pub fn trans_speed() -> f32 {
+    crate::config::get().player.transition_speed * PIXEL_SCALE
+}
 
 pub fn window_conf() -> Conf {
     Conf {
