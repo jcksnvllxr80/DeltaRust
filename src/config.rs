@@ -103,7 +103,7 @@ impl Default for General {
         Self {
             log_level: "info".into(),
             log_dir: "logs".into(),
-            log_time_format: "[year]/[month]/[day]T[hour]:[minute]:[second].[subsecond]Z".into(),
+            log_time_format: "YYYY/MM/DDTHH:MM:SS.sssZ".into(),
             dev_mode: false,
             all_items: false,
             full_hearts: false,

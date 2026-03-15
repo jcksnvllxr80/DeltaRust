@@ -6,7 +6,7 @@
 
 [general]
 log_dir = "logs"
-log_time_format = "YYYY/MM/DDTHH:MM:SSZ"
+# log_time_format = "YYYY/MM/DDTHH:MM:SS.sssZ" # .uuuuuu for microseconds, .sss for milliseconds, or "epoch"/"epoch_ms"
 log_level = "debug"          # verbose | debug | info | warn | error | critical
 dev_mode  = false           # invulnerability, debug overlays
 all_items = false           # start with every item unlocked

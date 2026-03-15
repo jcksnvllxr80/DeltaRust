@@ -63,6 +63,7 @@ struct Logger {
 static LOGGER: OnceLock<Logger> = OnceLock::new();
 static TIME_FORMAT: OnceLock<String> = OnceLock::new();
 static TIME_FORMAT_EPOCH: OnceLock<bool> = OnceLock::new();
+static TIME_FORMAT_EPOCH_MS: OnceLock<bool> = OnceLock::new();
 
 pub fn default_log_path() -> PathBuf {
     let dir = crate::config::try_get()
@@ -117,18 +118,49 @@ pub fn current_level() -> LogLevel {
         .unwrap_or(LogLevel::Info)
 }
 
-fn init_time_format() {
-    let fmt = crate::config::try_get()
-        .map(|c| c.general.log_time_format.trim().to_string())
-        .unwrap_or_else(|| "[year]/[month]/[day]T[hour]:[minute]:[second].[subsecond]Z".into());
+fn translate_time_format(fmt: &str) -> String {
+    // Allow a simple user-facing format like "YYYY/MM/DDTHH:MM:SS.sssZ" by translating
+    // it into `time` crate's format_description syntax.
+    fmt.replace("YYYY", "[year]")
+        .replace("MM", "[month]")
+        .replace("DD", "[day]")
+        .replace("HH", "[hour]")
+        .replace("mm", "[minute]")
+        .replace("SS", "[second]")
+        // `sss` should mean milliseconds (3 digits).
+        .replace("sss", "[subsecond digits:3]")
+}
 
-    let is_epoch = fmt.eq_ignore_ascii_case("epoch") || fmt.eq_ignore_ascii_case("unix");
+fn init_time_format() {
+    let raw_fmt = crate::config::try_get()
+        .map(|c| c.general.log_time_format.trim().to_string())
+        .unwrap_or_else(|| "YYYY/MM/DDTHH:MM:SS.sssZ".into());
+
+    let is_epoch = raw_fmt.eq_ignore_ascii_case("epoch") || raw_fmt.eq_ignore_ascii_case("unix");
+    let is_epoch_ms = raw_fmt.eq_ignore_ascii_case("epoch_ms")
+        || raw_fmt.eq_ignore_ascii_case("ms")
+        || raw_fmt.eq_ignore_ascii_case("milliseconds");
+
     let _ = TIME_FORMAT_EPOCH.set(is_epoch);
+    let _ = TIME_FORMAT_EPOCH_MS.set(is_epoch_ms);
+
+    let fmt = if is_epoch || is_epoch_ms {
+        // Store something usable but unused in epoch modes.
+        "YYYY/MM/DDTHH:MM:SS.sssZ".to_string()
+    } else {
+        translate_time_format(&raw_fmt)
+    };
+
     let _ = TIME_FORMAT.set(fmt);
 }
 
 fn timestamp() -> String {
-    if *TIME_FORMAT_EPOCH.get_or_init(|| false) {
+    if *TIME_FORMAT_EPOCH_MS.get_or_init(|| false) {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis().to_string())
+            .unwrap_or_else(|_| "0".to_string())
+    } else if *TIME_FORMAT_EPOCH.get_or_init(|| false) {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_secs().to_string())
