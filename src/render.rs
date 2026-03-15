@@ -1369,8 +1369,8 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     let version_dims = measure_text(&version, None, version_font as u16, 1.0);
     draw_text(
         &version,
-        GAME_W - px(10.0) - version_dims.width,
-        px(14.0),
+        GAME_W / 2.0 - version_dims.width / 2.0,
+        total_h - px(14.0),
         version_font,
         LIGHTGRAY,
     );
