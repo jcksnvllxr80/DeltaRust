@@ -137,6 +137,7 @@ pub fn draw_inventory(
     frame: i32,
     save_message_timer: i32,
     save_slot_selection: usize,
+    save_load_action_selected: crate::game::SaveLoadAction,
     save_slots: &[SaveSlotSummary],
     pending_save_slot: Option<usize>,
     pending_load_slot: Option<usize>,
@@ -179,7 +180,7 @@ pub fn draw_inventory(
     let pause_help = match active_tab {
         InventoryTab::Inventory => "I / ESC close   TAB switch tab   Z / Enter main   X side",
         InventoryTab::Map => "I / ESC close   TAB switch tab",
-        InventoryTab::SaveLoad => "I/ESC close   TAB switch   Z/Ent save   L load   Up/Down slot",
+        InventoryTab::SaveLoad => "I/ESC close   TAB switch   Z/Enter action   Up/Down slot",
         InventoryTab::Controls => "I / ESC close   TAB switch tab",
     };
     draw_text(
@@ -354,6 +355,7 @@ pub fn draw_inventory(
             content_w,
             content_h,
             save_slot_selection,
+            save_load_action_selected,
             save_slots,
             save_message_timer,
             pending_save_slot,
@@ -542,6 +544,7 @@ fn draw_save_load_panel(
     content_w: f32,
     content_h: f32,
     save_slot_selection: usize,
+    save_load_action_selected: crate::game::SaveLoadAction,
     save_slots: &[SaveSlotSummary],
     save_message_timer: i32,
     pending_save_slot: Option<usize>,
@@ -593,13 +596,14 @@ fn draw_save_load_panel(
     // the detail panel on the right. This avoids the detail panel being pushed
     // offscreen on smaller resolutions.
     let padding = px(16.0);
-    let list_w = (content_w - padding * 3.0) / 2.0;
+    let gap_between = px(8.0);  // Reduced gap between left and right panels
+    let list_w = (content_w - padding * 2.0 - gap_between) / 2.0;
     let detail_w = list_w;
     let row_x = content_x + padding;
     let row_y = content_y + px(24.0);
     let row_w = list_w - px(24.0);
     let row_h = px(58.0);
-    let detail_x = row_x + list_w + padding;
+    let detail_x = row_x + list_w + gap_between;
     let row_gap = px(10.0);
     let selected = save_slot_selection.min(save_slots.len().saturating_sub(1));
     let selected_slot = save_slots.get(selected);
@@ -673,18 +677,26 @@ fn draw_save_load_panel(
             px(18.0),
             WHITE,
         );
-        draw_text(
-            &fit_text_to_width(&slot_info.location, detail_w - px(32.0), px(16.0)),
+        
+        // Use draw_wrapped_text for location to handle longer text
+        draw_wrapped_text(
+            &slot_info.location,
             detail_x + px(16.0),
             content_y + px(74.0),
+            detail_w - px(32.0),
             px(16.0),
+            px(18.0),
             color_u8!(214, 214, 214, 255),
         );
-        draw_text(
+        
+        // Use draw_wrapped_text for stats to handle longer text
+        draw_wrapped_text(
             &slot_info.stats,
             detail_x + px(16.0),
-            content_y + px(100.0),
+            content_y + px(110.0),
+            detail_w - px(32.0),
             px(13.0),
+            px(15.0),
             LIGHTGRAY,
         );
 
@@ -699,36 +711,41 @@ fn draw_save_load_panel(
                 color_u8!(180, 186, 196, 255),
             )
         };
-        draw_text(
+        draw_wrapped_text(
             status_msg,
             detail_x + px(16.0),
-            content_y + px(132.0),
+            content_y + px(142.0),
+            detail_w - px(32.0),
             px(13.0),
+            px(15.0),
             status_color,
         );
 
+        // SAVE and LOAD action buttons - positioned at bottom of panel
+        let action_btn_h = px(22.0);
+        let action_btn_w = (detail_w - px(48.0)) / 2.0;
+        let action_btn_y = content_y + content_h - px(70.0);
+        let save_btn_x = detail_x + px(16.0);
+        let load_btn_x = save_btn_x + action_btn_w + px(8.0);
+        
+        // Loading info text positioned above buttons
         draw_wrapped_text(
             "Loading replaces the current run immediately.",
             detail_x + px(16.0),
-            content_y + px(150.0),
+            action_btn_y - px(20.0),
             detail_w - px(32.0),
             px(11.0),
-            px(15.0),
+            px(14.0),
             color_u8!(150, 157, 170, 255),
         );
 
-        // SAVE and LOAD action buttons
-        let action_btn_h = px(22.0);
-        let action_btn_w = (detail_w - px(48.0)) / 2.0;
-        let action_btn_y = content_y + px(190.0);
-        let save_btn_x = detail_x + px(16.0);
-        let load_btn_x = save_btn_x + action_btn_w + px(8.0);
-
-        for (label, bx, enabled) in [
-            ("SAVE", save_btn_x, true),
-            ("LOAD", load_btn_x, slot_info.exists),
+        for (label, bx, enabled, is_selected) in [
+            ("SAVE", save_btn_x, true, save_load_action_selected == crate::game::SaveLoadAction::Save),
+            ("LOAD", load_btn_x, slot_info.exists, save_load_action_selected == crate::game::SaveLoadAction::Load),
         ] {
-            let btn_fill = if enabled {
+            let btn_fill = if is_selected {
+                color_u8!(73, 90, 120, 255)  // Brighter when selected
+            } else if enabled {
                 color_u8!(52, 63, 85, 255)
             } else {
                 color_u8!(30, 35, 46, 255)
@@ -740,7 +757,7 @@ fn draw_save_load_panel(
                 action_btn_w,
                 action_btn_h,
                 px(1.0),
-                border_color,
+                if is_selected { color_u8!(150, 180, 220, 255) } else { border_color },
             );
             let label_size = px(13.0);
             let label_dims = measure_text(label, None, label_size as u16, 1.0);
@@ -754,7 +771,7 @@ fn draw_save_load_panel(
         }
 
         draw_text(
-            "Z/Enter = Save   L = Load",
+            "Z/Enter = Action   L/Left/Right select",
             detail_x + px(16.0),
             action_btn_y + action_btn_h + px(14.0),
             px(11.0),

@@ -81,6 +81,7 @@ pub struct Game {
     pub console_feedback: String,
     pub save_message_timer: i32,
     pub save_slot_selection: usize,
+    pub save_load_action_selected: SaveLoadAction,
     pub pending_save_slot: Option<usize>,
     pub pending_load_slot: Option<usize>,
     blocked_interaction: Option<InteractionSource>,
@@ -92,6 +93,12 @@ pub enum InventoryTab {
     Map,
     SaveLoad,
     Controls,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SaveLoadAction {
+    Save,
+    Load,
 }
 
 impl Game {
@@ -136,6 +143,7 @@ impl Game {
             console_feedback: String::new(),
             save_message_timer: 0,
             save_slot_selection: 0,
+            save_load_action_selected: SaveLoadAction::Save,
             pending_save_slot: None,
             pending_load_slot: None,
             blocked_interaction: None,
@@ -231,6 +239,7 @@ impl Game {
                 self.frame,
                 self.save_message_timer,
                 self.save_slot_selection,
+                self.save_load_action_selected,
                 &self.save_slots(),
                 self.pending_save_slot,
                 self.pending_load_slot,
@@ -291,6 +300,7 @@ impl Game {
         self.inventory_tab = InventoryTab::Inventory;
         self.inventory_selection = 0;
         self.save_slot_selection = 0;
+        self.save_load_action_selected = SaveLoadAction::Save;
         self.pending_save_slot = None;
         self.pending_load_slot = None;
         crate::log_info!(
@@ -572,6 +582,7 @@ impl Game {
                 Rect::new(outer_x + px(144.0), outer_y + px(30.0), px(67.0), px(22.0));
             if saveload_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::SaveLoad;
+                self.save_load_action_selected = SaveLoadAction::Save;
                 self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 crate::log_verbose!("inventory_tab_clicked tab=SaveLoad");
@@ -636,13 +647,26 @@ impl Game {
 
         if self.inventory_tab == InventoryTab::SaveLoad {
             self.update_save_load_selection();
-            if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
-                self.pending_save_slot = Some(self.save_slot_selection);
-                crate::log_info!(
-                    "prompt_save_confirmation slot={}",
-                    self.save_slot_selection + 1
-                );
+            
+            // Handle action button presses (Z/Enter/Space for selected action)
+            if is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) || start_pressed() {
+                if self.save_load_action_selected == SaveLoadAction::Save {
+                    self.pending_save_slot = Some(self.save_slot_selection);
+                    crate::log_info!(
+                        "prompt_save_confirmation slot={}",
+                        self.save_slot_selection + 1
+                    );
+                } else {
+                    let slots = self.save_slots();
+                    let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
+                    if let Some(slot) = slots.get(selected).filter(|s| s.exists) {
+                        self.pending_load_slot = Some(slot.slot);
+                        crate::log_info!("prompt_load_confirmation slot={}", slot.slot + 1);
+                    }
+                }
             }
+            
+            // Legacy L key for load
             if is_key_pressed(KeyCode::L) {
                 let slots = self.save_slots();
                 let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
@@ -825,6 +849,14 @@ impl Game {
             self.save_slot_selection = (self.save_slot_selection + 1).min(slot_count - 1);
         }
 
+        // Left/Right or A/D keys switch between Save and Load actions
+        if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) {
+            self.save_load_action_selected = SaveLoadAction::Save;
+        }
+        if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) {
+            self.save_load_action_selected = SaveLoadAction::Load;
+        }
+
         let wheel_delta = mouse_wheel().1;
         if wheel_delta > 0.0 {
             self.save_slot_selection = self.save_slot_selection.saturating_sub(1);
@@ -985,6 +1017,7 @@ impl Game {
         self.inventory_tab = InventoryTab::SaveLoad;
         self.inventory_selection = 0;
         self.save_slot_selection = 0;
+        self.save_load_action_selected = SaveLoadAction::Load;
         self.pending_save_slot = None;
         self.pending_load_slot = None;
     }
