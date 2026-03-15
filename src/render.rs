@@ -177,8 +177,8 @@ pub fn draw_inventory(
     let pause_help = match active_tab {
         InventoryTab::Inventory => "I / ESC close   TAB switch tab   Z / Enter main   X side",
         InventoryTab::Map => "I / ESC close   TAB switch tab",
-        InventoryTab::Save => "I / ESC close   TAB switch tab   ENTER / Z save slot",
-        InventoryTab::Load => "I / ESC close   TAB switch tab   ENTER / Z choose load slot",
+        InventoryTab::SaveLoad => "I/ESC close   TAB switch   Z/Ent save   L load   Up/Down slot",
+        InventoryTab::Controls => "I / ESC close   TAB switch tab",
     };
     draw_text(
         pause_help,
@@ -208,37 +208,37 @@ pub fn draw_inventory(
     draw_inventory_tab(
         outer_x + px(12.0),
         outer_y + px(30.0),
-        px(100.0),
+        px(67.0),
         px(22.0),
         "INVENTORY",
         active_tab == InventoryTab::Inventory,
         panel_bg,
     );
     draw_inventory_tab(
-        outer_x + px(118.0),
+        outer_x + px(85.0),
         outer_y + px(30.0),
-        px(80.0),
+        px(53.0),
         px(22.0),
         "MAP",
         active_tab == InventoryTab::Map,
         panel_bg,
     );
     draw_inventory_tab(
-        outer_x + px(204.0),
+        outer_x + px(144.0),
         outer_y + px(30.0),
-        px(70.0),
+        px(67.0),
         px(22.0),
-        "SAVE",
-        active_tab == InventoryTab::Save,
+        "SAVE/LOAD",
+        active_tab == InventoryTab::SaveLoad,
         panel_bg,
     );
     draw_inventory_tab(
-        outer_x + px(280.0),
+        outer_x + px(217.0),
         outer_y + px(30.0),
-        px(70.0),
+        px(67.0),
         px(22.0),
-        "LOAD",
-        active_tab == InventoryTab::Load,
+        "CONTROLS",
+        active_tab == InventoryTab::Controls,
         panel_bg,
     );
 
@@ -345,18 +345,19 @@ pub fn draw_inventory(
         } else {
             draw_overworld_map_panel(world, map_x, map_y, map_w, map_h, frame);
         }
-    } else if matches!(active_tab, InventoryTab::Save | InventoryTab::Load) {
+    } else if active_tab == InventoryTab::SaveLoad {
         draw_save_load_panel(
             content_x,
             content_y,
             content_w,
             content_h,
-            active_tab,
             save_slot_selection,
             save_slots,
             save_message_timer,
             pending_load_slot,
         );
+    } else if active_tab == InventoryTab::Controls {
+        draw_controls_panel(content_x, content_y, content_w, content_h);
     } else {
         let border_color = color_u8!(90, 103, 124, 255);
         let t = px(1.0);
@@ -550,7 +551,6 @@ fn draw_save_load_panel(
     content_y: f32,
     content_w: f32,
     content_h: f32,
-    active_tab: InventoryTab,
     save_slot_selection: usize,
     save_slots: &[SaveSlotSummary],
     save_message_timer: i32,
@@ -614,11 +614,7 @@ fn draw_save_load_panel(
     let selected_slot = save_slots.get(selected);
 
     draw_text(
-        if active_tab == InventoryTab::Save {
-            "SAVE SLOTS"
-        } else {
-            "LOAD GAME"
-        },
+        "SAVE / LOAD",
         content_x + px(16.0),
         content_y + px(14.0),
         px(14.0),
@@ -701,46 +697,64 @@ fn draw_save_load_panel(
             LIGHTGRAY,
         );
 
-        let (prompt, prompt_color) = match active_tab {
-            InventoryTab::Save => {
-                if save_message_timer > 0 {
-                    ("Saved to selected slot.", color_u8!(120, 220, 120, 255))
-                } else if save_message_timer < 0 {
-                    ("Save failed.", color_u8!(220, 100, 100, 255))
-                } else {
-                    ("Press ENTER or Z to save into this slot.", WHITE)
-                }
-            }
-            InventoryTab::Load => {
-                if slot_info.exists {
-                    ("Press ENTER or Z to choose this save for loading.", WHITE)
-                } else {
-                    ("This slot is empty.", GRAY)
-                }
-            }
-            _ => ("", WHITE),
+        // Status message
+        let (status_msg, status_color) = if save_message_timer > 0 {
+            ("Saved successfully.", color_u8!(120, 220, 120, 255))
+        } else if save_message_timer < 0 {
+            ("Save failed.", color_u8!(220, 100, 100, 255))
+        } else {
+            ("", WHITE)
         };
+        if !status_msg.is_empty() {
+            draw_text(status_msg, detail_x + px(16.0), content_y + px(132.0), px(13.0), status_color);
+        }
+
         draw_wrapped_text(
-            prompt,
+            "Loading replaces the current run immediately.",
             detail_x + px(16.0),
-            content_y + px(142.0),
+            content_y + px(150.0),
             detail_w - px(32.0),
-            px(14.0),
-            px(18.0),
-            prompt_color,
+            px(11.0),
+            px(15.0),
+            color_u8!(150, 157, 170, 255),
         );
 
-        if active_tab == InventoryTab::Load {
-            draw_wrapped_text(
-                "Loading replaces the current run immediately.",
-                detail_x + px(16.0),
-                content_y + px(168.0),
-                detail_w - px(32.0),
-                px(12.0),
-                px(16.0),
-                color_u8!(180, 186, 196, 255),
+        // SAVE and LOAD action buttons
+        let action_btn_h = px(22.0);
+        let action_btn_w = (detail_w - px(48.0)) / 2.0;
+        let action_btn_y = content_y + px(190.0);
+        let save_btn_x = detail_x + px(16.0);
+        let load_btn_x = save_btn_x + action_btn_w + px(8.0);
+
+        for (label, bx, enabled) in [
+            ("SAVE", save_btn_x, true),
+            ("LOAD", load_btn_x, slot_info.exists),
+        ] {
+            let btn_fill = if enabled {
+                color_u8!(52, 63, 85, 255)
+            } else {
+                color_u8!(30, 35, 46, 255)
+            };
+            draw_rectangle(bx, action_btn_y, action_btn_w, action_btn_h, btn_fill);
+            draw_rectangle_lines(bx, action_btn_y, action_btn_w, action_btn_h, px(1.0), border_color);
+            let label_size = px(13.0);
+            let label_dims = measure_text(label, None, label_size as u16, 1.0);
+            draw_text(
+                label,
+                bx + (action_btn_w - label_dims.width) / 2.0,
+                action_btn_y + px(15.0),
+                label_size,
+                if enabled { WHITE } else { GRAY },
             );
         }
+
+        draw_text(
+            "Z/Enter = Save   L = Load",
+            detail_x + px(16.0),
+            action_btn_y + action_btn_h + px(14.0),
+            px(11.0),
+            GRAY,
+        );
     }
 
     if let Some(slot) = pending_load_slot {
@@ -772,6 +786,73 @@ fn draw_save_load_panel(
             color_u8!(255, 215, 120, 255),
         );
     }
+}
+
+fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h: f32) {
+    let border_color = color_u8!(90, 103, 124, 255);
+    let t = px(1.0);
+    draw_rectangle(content_x, content_y, content_w, content_h, color_u8!(18, 22, 30, 255));
+    draw_rectangle_lines(content_x, content_y, content_w, content_h, t, border_color);
+
+    let header_color = color_u8!(197, 170, 119, 255);
+    let value_color = color_u8!(214, 214, 214, 255);
+    let dim_color = color_u8!(140, 148, 166, 255);
+    let col_label_size = px(11.0);
+    let col_value_size = px(13.0);
+    let row_h = px(22.0);
+    let section_gap = px(14.0);
+    let col_w = content_w / 2.0 - px(24.0);
+    let col1_x = content_x + px(16.0);
+    let col2_x = content_x + content_w / 2.0 + px(8.0);
+    let mut y1 = content_y + px(18.0);
+    let mut y2 = content_y + px(18.0);
+
+    let draw_section_header = |x: f32, y: f32, title: &str| {
+        draw_text(title, x, y + px(12.0), col_label_size, header_color);
+        draw_line(x, y + px(14.0), x + col_w, y + px(14.0), px(1.0), border_color);
+    };
+    let draw_row = |x: f32, y: f32, key: &str, action: &str| {
+        let key_dims = measure_text(key, None, col_value_size as u16, 1.0);
+        draw_text(key, x, y + px(13.0), col_value_size, value_color);
+        draw_text(action, x + key_dims.width + px(8.0), y + px(13.0), col_value_size, dim_color);
+    };
+
+    // Column 1
+    draw_section_header(col1_x, y1, "MOVEMENT");
+    y1 += section_gap;
+    draw_row(col1_x, y1, "WASD / Arrows", "move"); y1 += row_h;
+    draw_row(col1_x, y1, "Enter / Z / Space", "interact / confirm"); y1 += row_h;
+    draw_row(col1_x, y1, "X", "use side item"); y1 += row_h + section_gap;
+
+    draw_section_header(col1_x, y1, "MENU NAVIGATION");
+    y1 += section_gap;
+    draw_row(col1_x, y1, "I / Tab", "open / close inventory"); y1 += row_h;
+    draw_row(col1_x, y1, "Tab / Q / E", "switch tab"); y1 += row_h;
+    draw_row(col1_x, y1, "W / S, Up / Down", "navigate list"); y1 += row_h;
+    draw_row(col1_x, y1, "ESC", "close / cancel"); y1 += row_h + section_gap;
+
+    draw_section_header(col1_x, y1, "ITEMS");
+    y1 += section_gap;
+    draw_row(col1_x, y1, "Z / Enter / Space", "assign to MAIN slot"); y1 += row_h;
+    draw_row(col1_x, y1, "X", "assign to SIDE slot");
+    let _ = y1;
+
+    // Column 2
+    draw_section_header(col2_x, y2, "SAVE / LOAD");
+    y2 += section_gap;
+    draw_row(col2_x, y2, "Z / Enter", "save to selected slot"); y2 += row_h;
+    draw_row(col2_x, y2, "L", "load selected slot"); y2 += row_h;
+    draw_row(col2_x, y2, "Y / Enter", "confirm load dialog"); y2 += row_h;
+    draw_row(col2_x, y2, "N / ESC / X", "cancel dialog"); y2 += row_h + section_gap;
+
+    draw_section_header(col2_x, y2, "MAP");
+    y2 += section_gap;
+    draw_row(col2_x, y2, "W / S, Up / Down", "switch map view"); y2 += row_h + section_gap;
+
+    draw_section_header(col2_x, y2, "DEBUG");
+    y2 += section_gap;
+    draw_row(col2_x, y2, "~", "toggle dev console"); y2 += row_h;
+    let _ = y2;
 }
 
 fn draw_inventory_tab(
@@ -1279,23 +1360,8 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
         );
     }
 
-    let notes = [
-        "W/S or Up/Down: navigate",
-        "Enter / Z / Space: select",
-        "WASD: move   I / Tab: inventory",
-    ];
     let notes_y = (dragon_area_y + dragon_h + px(28.0)).min(total_h - px(58.0));
-    for (i, &note) in notes.iter().enumerate() {
-        let font_size = px(16.0);
-        let dims = measure_text(note, None, font_size as u16, 1.0);
-        draw_text(
-            note,
-            cx - dims.width / 2.0,
-            notes_y + i as f32 * px(18.0),
-            font_size,
-            WHITE,
-        );
-    }
+    let _ = notes_y;
 
     // version (from Cargo.toml)
     let version = format!("v{}", GAME_VERSION);

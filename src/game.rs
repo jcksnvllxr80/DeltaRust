@@ -85,8 +85,8 @@ pub struct Game {
 pub enum InventoryTab {
     Inventory,
     Map,
-    Save,
-    Load,
+    SaveLoad,
+    Controls,
 }
 
 impl Game {
@@ -484,14 +484,14 @@ impl Game {
             self.pending_load_slot = None;
             let direction = if is_key_pressed(KeyCode::Q) { -1 } else { 1 };
             self.inventory_tab = match (self.inventory_tab, direction) {
-                (InventoryTab::Inventory, -1) => InventoryTab::Load,
+                (InventoryTab::Inventory, -1) => InventoryTab::Controls,
                 (InventoryTab::Inventory, 1) => InventoryTab::Map,
                 (InventoryTab::Map, -1) => InventoryTab::Inventory,
-                (InventoryTab::Map, 1) => InventoryTab::Save,
-                (InventoryTab::Save, -1) => InventoryTab::Map,
-                (InventoryTab::Save, 1) => InventoryTab::Load,
-                (InventoryTab::Load, -1) => InventoryTab::Save,
-                (InventoryTab::Load, 1) => InventoryTab::Inventory,
+                (InventoryTab::Map, 1) => InventoryTab::SaveLoad,
+                (InventoryTab::SaveLoad, -1) => InventoryTab::Map,
+                (InventoryTab::SaveLoad, 1) => InventoryTab::Controls,
+                (InventoryTab::Controls, -1) => InventoryTab::SaveLoad,
+                (InventoryTab::Controls, 1) => InventoryTab::Inventory,
                 _ => self.inventory_tab,
             };
             if self.inventory_tab == InventoryTab::Map {
@@ -514,8 +514,8 @@ impl Game {
             let (mx, my) = mouse_position();
             let outer_x = px(16.0);
             let outer_y = px(14.0);
-            let inv_tab = Rect::new(outer_x + px(12.0), outer_y + px(30.0), px(100.0), px(22.0));
-            let map_tab = Rect::new(outer_x + px(118.0), outer_y + px(30.0), px(80.0), px(22.0));
+            let inv_tab = Rect::new(outer_x + px(12.0), outer_y + px(30.0), px(67.0), px(22.0));
+            let map_tab = Rect::new(outer_x + px(85.0), outer_y + px(30.0), px(53.0), px(22.0));
             if inv_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Inventory;
                 self.pending_load_slot = None;
@@ -536,18 +536,18 @@ impl Game {
                 );
                 return;
             }
-            let save_tab = Rect::new(outer_x + px(204.0), outer_y + px(30.0), px(70.0), px(22.0));
-            if save_tab.contains(vec2(mx, my)) {
-                self.inventory_tab = InventoryTab::Save;
+            let saveload_tab = Rect::new(outer_x + px(144.0), outer_y + px(30.0), px(67.0), px(22.0));
+            if saveload_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::SaveLoad;
                 self.pending_load_slot = None;
-                crate::log_verbose!("inventory_tab_clicked tab=Save");
+                crate::log_verbose!("inventory_tab_clicked tab=SaveLoad");
                 return;
             }
-            let load_tab = Rect::new(outer_x + px(280.0), outer_y + px(30.0), px(70.0), px(22.0));
-            if load_tab.contains(vec2(mx, my)) {
-                self.inventory_tab = InventoryTab::Load;
+            let controls_tab = Rect::new(outer_x + px(217.0), outer_y + px(30.0), px(67.0), px(22.0));
+            if controls_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::Controls;
                 self.pending_load_slot = None;
-                crate::log_verbose!("inventory_tab_clicked tab=Load");
+                crate::log_verbose!("inventory_tab_clicked tab=Controls");
                 return;
             }
         }
@@ -568,16 +568,16 @@ impl Game {
                     let (mx, my) = mouse_position();
                     let outer_x = px(16.0);
                     let outer_y = px(14.0);
-                    // Buttons sit below the inventory/map tabs
-                    let button_y = outer_y + px(60.0);
-                    let overworld_btn =
-                        Rect::new(outer_x + px(12.0), button_y, px(110.0), px(18.0));
-                    let dungeon_btn = Rect::new(
-                        outer_x + px(12.0) + px(110.0) + px(8.0),
-                        button_y,
-                        px(110.0),
-                        px(18.0),
-                    );
+                    let outer_w = GAME_W - px(32.0);
+                    let content_x = outer_x + px(12.0);
+                    let content_y = outer_y + px(51.0);
+                    let content_w = outer_w - px(24.0);
+                    let btn_w = px(80.0);
+                    let btn_h = px(18.0);
+                    let btn_x = content_x + content_w - btn_w - px(12.0);
+                    let btn_y = content_y + px(18.0);
+                    let overworld_btn = Rect::new(btn_x, btn_y, btn_w, btn_h);
+                    let dungeon_btn = Rect::new(btn_x, btn_y + btn_h + px(6.0), btn_w, btn_h);
                     if overworld_btn.contains(vec2(mx, my)) {
                         self.inventory_map_mode = MapMode::Overworld;
                         crate::log_verbose!("inventory_map_button=Overworld");
@@ -597,24 +597,24 @@ impl Game {
             return;
         }
 
-        if self.inventory_tab == InventoryTab::Save {
+        if self.inventory_tab == InventoryTab::SaveLoad {
             self.update_save_load_selection();
             if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
                 self.perform_save(self.save_slot_selection);
             }
-            return;
-        }
-
-        if self.inventory_tab == InventoryTab::Load {
-            self.update_save_load_selection();
-            let slots = self.save_slots();
-            let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
-            if let Some(slot) = slots.get(selected).filter(|slot| slot.exists) {
-                if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
+            if is_key_pressed(KeyCode::L) {
+                let slots = self.save_slots();
+                let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
+                if let Some(slot) = slots.get(selected).filter(|s| s.exists) {
                     self.pending_load_slot = Some(slot.slot);
                     crate::log_info!("prompt_load_confirmation slot={}", slot.slot + 1);
                 }
             }
+            return;
+        }
+
+        if self.inventory_tab == InventoryTab::Controls {
+            // Controls tab is display-only; no input handling needed.
             return;
         }
 
@@ -745,10 +745,14 @@ impl Game {
             let (mx, my) = mouse_position();
             let outer_x = px(16.0);
             let outer_y = px(14.0);
+            let outer_w = GAME_W - px(32.0);
             let content_x = outer_x + px(12.0);
-            let content_y = outer_y + px(64.0);
-            let row_x = content_x + px(16.0);
-            let row_w = px(320.0);
+            let content_y = outer_y + px(51.0);
+            let content_w = outer_w - px(24.0);
+            let padding = px(16.0);
+            let list_w = (content_w - padding * 3.0) / 2.0;
+            let row_x = content_x + padding;
+            let row_w = list_w - px(24.0);
             let row_h = px(58.0);
             let row_gap = px(10.0);
             let start_y = content_y + px(24.0);
@@ -757,10 +761,26 @@ impl Game {
                 let rect = Rect::new(row_x, y, row_w, row_h);
                 if rect.contains(vec2(mx, my)) {
                     self.save_slot_selection = slot;
-                    if self.inventory_tab == InventoryTab::Load && save::has_save(slot) {
-                        self.pending_load_slot = Some(slot);
-                    }
                     break;
+                }
+            }
+
+            // Action buttons in the detail panel
+            let detail_x = content_x + padding + list_w + padding;
+            let detail_w = list_w;
+            let action_btn_h = px(22.0);
+            let action_btn_w = (detail_w - px(48.0)) / 2.0;
+            let action_btn_y = content_y + px(190.0);
+            let save_btn = Rect::new(detail_x + px(16.0), action_btn_y, action_btn_w, action_btn_h);
+            let load_btn = Rect::new(detail_x + px(16.0) + action_btn_w + px(8.0), action_btn_y, action_btn_w, action_btn_h);
+            if save_btn.contains(vec2(mx, my)) {
+                self.perform_save(self.save_slot_selection);
+            } else if load_btn.contains(vec2(mx, my)) {
+                let slots = self.save_slots();
+                let sel = self.save_slot_selection.min(slots.len().saturating_sub(1));
+                if let Some(slot) = slots.get(sel).filter(|s| s.exists) {
+                    self.pending_load_slot = Some(slot.slot);
+                    crate::log_info!("prompt_load_confirmation slot={}", slot.slot + 1);
                 }
             }
         }
@@ -856,7 +876,7 @@ impl Game {
         // Open the load menu so the player can choose which save to load.
         self.save_message_timer = 0;
         self.state = GameState::Inventory;
-        self.inventory_tab = InventoryTab::Load;
+        self.inventory_tab = InventoryTab::SaveLoad;
         self.inventory_selection = 0;
         self.save_slot_selection = 0;
         self.pending_load_slot = None;
