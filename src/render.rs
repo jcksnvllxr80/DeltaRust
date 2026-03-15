@@ -59,8 +59,10 @@ pub fn draw_game(
 }
 
 pub fn draw_console(input: &str, feedback: &str, frame: i32) {
-    let panel_y = GAME_H;
-    let input_box_y = panel_y + px(42.0);
+    // Shift console up slightly so the input box isn't pushed below the window
+    // border on smaller displays.
+    let panel_y = GAME_H - px(12.0);
+    let input_box_y = panel_y + px(34.0);
     let input_box_h = px(32.0);
     let prompt_x = px(22.0);
     let prompt = ">";
@@ -240,22 +242,23 @@ pub fn draw_inventory(
         panel_bg,
     );
 
-    let location = world_data::location_name(
-        world.screen_x,
-        world.screen_y,
-        world.in_dungeon,
-        world.dungeon_id,
-        world.in_interior,
-        &world.interior_id,
-    );
-    draw_text(
-        &location,
-        outer_x + px(14.0),
-        content_y - px(2.0),
-        location_font,
-        color_u8!(214, 214, 214, 255),
-    );
     if active_tab == InventoryTab::Map {
+        let location = world_data::location_name(
+            world.screen_x,
+            world.screen_y,
+            world.in_dungeon,
+            world.dungeon_id,
+            world.in_interior,
+            &world.interior_id,
+        );
+        draw_text(
+            &location,
+            outer_x + px(14.0),
+            content_y - px(2.0),
+            location_font,
+            color_u8!(214, 214, 214, 255),
+        );
+
         draw_rectangle(
             content_x,
             content_y,

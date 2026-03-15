@@ -853,13 +853,13 @@ impl Game {
     }
 
     fn continue_game(&mut self) {
-        if let Some(slot) = save::latest_save_slot() {
-            if !self.load_save_slot(slot) {
-                self.start_new_game();
-            }
-        } else {
-            self.start_new_game();
-        }
+        // Open the load menu so the player can choose which save to load.
+        self.save_message_timer = 0;
+        self.state = GameState::Inventory;
+        self.inventory_tab = InventoryTab::Load;
+        self.inventory_selection = 0;
+        self.save_slot_selection = 0;
+        self.pending_load_slot = None;
     }
 
     fn auto_assign_item(&mut self, item: EquippedItem, preferred_slot: ItemSlot) {
