@@ -148,9 +148,9 @@ pub fn draw_inventory(
     let outer_h = GAME_H + HUD_H - px(28.0);
     let location_font = px(10.0);
     let content_x = outer_x + px(12.0);
-    let content_y = outer_y + px(64.0);
+    let content_y = outer_y + px(51.0);
     let content_w = outer_w - px(24.0);
-    let content_h = outer_h - px(76.0);
+    let content_h = outer_h - px(63.0);
 
     draw_rectangle(
         outer_x,
@@ -251,10 +251,13 @@ pub fn draw_inventory(
             world.in_interior,
             &world.interior_id,
         );
+        let location_max_w = px(220.0);
+        let location_text = fit_text_to_width(&location, location_max_w, location_font);
+        let location_dims = measure_text(&location_text, None, location_font as u16, 1.0);
         draw_text(
-            &location,
-            outer_x + px(14.0),
-            content_y - px(2.0),
+            &location_text,
+            outer_x + outer_w - px(14.0) - location_dims.width,
+            outer_y + px(39.0),
             location_font,
             color_u8!(214, 214, 214, 255),
         );
@@ -293,13 +296,21 @@ pub fn draw_inventory(
             t,
             border_color,
         );
+        draw_line(
+            content_x,
+            content_y,
+            content_x + content_w,
+            content_y,
+            t,
+            border_color,
+        );
 
         // When in a dungeon, show a small vertical mode switcher on the right.
         // This avoids overlaying the map itself.
-        let mut map_x = content_x + px(18.0);
+        let map_x = content_x + px(18.0);
         let mut map_w = content_w - px(36.0);
-        let mut map_y = content_y + px(10.0);
-        let mut map_h = content_h - px(20.0);
+        let map_y = content_y + px(10.0);
+        let map_h = content_h - px(20.0);
 
         if world.in_dungeon {
             let btn_w = px(80.0);
@@ -347,9 +358,22 @@ pub fn draw_inventory(
             pending_load_slot,
         );
     } else {
+        let border_color = color_u8!(90, 103, 124, 255);
+        let t = px(1.0);
+        draw_rectangle(
+            content_x,
+            content_y,
+            content_w,
+            content_h,
+            color_u8!(18, 22, 30, 255),
+        );
+        draw_rectangle_lines(content_x, content_y, content_w, content_h, t, border_color);
+
+        let inner_y = content_y + px(10.0);
+        let inner_h = content_h - px(20.0);
         let list_w = px(250.0);
-        let details_x = content_x + list_w + px(12.0);
-        let details_w = content_w - list_w - px(12.0);
+        let details_x = content_x + px(12.0) + list_w + px(12.0);
+        let details_w = content_w - list_w - px(36.0);
         let entries = player.inventory_entries();
         let selected_index = inventory_selection.min(entries.len().saturating_sub(1));
         let selected = entries
@@ -357,100 +381,104 @@ pub fn draw_inventory(
             .copied()
             .unwrap_or(player.inventory_entry(InventoryItem::Sword));
         let row_h = px(19.0);
-        let list_start_y = content_y + px(38.0);
-        let visible_rows = (((content_h - px(54.0)) / row_h).floor() as usize).max(1);
+        let list_x = content_x + px(12.0);
+        let list_start_y = inner_y + px(38.0);
+        let visible_rows = (((inner_h - px(54.0)) / row_h).floor() as usize).max(1);
         let max_scroll = entries.len().saturating_sub(visible_rows);
         let scroll_offset = selected_index
             .saturating_sub(visible_rows / 2)
             .min(max_scroll);
 
         draw_rectangle(
-            content_x,
-            content_y,
+            list_x,
+            inner_y,
             list_w,
-            content_h,
+            inner_h,
             color_u8!(31, 38, 51, 255),
         );
-        // omit top border so the tabs blend smoothly into the panel.
-        let border_color = color_u8!(90, 103, 124, 255);
-        let t = px(1.0);
         draw_line(
-            content_x,
-            content_y,
-            content_x,
-            content_y + content_h,
+            list_x,
+            inner_y,
+            list_x,
+            inner_y + inner_h,
             t,
             border_color,
         );
         draw_line(
-            content_x + list_w,
-            content_y,
-            content_x + list_w,
-            content_y + content_h,
+            list_x + list_w,
+            inner_y,
+            list_x + list_w,
+            inner_y + inner_h,
             t,
             border_color,
         );
         draw_line(
-            content_x,
-            content_y + content_h,
-            content_x + list_w,
-            content_y + content_h,
+            list_x,
+            inner_y + inner_h,
+            list_x + list_w,
+            inner_y + inner_h,
             t,
             border_color,
         );
+        draw_line(list_x, inner_y, list_x + list_w, inner_y, t, border_color);
         draw_rectangle(
             details_x,
-            content_y,
+            inner_y,
             details_w,
-            content_h,
+            inner_h,
             color_u8!(18, 22, 30, 255),
         );
-        // omit top border so the tabs blend smoothly into the panel.
-        let border_color = color_u8!(90, 103, 124, 255);
-        let t = px(1.0);
         draw_line(
             details_x,
-            content_y,
+            inner_y,
             details_x,
-            content_y + content_h,
+            inner_y + inner_h,
             t,
             border_color,
         );
         draw_line(
             details_x + details_w,
-            content_y,
+            inner_y,
             details_x + details_w,
-            content_y + content_h,
+            inner_y + inner_h,
             t,
             border_color,
         );
         draw_line(
             details_x,
-            content_y + content_h,
+            inner_y + inner_h,
             details_x + details_w,
-            content_y + content_h,
+            inner_y + inner_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            details_x,
+            inner_y,
+            details_x + details_w,
+            inner_y,
             t,
             border_color,
         );
 
         draw_text(
             "ITEMS",
-            content_x + px(10.0),
-            content_y + px(18.0),
+            list_x + px(10.0),
+            inner_y + px(18.0),
             px(14.0),
             color_u8!(197, 170, 119, 255),
         );
         draw_text(
             "M",
-            content_x + list_w - px(32.0),
-            content_y + px(18.0),
+            list_x + list_w - px(32.0),
+            inner_y + px(18.0),
             px(12.0),
             color_u8!(255, 215, 120, 255),
         );
         draw_text(
             "S",
-            content_x + list_w - px(18.0),
-            content_y + px(18.0),
+            list_x + list_w - px(18.0),
+            inner_y + px(18.0),
             px(12.0),
             color_u8!(160, 214, 255, 255),
         );
@@ -464,7 +492,7 @@ pub fn draw_inventory(
             draw_inventory_entry_row(
                 sprites,
                 player,
-                content_x + px(8.0),
+                list_x + px(8.0),
                 list_start_y + row_index as f32 * row_h,
                 list_w - px(16.0),
                 entry,
@@ -473,9 +501,9 @@ pub fn draw_inventory(
         }
 
         if entries.len() > visible_rows {
-            let track_x = content_x + list_w - px(8.0);
-            let track_y = content_y + px(30.0);
-            let track_h = content_h - px(44.0);
+            let track_x = list_x + list_w - px(8.0);
+            let track_y = inner_y + px(30.0);
+            let track_h = inner_h - px(44.0);
             let thumb_h = (track_h * visible_rows as f32 / entries.len() as f32).max(px(18.0));
             let thumb_travel = (track_h - thumb_h).max(0.0);
             let thumb_y = if max_scroll == 0 {
@@ -502,7 +530,7 @@ pub fn draw_inventory(
         draw_text(
             "DETAILS",
             details_x + px(12.0),
-            content_y + px(18.0),
+            inner_y + px(18.0),
             px(14.0),
             color_u8!(197, 170, 119, 255),
         );
@@ -510,7 +538,7 @@ pub fn draw_inventory(
             sprites,
             player,
             details_x + px(12.0),
-            content_y + px(34.0),
+            inner_y + px(34.0),
             details_w - px(24.0),
             selected,
         );
@@ -558,6 +586,14 @@ fn draw_save_load_panel(
         content_y + content_h,
         content_x + content_w,
         content_y + content_h,
+        t,
+        border_color,
+    );
+    draw_line(
+        content_x,
+        content_y,
+        content_x + content_w,
+        content_y,
         t,
         border_color,
     );
