@@ -10,6 +10,7 @@ use crate::model::{
     WorldProp,
 };
 use crate::render;
+use crate::save::{self, SaveData};
 use crate::sprites::Sprites;
 use crate::world::World;
 use crate::world_data;
@@ -70,6 +71,7 @@ pub struct Game {
     pub inventory_map_mode: MapMode,
     pub all_items_mode: bool,
     pub full_hearts_mode: bool,
+    pub save_message_timer: i32,
     blocked_interaction: Option<InteractionSource>,
 }
 
@@ -77,6 +79,7 @@ pub struct Game {
 pub enum InventoryTab {
     Inventory,
     Map,
+    Save,
 }
 
 impl Game {
@@ -111,6 +114,7 @@ impl Game {
             inventory_map_mode: MapMode::Overworld,
             all_items_mode,
             full_hearts_mode,
+            save_message_timer: 0,
             blocked_interaction: None,
         };
         game.apply_starting_loadout();
@@ -129,16 +133,27 @@ impl Game {
         match self.state {
             GameState::Title => {
                 self.audio.play_music(MusicTrack::Title);
+                let has_save = save::has_save();
+                let max_option = if has_save { 2 } else { 1 };
                 if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
                     self.title_menu_selection = self.title_menu_selection.saturating_sub(1);
                 }
                 if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
-                    self.title_menu_selection = (self.title_menu_selection + 1).min(1);
+                    self.title_menu_selection =
+                        (self.title_menu_selection + 1).min(max_option);
                 }
                 if start_pressed() {
-                    match self.title_menu_selection {
-                        0 => self.start_new_game(),
-                        _ => self.begin_character_create(),
+                    if has_save {
+                        match self.title_menu_selection {
+                            0 => self.continue_game(),
+                            1 => self.start_new_game(),
+                            _ => self.begin_character_create(),
+                        }
+                    } else {
+                        match self.title_menu_selection {
+                            0 => self.start_new_game(),
+                            _ => self.begin_character_create(),
+                        }
                     }
                 }
             }
@@ -171,9 +186,12 @@ impl Game {
 
     pub fn draw(&self) {
         match self.state {
-            GameState::Title => {
-                render::draw_title(&self.sprites, self.frame, self.title_menu_selection)
-            }
+            GameState::Title => render::draw_title(
+                &self.sprites,
+                self.frame,
+                self.title_menu_selection,
+                save::has_save(),
+            ),
             GameState::CharacterCreate => {
                 render::draw_character_creator(&self.sprites, &self.creator, self.frame)
             }
@@ -182,10 +200,11 @@ impl Game {
                 &self.sprites,
                 &self.world.snapshot(),
                 &self.player,
-                self.inventory_tab == InventoryTab::Map,
+                self.inventory_tab,
                 self.inventory_map_mode,
                 self.inventory_selection,
                 self.frame,
+                self.save_message_timer,
             ),
             GameState::Transition => render::draw_transition(
                 &self.sprites,
@@ -394,11 +413,15 @@ impl Game {
             crate::log_debug!("close_inventory");
             return;
         }
+        if self.save_message_timer > 0 {
+            self.save_message_timer -= 1;
+        }
         if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
         {
             self.inventory_tab = match self.inventory_tab {
                 InventoryTab::Inventory => InventoryTab::Map,
-                InventoryTab::Map => InventoryTab::Inventory,
+                InventoryTab::Map => InventoryTab::Save,
+                InventoryTab::Save => InventoryTab::Inventory,
             };
             if self.inventory_tab == InventoryTab::Map {
                 self.inventory_map_mode = if self.world.in_dungeon {
@@ -438,6 +461,13 @@ impl Game {
                     "inventory_tab_clicked tab=Map map_mode={:?}",
                     self.inventory_map_mode
                 );
+                return;
+            }
+            let save_tab =
+                Rect::new(outer_x + px(204.0), outer_y + px(30.0), px(70.0), px(22.0));
+            if save_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::Save;
+                crate::log_verbose!("inventory_tab_clicked tab=Save");
                 return;
             }
         }
@@ -486,6 +516,14 @@ impl Game {
             }
             return;
         }
+
+        if self.inventory_tab == InventoryTab::Save {
+            if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
+                self.perform_save();
+            }
+            return;
+        }
+
         let entry_count = self.player.inventory_entries().len();
         const INITIAL_SCROLL_DELAY: i32 = 45; // frames before repeat starts
         const REPEAT_SCROLL_DELAY: i32 = 15; // frames between repeated moves
@@ -585,6 +623,89 @@ impl Game {
         match slot {
             ItemSlot::Main => self.player.main_item = item,
             ItemSlot::Side => self.player.side_item = item,
+        }
+    }
+
+    fn to_save_data(&self) -> SaveData {
+        SaveData {
+            player: self.player.clone(),
+            screen_x: self.world.screen_x,
+            screen_y: self.world.screen_y,
+            in_dungeon: self.world.in_dungeon,
+            dungeon_id: self.world.dungeon_id,
+            in_interior: self.world.in_interior,
+            interior_id: self.world.interior_id.clone(),
+            visited: self.world.visited.clone(),
+            cleared_rooms: self.world.cleared_rooms.clone(),
+            opened_chests: self.world.opened_chests.clone(),
+            destroyed_tiles: self.world.destroyed_tiles.clone(),
+            appearance: self.appearance.clone(),
+            dungeon_overworld_x: self.dungeon_overworld_x,
+            dungeon_overworld_y: self.dungeon_overworld_y,
+        }
+    }
+
+    fn load_from_save(&mut self, data: SaveData) {
+        self.player = data.player;
+        self.player.state = PlayerState::Idle;
+        self.player.attack_timer = 0;
+        self.player.invuln_timer = 0;
+        self.player.hurt_timer = 0;
+        self.player.knock_dx = 0.0;
+        self.player.knock_dy = 0.0;
+        self.appearance = data.appearance;
+        self.sprites.set_hero_appearance(&self.appearance);
+        self.dungeon_overworld_x = data.dungeon_overworld_x;
+        self.dungeon_overworld_y = data.dungeon_overworld_y;
+        self.world.in_dungeon = data.in_dungeon;
+        self.world.dungeon_id = data.dungeon_id;
+        self.world.in_interior = data.in_interior;
+        self.world.interior_id = data.interior_id;
+        self.world.visited = data.visited;
+        self.world.cleared_rooms = data.cleared_rooms;
+        self.world.opened_chests = data.opened_chests;
+        self.world.destroyed_tiles = data.destroyed_tiles;
+        self.world.load_screen(data.screen_x, data.screen_y);
+        self.spawn_for_screen();
+        self.reset_items();
+        self.load_screen_items();
+    }
+
+    fn perform_save(&mut self) {
+        let data = self.to_save_data();
+        match save::save_game(&data) {
+            Ok(()) => {
+                self.save_message_timer = 120;
+                crate::log_info!("game saved successfully");
+            }
+            Err(e) => {
+                crate::log_warn!("save failed: {}", e);
+                self.save_message_timer = -120;
+            }
+        }
+    }
+
+    fn continue_game(&mut self) {
+        match save::load_game() {
+            Ok(data) => {
+                let dev = self.world.dev_mode;
+                self.world = World::new(dev);
+                self.load_from_save(data);
+                self.audio.play_music(if self.world.in_dungeon {
+                    MusicTrack::Dungeon
+                } else {
+                    MusicTrack::Overworld
+                });
+                self.state = GameState::Playing;
+                self.frame = 0;
+                self.inventory_tab = InventoryTab::Inventory;
+                self.inventory_selection = 0;
+                crate::log_info!("game loaded from save");
+            }
+            Err(e) => {
+                crate::log_warn!("load failed: {}", e);
+                self.start_new_game();
+            }
         }
     }
 

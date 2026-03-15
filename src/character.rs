@@ -1,7 +1,25 @@
 use crate::model::NpcKind;
 use macroquad::prelude::{Color, Image, WHITE};
 use macroquad::rand::gen_range;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+
+mod color_serde {
+    use macroquad::prelude::Color;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    struct ColorArray([f32; 4]);
+
+    pub fn serialize<S: Serializer>(color: &Color, s: S) -> Result<S::Ok, S::Error> {
+        ColorArray([color.r, color.g, color.b, color.a]).serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Color, D::Error> {
+        let ColorArray(arr) = ColorArray::deserialize(d)?;
+        Ok(Color::new(arr[0], arr[1], arr[2], arr[3]))
+    }
+}
 
 pub const FRAME_SIZE: u16 = 48;
 pub const SHEET_SIZE: u16 = FRAME_SIZE * 4;
@@ -12,14 +30,14 @@ pub enum AnimMode {
     Walk,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FaceShape {
     Round,
     Square,
     Narrow,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EyeExpression {
     Normal,
     Angry,
@@ -33,7 +51,7 @@ pub enum EyeExpression {
     Wide,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HairStyle {
     Short,
     Long,
@@ -43,14 +61,14 @@ pub enum HairStyle {
     Mohawk,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuildType {
     Normal,
     Stocky,
     Slim,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClothesStyle {
     Tunic,
     Robe,
@@ -59,7 +77,7 @@ pub enum ClothesStyle {
     Bare,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HelmetStyle {
     None,
     Iron,
@@ -72,7 +90,7 @@ pub enum HelmetStyle {
     Horned,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ArmorPiece {
     Leather,
     Chainmail,
@@ -81,7 +99,7 @@ pub enum ArmorPiece {
     Fullplate,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ShieldStyle {
     Round,
     Kite,
@@ -89,7 +107,7 @@ pub enum ShieldStyle {
     Buckler,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WeaponStyle {
     None,
     Sword,
@@ -107,7 +125,7 @@ pub enum WeaponStyle {
     Flail,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OffhandStyle {
     None,
     Torch,
@@ -117,19 +135,27 @@ pub enum OffhandStyle {
     Book,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct HeroPalette {
+    #[serde(with = "color_serde")]
     pub skin: Color,
+    #[serde(with = "color_serde")]
     pub hair: Color,
+    #[serde(with = "color_serde")]
     pub shirt: Color,
+    #[serde(with = "color_serde")]
     pub pants: Color,
+    #[serde(with = "color_serde")]
     pub boots: Color,
+    #[serde(with = "color_serde")]
     pub armor: Color,
+    #[serde(with = "color_serde")]
     pub cape: Color,
+    #[serde(with = "color_serde")]
     pub weapon: Color,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CharacterAppearance {
     pub palette: HeroPalette,
     pub face: FaceShape,

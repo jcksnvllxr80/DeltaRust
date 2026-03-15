@@ -1,5 +1,6 @@
 use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
+use crate::game::InventoryTab;
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, InventoryEntry, InventoryItem,
     Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType, Transition,
@@ -60,11 +61,13 @@ pub fn draw_inventory(
     sprites: &Sprites,
     world: &WorldSnapshot,
     player: &Player,
-    show_map_tab: bool,
+    active_tab: InventoryTab,
     map_mode: crate::game::MapMode,
     inventory_selection: usize,
     frame: i32,
+    save_message_timer: i32,
 ) {
+
     clear_background(color_u8!(13, 16, 24, 255));
 
     let outer_x = px(16.0);
@@ -119,10 +122,9 @@ pub fn draw_inventory(
         LIGHTGRAY,
     );
 
-    let panel_bg = if show_map_tab {
-        color_u8!(18, 22, 30, 255)
-    } else {
-        color_u8!(31, 38, 51, 255)
+    let panel_bg = match active_tab {
+        InventoryTab::Inventory => color_u8!(31, 38, 51, 255),
+        _ => color_u8!(18, 22, 30, 255),
     };
 
     draw_inventory_tab(
@@ -131,7 +133,7 @@ pub fn draw_inventory(
         px(100.0),
         px(22.0),
         "INVENTORY",
-        !show_map_tab,
+        active_tab == InventoryTab::Inventory,
         panel_bg,
     );
     draw_inventory_tab(
@@ -140,7 +142,16 @@ pub fn draw_inventory(
         px(80.0),
         px(22.0),
         "MAP",
-        show_map_tab,
+        active_tab == InventoryTab::Map,
+        panel_bg,
+    );
+    draw_inventory_tab(
+        outer_x + px(204.0),
+        outer_y + px(30.0),
+        px(70.0),
+        px(22.0),
+        "SAVE",
+        active_tab == InventoryTab::Save,
         panel_bg,
     );
 
@@ -159,7 +170,7 @@ pub fn draw_inventory(
         location_font,
         color_u8!(214, 214, 214, 255),
     );
-    if show_map_tab {
+    if active_tab == InventoryTab::Map {
         draw_rectangle(
             content_x,
             content_y,
@@ -234,6 +245,48 @@ pub fn draw_inventory(
             draw_dungeon_map_panel(world, map_x, map_y, map_w, map_h, frame);
         } else {
             draw_overworld_map_panel(world, map_x, map_y, map_w, map_h, frame);
+        }
+    } else if active_tab == InventoryTab::Save {
+        draw_rectangle(
+            content_x,
+            content_y,
+            content_w,
+            content_h,
+            color_u8!(18, 22, 30, 255),
+        );
+        let border_color = color_u8!(90, 103, 124, 255);
+        let t = px(1.0);
+        draw_line(content_x, content_y, content_x, content_y + content_h, t, border_color);
+        draw_line(content_x + content_w, content_y, content_x + content_w, content_y + content_h, t, border_color);
+        draw_line(content_x, content_y + content_h, content_x + content_w, content_y + content_h, t, border_color);
+
+        let cx = content_x + content_w / 2.0;
+        let cy = content_y + content_h / 2.0;
+
+        if save_message_timer > 0 {
+            draw_text(
+                "Game Saved!",
+                cx - px(60.0),
+                cy - px(10.0),
+                px(22.0),
+                color_u8!(120, 220, 120, 255),
+            );
+        } else if save_message_timer < 0 {
+            draw_text(
+                "Save Failed!",
+                cx - px(64.0),
+                cy - px(10.0),
+                px(22.0),
+                color_u8!(220, 100, 100, 255),
+            );
+        } else {
+            draw_text(
+                "Press ENTER or Z to save your game",
+                cx - px(150.0),
+                cy - px(10.0),
+                px(18.0),
+                WHITE,
+            );
         }
     } else {
         let list_w = px(250.0);
@@ -793,7 +846,7 @@ pub fn draw_fade_overlay(alpha: f32) {
     draw_rectangle(0.0, HUD_H, GAME_W, GAME_H, Color::new(0.0, 0.0, 0.0, alpha));
 }
 
-pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize) {
+pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save: bool) {
     clear_background(color_u8!(17, 17, 17, 255));
     let cx = GAME_W / 2.0;
     // enlarge banner by another 50% (now 225% of original)
@@ -822,22 +875,34 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize) {
         GRAY,
     );
     let menu_y = cy + px(58.0);
-    let start_color = if selected_menu == 0 { WHITE } else { GRAY };
-    let customize_color = if selected_menu == 1 { WHITE } else { GRAY };
-    if selected_menu == 0 && (frame / 30) % 2 == 0 {
-        draw_text(">", cx - px(66.0), menu_y, px(24.0), WHITE);
+    let spacing = px(22.0);
+    let mut items: Vec<&str> = Vec::new();
+    if has_save {
+        items.push("Continue");
     }
-    if selected_menu == 1 && (frame / 30) % 2 == 0 {
-        draw_text(">", cx - px(66.0), menu_y + px(22.0), px(24.0), WHITE);
+    items.push("Start Game");
+    items.push("Customize Hero");
+
+    for (i, &label) in items.iter().enumerate() {
+        let y = menu_y + i as f32 * spacing;
+        let color = if selected_menu == i { WHITE } else { GRAY };
+        if selected_menu == i && (frame / 30) % 2 == 0 {
+            draw_text(">", cx - px(66.0), y, px(24.0), WHITE);
+        }
+        let font_size = if label == "Customize Hero" {
+            px(20.0)
+        } else {
+            px(22.0)
+        };
+        let x_offset = if label == "Customize Hero" {
+            px(74.0)
+        } else if label == "Continue" {
+            px(52.0)
+        } else {
+            px(48.0)
+        };
+        draw_text(label, cx - x_offset, y, font_size, color);
     }
-    draw_text("Start Game", cx - px(48.0), menu_y, px(22.0), start_color);
-    draw_text(
-        "Customize Hero",
-        cx - px(74.0),
-        menu_y + px(22.0),
-        px(20.0),
-        customize_color,
-    );
 
     // control notes – formatted clearly
     let notes = [

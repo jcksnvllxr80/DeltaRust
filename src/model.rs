@@ -1,10 +1,11 @@
 use crate::constants::{attack_duration, PIXEL_SCALE, player_full_hearts_hp, player_max_hp, TILE};
 use macroquad::prelude::Rect;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 pub type TileGrid = Vec<Vec<TileType>>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dir {
     Up,
     Down,
@@ -26,7 +27,7 @@ pub enum GameState {
     Victory,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TileType {
     Grass,
     Tree,
@@ -114,7 +115,7 @@ pub enum PropKind {
     Npc(NpcKind),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlayerState {
     Idle,
     Walking,
@@ -122,7 +123,7 @@ pub enum PlayerState {
     Hurt,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EquippedItem {
     None,
     Sword,
@@ -236,7 +237,7 @@ impl Default for Transition {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Player {
     pub x: f32,
     pub y: f32,

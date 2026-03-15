@@ -7,6 +7,7 @@ mod generated_overworld;
 mod logger;
 mod model;
 mod render;
+mod save;
 mod sprites;
 mod world;
 mod world_data;
