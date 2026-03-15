@@ -340,6 +340,12 @@ impl Sprites {
         );
         true
     }
+
+    pub fn get_title_dragon_dims(&self) -> Option<(f32, f32)> {
+        self.title_dragon.as_ref().map(|texture| {
+            (texture.width(), texture.height())
+        })
+    }
 }
 
 #[derive(Clone, Copy)]

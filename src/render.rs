@@ -1163,34 +1163,8 @@ pub fn draw_fade_overlay(alpha: f32) {
 
 pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save: bool) {
     clear_background(color_u8!(17, 17, 17, 255));
+    let total_h = GAME_H + HUD_H;
     let cx = GAME_W / 2.0;
-    // enlarge banner by another 50% (now 225% of original)
-    let dragon_w = px(128.0) * 2.25;
-    let dragon_h = px(96.0) * 2.25;
-    let dragon_x = cx - dragon_w / 2.0;
-    // ensure dragon doesn't start above window
-    let mut dragon_y = px(6.0) - (dragon_h - px(96.0)) / 2.0;
-    if dragon_y < 0.0 {
-        dragon_y = 0.0;
-    }
-    if !sprites.draw_title_dragon(dragon_x, dragon_y, dragon_w, dragon_h) {
-        draw_dragon(cx - px(36.0), px(12.0), 1.55);
-    }
-
-    // compute baseline based on dragon bottom, reducing gap
-    let cy = dragon_y + dragon_h + px(4.0);
-    let title_width = px(170.0);
-    let start_x = cx - title_width / 2.0;
-    draw_text("DELTA", start_x + px(38.0), cy + px(8.0), px(36.0), YELLOW);
-    draw_text(
-        "A World of Secrets",
-        start_x + px(4.0),
-        cy + px(28.0),
-        px(20.0),
-        GRAY,
-    );
-    let menu_y = cy + px(58.0);
-    let spacing = px(22.0);
     let mut items: Vec<&str> = Vec::new();
     if has_save {
         items.push("Continue");
@@ -1198,43 +1172,128 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     items.push("Start Game");
     items.push("Customize Hero");
 
-    for (i, &label) in items.iter().enumerate() {
-        let y = menu_y + i as f32 * spacing;
-        let color = if selected_menu == i { WHITE } else { GRAY };
-        if selected_menu == i && (frame / 30) % 2 == 0 {
-            draw_text(">", cx - px(66.0), y, px(24.0), WHITE);
-        }
+    let mut menu_content_w: f32 = 0.0;
+    for &label in &items {
         let font_size = if label == "Customize Hero" {
+            px(18.0)
+        } else {
             px(20.0)
-        } else {
-            px(22.0)
         };
-        let x_offset = if label == "Customize Hero" {
-            px(74.0)
-        } else if label == "Continue" {
-            px(52.0)
-        } else {
-            px(48.0)
-        };
-        draw_text(label, cx - x_offset, y, font_size, color);
+        let label_dims = measure_text(label, None, font_size as u16, 1.0);
+        menu_content_w = menu_content_w.max(label_dims.width);
     }
 
-    // control notes – formatted clearly
+    let dragon_area_y = px(0.0);
+    // Calculate dragon dimensions based on actual image aspect ratio
+    let desired_dragon_h = px(450.0);
+    let (dragon_w, dragon_h) = if let Some((src_w, src_h)) = sprites.get_title_dragon_dims() {
+        let scale = desired_dragon_h / src_h;
+        (src_w * scale, src_h * scale)
+    } else {
+        // Fallback if image dimensions unavailable
+        (px(450.0), px(450.0))
+    };
+    let dragon_x = cx - dragon_w / 2.0;
+    if !sprites.draw_title_dragon(dragon_x, dragon_area_y, dragon_w, dragon_h) {
+        draw_dragon(cx - px(90.0), dragon_area_y + px(14.0), 3.0);
+    }
+
+    let title = "DELTA";
+    let title_font = px(40.0);
+    let title_dims = measure_text(title, None, title_font as u16, 1.0);
+    let subtitle = "A World of Secrets";
+    let subtitle_font = px(18.0);
+    let subtitle_dims = measure_text(subtitle, None, subtitle_font as u16, 1.0);
+    let title_y = dragon_area_y + px(66.0);
+    let subtitle_y = title_y + px(22.0);
+    let caption_w = title_dims.width.max(subtitle_dims.width) + px(36.0);
+    let caption_h = px(54.0);
+    let caption_x = cx - caption_w / 2.0;
+    let caption_y = title_y - title_font + px(10.0);
+    draw_rectangle(
+        caption_x,
+        caption_y,
+        caption_w,
+        caption_h,
+        color_u8!(0, 0, 0, 180),
+    );
+    draw_text(title, cx - title_dims.width / 2.0, title_y, title_font, YELLOW);
+    draw_text(
+        subtitle,
+        cx - subtitle_dims.width / 2.0,
+        subtitle_y,
+        subtitle_font,
+        WHITE,
+    );
+
+    let menu_panel_w = (menu_content_w + px(84.0)).max(px(230.0));
+    let row_h = px(24.0);
+    let menu_start_y = px(18.0);
+    let menu_panel_h = menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
+    let menu_panel_x = cx - menu_panel_w / 2.0;
+    let menu_panel_y = 2.25 * GAME_H / 3.0;
+    draw_rectangle(
+        menu_panel_x,
+        menu_panel_y - px(8.0),
+        menu_panel_w,
+        menu_panel_h,
+        color_u8!(24, 28, 39, 127),
+    );
+    draw_rectangle_lines(
+        menu_panel_x,
+        menu_panel_y - px(8.0),
+        menu_panel_w,
+        menu_panel_h,
+        px(2.0),
+        color_u8!(123, 132, 147, 255),
+    );
+
+    for (i, &label) in items.iter().enumerate() {
+        let y = menu_panel_y + menu_start_y + i as f32 * row_h;
+        let selected = selected_menu == i;
+        if selected {
+            draw_rectangle(
+                menu_panel_x + px(10.0),
+                y - px(18.0),
+                menu_panel_w - px(20.0),
+                px(24.0),
+                color_u8!(61, 73, 96, 255),
+            );
+            if (frame / 30) % 2 == 0 {
+                draw_text(">", menu_panel_x + px(18.0), y, px(20.0), WHITE);
+            }
+        }
+
+        let font_size = if label == "Customize Hero" {
+            px(18.0)
+        } else {
+            px(20.0)
+        };
+        let label_dims = measure_text(label, None, font_size as u16, 1.0);
+        draw_text(
+            label,
+            cx - label_dims.width / 2.0,
+            y,
+            font_size,
+            if selected { WHITE } else { LIGHTGRAY },
+        );
+    }
+
     let notes = [
-        "W/S  : menu",
-        "ENTER: select",
-        "WASD : move around",
-        "TAB  : map",
+        "W/S or Up/Down: navigate",
+        "Enter / Z / Space: select",
+        "WASD: move   I / Tab: inventory",
     ];
-    // calculate left edge relative to start_x so text is centered under title
-    let notes_x = start_x + px(0.0);
+    let notes_y = (dragon_area_y + dragon_h + px(28.0)).min(total_h - px(58.0));
     for (i, &note) in notes.iter().enumerate() {
+        let font_size = px(16.0);
+        let dims = measure_text(note, None, font_size as u16, 1.0);
         draw_text(
             note,
-            notes_x,
-            cy + px(96.0) + i as f32 * px(20.0),
-            px(14.0),
-            LIGHTGRAY,
+            cx - dims.width / 2.0,
+            notes_y + i as f32 * px(18.0),
+            font_size,
+            WHITE,
         );
     }
 
