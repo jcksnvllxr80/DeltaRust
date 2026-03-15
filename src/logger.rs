@@ -1,12 +1,12 @@
 use std::env;
 use std::fmt;
-use std::fs::{create_dir_all, File, OpenOptions};
-use time::{format_description, OffsetDateTime};
+use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+use time::{OffsetDateTime, format_description};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
@@ -68,11 +68,11 @@ static TIME_FORMAT_EPOCH_MS: OnceLock<bool> = OnceLock::new();
 pub fn default_log_path() -> PathBuf {
     let dir = crate::config::try_get()
         .map(|c| PathBuf::from(&c.general.log_dir))
-        .unwrap_or_else(||
+        .unwrap_or_else(|| {
             env::current_dir()
                 .unwrap_or_else(|_| PathBuf::from("."))
                 .join("logs")
-        );
+        });
     dir.join("delta_rust.log")
 }
 

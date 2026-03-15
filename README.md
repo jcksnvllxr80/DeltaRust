@@ -8,6 +8,42 @@ Native Rust version of the Delta game, kept separate from the original browser i
 cargo run
 ```
 
+## In-game console
+
+During gameplay, press `~` to open the console at the bottom of the screen.
+
+- `help` lists the supported console commands
+- `teleport x,y` moves you to an overworld screen coordinate such as `teleport 3,4`
+- `god_mode 0/1` disables or enables player invulnerability
+- `get_item <item_name>` adds an item to your inventory
+
+Press `Enter` to run the current command, and `Esc` or `~` to close the console.
+
+### get_item
+
+`get_item <item_name>` grants the specified item. If you already own it, the command tells you so. Some items have special behavior:
+
+| Item | Notes |
+|------|-------|
+| `sword` | Auto-equips to Main slot |
+| `bombs` | Auto-equips to Side slot; if already owned, refills ammo to max |
+| `hammer` | Auto-equips to Side slot |
+| `keys` | Adds 1 key each time |
+| `gems` | Adds 10 gems each time |
+| `dragon_pieces` | Sets count to 7 (all pieces) |
+| `boss_key` | Grants the boss key for the current dungeon |
+| `ladder` | Lets you climb at ladder markers |
+| `raft` | Lets you cross water tiles |
+| `strong_arm_glove` | Also accepted as `strong_glove` |
+| `portal_tool` | Grants the portal attunement focus |
+| `ancient_key` | Opens the Iron Highlands vault |
+| `tide_chart` | Marks safe Sunken Coast routes |
+| `ember_crystal` | Requires `strong_arm_glove` first |
+| `void_compass` | Stabilizes fractured sanctum routes |
+| `star_sigil` | Merchant seal for Aetherian ascent |
+| `dragon_codex` | Lore needed for the final approach |
+| `crystal_of_seeing` | Reveals the hidden path in the last ascent |
+
 ## Editable Sprites
 
 The game loads character art from `assets/sprites` at runtime.

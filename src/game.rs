@@ -1,8 +1,8 @@
 use crate::audio::{Audio, MusicTrack};
 use crate::character::{CharacterAppearance, CharacterCreator};
 use crate::constants::{
-    attack_duration, COLS, GAME_H, GAME_W, knockback_frames, knockback_speed, PIXEL_SCALE,
-    player_speed, ROWS, TILE, trans_speed,
+    COLS, GAME_H, GAME_W, PIXEL_SCALE, ROWS, TILE, WORLD_H, WORLD_W, attack_duration,
+    knockback_frames, knockback_speed, player_speed, trans_speed,
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, ItemSlot,
@@ -71,6 +71,10 @@ pub struct Game {
     pub inventory_map_mode: MapMode,
     pub all_items_mode: bool,
     pub full_hearts_mode: bool,
+    pub god_mode: bool,
+    pub console_open: bool,
+    pub console_input: String,
+    pub console_feedback: String,
     pub save_message_timer: i32,
     blocked_interaction: Option<InteractionSource>,
 }
@@ -114,6 +118,10 @@ impl Game {
             inventory_map_mode: MapMode::Overworld,
             all_items_mode,
             full_hearts_mode,
+            god_mode: false,
+            console_open: false,
+            console_input: String::new(),
+            console_feedback: String::new(),
             save_message_timer: 0,
             blocked_interaction: None,
         };
@@ -130,6 +138,9 @@ impl Game {
 
     pub fn update(&mut self) {
         self.frame += 1;
+        if !matches!(self.state, GameState::Playing) || !self.console_open {
+            drain_char_input();
+        }
         match self.state {
             GameState::Title => {
                 self.audio.play_music(MusicTrack::Title);
@@ -139,8 +150,7 @@ impl Game {
                     self.title_menu_selection = self.title_menu_selection.saturating_sub(1);
                 }
                 if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
-                    self.title_menu_selection =
-                        (self.title_menu_selection + 1).min(max_option);
+                    self.title_menu_selection = (self.title_menu_selection + 1).min(max_option);
                 }
                 if start_pressed() {
                     if has_save {
@@ -240,6 +250,9 @@ impl Game {
             &self.projectiles,
             &self.death_animations,
         );
+        if self.console_open {
+            render::draw_console(&self.console_input, &self.console_feedback, self.frame);
+        }
     }
 
     fn start_new_game(&mut self) {
@@ -325,6 +338,17 @@ impl Game {
     }
 
     fn update_playing(&mut self) {
+        if console_toggle_pressed() {
+            self.console_open = !self.console_open;
+            self.console_input.clear();
+            drain_char_input();
+            crate::log_debug!("console_toggled open={}", self.console_open);
+            return;
+        }
+        if self.console_open {
+            self.update_console_input();
+            return;
+        }
         if inventory_pressed() {
             self.inventory_tab = InventoryTab::Inventory;
             self.inventory_selection = 0;
@@ -389,7 +413,11 @@ impl Game {
             Some((TileInteraction::Victory, source)) if !self.is_interaction_blocked(source) => {
                 self.state = GameState::Victory;
                 self.frame = 0;
-                crate::log_info!("victory_triggered screen=({}, {})", self.world.screen_x, self.world.screen_y);
+                crate::log_info!(
+                    "victory_triggered screen=({}, {})",
+                    self.world.screen_x,
+                    self.world.screen_y
+                );
                 return;
             }
             _ => {}
@@ -403,7 +431,11 @@ impl Game {
         if self.player.hp <= 0 {
             self.state = GameState::GameOver;
             self.frame = 0;
-            crate::log_warn!("game_over screen=({}, {})", self.world.screen_x, self.world.screen_y);
+            crate::log_warn!(
+                "game_over screen=({}, {})",
+                self.world.screen_x,
+                self.world.screen_y
+            );
         }
     }
 
@@ -463,8 +495,7 @@ impl Game {
                 );
                 return;
             }
-            let save_tab =
-                Rect::new(outer_x + px(204.0), outer_y + px(30.0), px(70.0), px(22.0));
+            let save_tab = Rect::new(outer_x + px(204.0), outer_y + px(30.0), px(70.0), px(22.0));
             if save_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Save;
                 crate::log_verbose!("inventory_tab_clicked tab=Save");
@@ -1364,7 +1395,9 @@ impl Game {
                 self.show_message("Heart Container!\nHP increased!");
             }
             PickupType::BombAmmo => {
-                self.player.bomb_count = (self.player.bomb_count + crate::config::get().combat.bomb_chest_ammo).min(self.player.max_bombs);
+                self.player.bomb_count = (self.player.bomb_count
+                    + crate::config::get().combat.bomb_chest_ammo)
+                    .min(self.player.max_bombs);
                 self.show_message("Found 4 bombs!");
             }
             PickupType::Key => {
@@ -1591,7 +1624,12 @@ impl Game {
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
-        crate::log_info!("enter_interior id={} spawn=({}, {})", interior_id, spawn_x, spawn_y);
+        crate::log_info!(
+            "enter_interior id={} spawn=({}, {})",
+            interior_id,
+            spawn_x,
+            spawn_y
+        );
     }
 
     fn exit_interior(&mut self) {
@@ -1656,8 +1694,9 @@ impl Game {
                 if !self.world.opened_chests.contains_key(&cave_key) {
                     self.world.opened_chests.insert(cave_key, vec![]);
                     self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
-                    self.player.bomb_count =
-                        (self.player.bomb_count + crate::config::get().combat.bomb_starting_ammo).min(self.player.max_bombs);
+                    self.player.bomb_count = (self.player.bomb_count
+                        + crate::config::get().combat.bomb_starting_ammo)
+                        .min(self.player.max_bombs);
                     self.show_message("Bomb bag upgrade!\nMax bombs increased!");
                 } else {
                     self.show_message("The shop is closed.");
@@ -1750,8 +1789,9 @@ impl Game {
                         self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
                         self.show_message("You found BOMBS!");
                     } else {
-                        self.player.bomb_count =
-                            (self.player.bomb_count + crate::config::get().combat.bomb_starting_ammo).min(self.player.max_bombs);
+                        self.player.bomb_count = (self.player.bomb_count
+                            + crate::config::get().combat.bomb_starting_ammo)
+                            .min(self.player.max_bombs);
                         self.show_message("Found 8 bombs!");
                     }
                 } else {
@@ -1798,7 +1838,9 @@ impl Game {
     fn update_items(&mut self) {
         for pickup in &mut self.pickups {
             pickup.timer += 1;
-            if pickup_times_out(pickup.pickup_type) && pickup.timer > crate::config::get().combat.pickup_lifetime_frames {
+            if pickup_times_out(pickup.pickup_type)
+                && pickup.timer > crate::config::get().combat.pickup_lifetime_frames
+            {
                 pickup.collected = true;
             }
         }
@@ -1929,7 +1971,7 @@ impl Game {
     }
 
     fn player_take_damage(&mut self, amount: i32, from_dir: Dir) {
-        if self.world.dev_mode || self.player.invuln_timer > 0 {
+        if self.god_mode || self.world.dev_mode || self.player.invuln_timer > 0 {
             return;
         }
         self.player.hp -= amount;
@@ -1982,7 +2024,9 @@ impl Game {
             EnemyType::Boss => {
                 self.spawn_pickup(enemy.x + 4.0, enemy.y + 4.0, PickupType::HeartContainer);
             }
-            _ if roll < crate::config::get().combat.enemy_heart_drop_chance => self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart),
+            _ if roll < crate::config::get().combat.enemy_heart_drop_chance => {
+                self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart)
+            }
             _ if roll < 0.35 => self.spawn_pickup(enemy.x, enemy.y, PickupType::BombAmmo),
             _ if roll < 0.5 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Gem),
             _ => {}
@@ -2050,8 +2094,9 @@ impl Game {
             }
             PickupType::BombAmmo => {
                 if self.player.has_bombs {
-                    self.player.bomb_count =
-                        (self.player.bomb_count + crate::config::get().combat.bomb_chest_ammo).min(self.player.max_bombs);
+                    self.player.bomb_count = (self.player.bomb_count
+                        + crate::config::get().combat.bomb_chest_ammo)
+                        .min(self.player.max_bombs);
                 }
             }
             PickupType::Bombs => {
@@ -2195,6 +2240,352 @@ impl Game {
         }
     }
 
+    fn update_console_input(&mut self) {
+        if is_key_pressed(KeyCode::Escape) {
+            self.console_open = false;
+            self.console_input.clear();
+            crate::log_debug!("console_closed");
+            return;
+        }
+        if is_key_pressed(KeyCode::Backspace) {
+            self.console_input.pop();
+        }
+        while let Some(ch) = get_char_pressed() {
+            if !ch.is_control() && self.console_input.len() < 96 {
+                self.console_input.push(ch);
+            }
+        }
+        if is_key_pressed(KeyCode::Enter) {
+            let command = self.console_input.trim().to_string();
+            self.console_feedback = self.execute_console_command(&command);
+            self.console_input.clear();
+        }
+    }
+
+    fn execute_console_command(&mut self, command: &str) -> String {
+        if command.is_empty() {
+            return "Enter a command.".to_string();
+        }
+
+        let mut parts = command.split_whitespace();
+        let Some(name) = parts.next() else {
+            return "Enter a command.".to_string();
+        };
+
+        match name.to_ascii_lowercase().as_str() {
+            "help" => console_help_text().to_string(),
+            "teleport" => {
+                let coords = command[name.len()..].trim();
+                let mut values = coords.split(',').map(str::trim);
+                let (Some(x_str), Some(y_str), None) =
+                    (values.next(), values.next(), values.next())
+                else {
+                    return "Usage: teleport x,y".to_string();
+                };
+
+                let Ok(screen_x) = x_str.parse::<i32>() else {
+                    return "Teleport X must be a whole number.".to_string();
+                };
+                let Ok(screen_y) = y_str.parse::<i32>() else {
+                    return "Teleport Y must be a whole number.".to_string();
+                };
+
+                if screen_x < 0 || screen_x >= WORLD_W || screen_y < 0 || screen_y >= WORLD_H {
+                    return format!(
+                        "Teleport target must be within 0..{}, 0..{}.",
+                        WORLD_W - 1,
+                        WORLD_H - 1
+                    );
+                }
+
+                match self.teleport_to_screen(screen_x, screen_y) {
+                    Ok(()) => {
+                        crate::log_info!("console_teleport screen=({}, {})", screen_x, screen_y);
+                        format!("Teleported to {},{}.", screen_x, screen_y)
+                    }
+                    Err(err) => err,
+                }
+            }
+            "god_mode" => {
+                let Some(value) = parts.next() else {
+                    return "Usage: god_mode 0/1".to_string();
+                };
+                if parts.next().is_some() {
+                    return "Usage: god_mode 0/1".to_string();
+                }
+
+                match value {
+                    "0" => {
+                        self.god_mode = false;
+                        crate::log_info!("console_god_mode enabled=false");
+                        "God mode disabled.".to_string()
+                    }
+                    "1" => {
+                        self.god_mode = true;
+                        crate::log_info!("console_god_mode enabled=true");
+                        "God mode enabled.".to_string()
+                    }
+                    _ => "Usage: god_mode 0/1".to_string(),
+                }
+            }
+            "get_item" => {
+                let item_name = parts.next().map(|s| s.to_lowercase());
+                let Some(item_name) = item_name else {
+                    return "Usage: get_item <item_name>".to_string();
+                };
+                if parts.next().is_some() {
+                    return "Usage: get_item <item_name>".to_string();
+                }
+
+                match item_name.as_str() {
+                    "sword" => {
+                        if !self.player.has_sword {
+                            self.player.has_sword = true;
+                            self.auto_assign_item(EquippedItem::Sword, ItemSlot::Main);
+                            crate::log_info!("console_get_item item=sword");
+                            "Got SWORD!".to_string()
+                        } else {
+                            "Already have SWORD.".to_string()
+                        }
+                    }
+                    "bombs" => {
+                        if !self.player.has_bombs {
+                            self.player.has_bombs = true;
+                            self.player.bomb_count = crate::config::get().combat.bomb_starting_ammo;
+                            self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
+                            crate::log_info!("console_get_item item=bombs");
+                            "Got BOMBS!".to_string()
+                        } else if self.player.bomb_count < self.player.max_bombs {
+                            self.player.bomb_count = self.player.max_bombs;
+                            "Bombs refilled!".to_string()
+                        } else {
+                            "Already have BOMBS (full).".to_string()
+                        }
+                    }
+                    "boss_key" => {
+                        if !self.player.has_boss_key {
+                            self.player.has_boss_key = true;
+                            crate::log_info!("console_get_item item=boss_key");
+                            "Got BOSS KEY!".to_string()
+                        } else {
+                            "Already have BOSS KEY.".to_string()
+                        }
+                    }
+                    "keys" => {
+                        self.player.keys += 1;
+                        crate::log_info!("console_get_item item=keys");
+                        "Got KEY!".to_string()
+                    }
+                    "gems" => {
+                        self.player.gems += 10;
+                        crate::log_info!("console_get_item item=gems");
+                        "Got 10 GEMS!".to_string()
+                    }
+                    "dragon_pieces" => {
+                        if self.player.dragon_pieces < 7 {
+                            self.player.dragon_pieces = 7;
+                            crate::log_info!("console_get_item item=dragon_pieces");
+                            "Got all 7 DRAGON PIECES!".to_string()
+                        } else {
+                            "Already have all DRAGON PIECES.".to_string()
+                        }
+                    }
+                    "ancient_key" => {
+                        if !self.player.has_ancient_key {
+                            self.player.has_ancient_key = true;
+                            crate::log_info!("console_get_item item=ancient_key");
+                            "Got ANCIENT KEY!".to_string()
+                        } else {
+                            "Already have ANCIENT KEY.".to_string()
+                        }
+                    }
+                    "tide_chart" => {
+                        if !self.player.has_tide_chart {
+                            self.player.has_tide_chart = true;
+                            crate::log_info!("console_get_item item=tide_chart");
+                            "Got TIDE CHART!".to_string()
+                        } else {
+                            "Already have TIDE CHART.".to_string()
+                        }
+                    }
+                    "ember_crystal" => {
+                        if !self.player.has_strong_arm_glove {
+                            "Need STRONG ARM GLOVE first.".to_string()
+                        } else if !self.player.has_ember_crystal {
+                            self.player.has_ember_crystal = true;
+                            crate::log_info!("console_get_item item=ember_crystal");
+                            "Got EMBER CRYSTAL!".to_string()
+                        } else {
+                            "Already have EMBER CRYSTAL.".to_string()
+                        }
+                    }
+                    "void_compass" => {
+                        if !self.player.has_void_compass {
+                            self.player.has_void_compass = true;
+                            crate::log_info!("console_get_item item=void_compass");
+                            "Got VOID COMPASS!".to_string()
+                        } else {
+                            "Already have VOID COMPASS.".to_string()
+                        }
+                    }
+                    "star_sigil" => {
+                        if !self.player.has_star_sigil {
+                            self.player.has_star_sigil = true;
+                            crate::log_info!("console_get_item item=star_sigil");
+                            "Got STAR SIGIL!".to_string()
+                        } else {
+                            "Already have STAR SIGIL.".to_string()
+                        }
+                    }
+                    "dragon_codex" => {
+                        if !self.player.has_dragon_codex {
+                            self.player.has_dragon_codex = true;
+                            crate::log_info!("console_get_item item=dragon_codex");
+                            "Got DRAGON CODEX!".to_string()
+                        } else {
+                            "Already have DRAGON CODEX.".to_string()
+                        }
+                    }
+                    "crystal_of_seeing" => {
+                        if !self.player.has_crystal_of_seeing {
+                            self.player.has_crystal_of_seeing = true;
+                            crate::log_info!("console_get_item item=crystal_of_seeing");
+                            "Got CRYSTAL OF SEEING!".to_string()
+                        } else {
+                            "Already have CRYSTAL OF SEEING.".to_string()
+                        }
+                    }
+                    "ladder" => {
+                        if !self.player.has_ladder {
+                            self.player.has_ladder = true;
+                            crate::log_info!("console_get_item item=ladder");
+                            "Got LADDER!".to_string()
+                        } else {
+                            "Already have LADDER.".to_string()
+                        }
+                    }
+                    "hammer" => {
+                        if !self.player.has_hammer {
+                            self.player.has_hammer = true;
+                            self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
+                            crate::log_info!("console_get_item item=hammer");
+                            "Got HAMMER!".to_string()
+                        } else {
+                            "Already have HAMMER.".to_string()
+                        }
+                    }
+                    "raft" => {
+                        if !self.player.has_raft {
+                            self.player.has_raft = true;
+                            crate::log_info!("console_get_item item=raft");
+                            "Got RAFT!".to_string()
+                        } else {
+                            "Already have RAFT.".to_string()
+                        }
+                    }
+                    "strong_arm_glove" | "strong_glove" => {
+                        if !self.player.has_strong_arm_glove {
+                            self.player.has_strong_arm_glove = true;
+                            crate::log_info!("console_get_item item=strong_arm_glove");
+                            "Got STRONG ARM GLOVE!".to_string()
+                        } else {
+                            "Already have STRONG ARM GLOVE.".to_string()
+                        }
+                    }
+                    "portal_tool" => {
+                        if !self.player.has_portal_tool {
+                            self.player.has_portal_tool = true;
+                            crate::log_info!("console_get_item item=portal_tool");
+                            "Got PORTAL TOOL!".to_string()
+                        } else {
+                            "Already have PORTAL TOOL.".to_string()
+                        }
+                    }
+                    _ => {
+                        let valid_items = [
+                            "sword",
+                            "bombs",
+                            "boss_key",
+                            "keys",
+                            "gems",
+                            "dragon_pieces",
+                            "ancient_key",
+                            "tide_chart",
+                            "ember_crystal",
+                            "void_compass",
+                            "star_sigil",
+                            "dragon_codex",
+                            "crystal_of_seeing",
+                            "ladder",
+                            "hammer",
+                            "raft",
+                            "strong_arm_glove",
+                            "portal_tool",
+                        ];
+                        format!("Unknown item: {item_name}. Valid: {:?}", valid_items)
+                    }
+                }
+            }
+            _ => format!("Unknown command: {command}"),
+        }
+    }
+
+    fn teleport_to_screen(&mut self, screen_x: i32, screen_y: i32) -> Result<(), String> {
+        self.world.in_dungeon = false;
+        self.world.dungeon_id = 0;
+        self.world.in_interior = false;
+        self.world.interior_id.clear();
+        self.world.load_screen(screen_x, screen_y);
+        self.spawn_for_screen();
+        self.reset_items();
+        self.load_screen_items();
+
+        let Some((spawn_x, spawn_y)) = self.find_console_spawn_position() else {
+            return Err(format!(
+                "No walkable spawn found on screen {},{}.",
+                screen_x, screen_y
+            ));
+        };
+
+        self.player.x = spawn_x;
+        self.player.y = spawn_y;
+        self.player.dir = Dir::Down;
+        self.player.state = PlayerState::Idle;
+        self.player.attack_timer = 0;
+        self.player.invuln_timer = 0;
+        self.player.hurt_timer = 0;
+        self.player.knock_dx = 0.0;
+        self.player.knock_dy = 0.0;
+        self.player.last_axis = None;
+        self.blocked_interaction = None;
+        self.audio.play_music(MusicTrack::Overworld);
+        Ok(())
+    }
+
+    fn find_console_spawn_position(&self) -> Option<(f32, f32)> {
+        let hitbox = self.player.hitbox();
+        let center_x = COLS as i32 / 2;
+        let center_y = ROWS as i32 / 2;
+        let mut best: Option<(f32, f32, i32)> = None;
+
+        for tile_y in 0..ROWS as i32 {
+            for tile_x in 0..COLS as i32 {
+                let world_x = tile_x as f32 * TILE;
+                let world_y = tile_y as f32 * TILE;
+                if self.dynamic_collides(world_x + px(2.0), world_y + px(4.0), hitbox.w, hitbox.h) {
+                    continue;
+                }
+
+                let distance = (tile_x - center_x).abs() + (tile_y - center_y).abs();
+                if best.is_none_or(|(_, _, best_distance)| distance < best_distance) {
+                    best = Some((world_x, world_y, distance));
+                }
+            }
+        }
+
+        best.map(|(x, y, _)| (x, y))
+    }
+
     /// Called when all enemies in a dungeon room are defeated.
     fn on_dungeon_room_cleared(&mut self) {
         for reward in world_data::room_clear_rewards(
@@ -2285,7 +2676,12 @@ impl Game {
         }) else {
             return false;
         };
-        crate::log_debug!("interact_npc kind={:?} at=({}, {})", npc_kind, tile_x, tile_y);
+        crate::log_debug!(
+            "interact_npc kind={:?} at=({}, {})",
+            npc_kind,
+            tile_x,
+            tile_y
+        );
         self.handle_npc(npc_kind);
         true
     }
@@ -2390,7 +2786,10 @@ impl Game {
                 if self.player.max_bombs < crate::config::get().combat.bomb_max_capacity {
                     if self.spend_gems(20) {
                         self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
-                        self.player.bomb_count = self.player.bomb_count.max(crate::config::get().combat.bomb_starting_ammo);
+                        self.player.bomb_count = self
+                            .player
+                            .bomb_count
+                            .max(crate::config::get().combat.bomb_starting_ammo);
                         self.show_message("Sael upgrades your bomb bag.\nMax bombs increased!");
                     } else {
                         self.show_message("Sael: Deep gear isn't cheap.\n20 gems for the upgrade.");
@@ -2537,11 +2936,41 @@ impl Game {
 fn create_enemy(spawn: EnemySpawn) -> Enemy {
     let ecfg = &crate::config::get().enemies;
     let (hp, speed, w, h, shoot_cooldown) = match spawn.enemy_type {
-        EnemyType::Slime => (ecfg.slime.hp, ecfg.slime.speed * PIXEL_SCALE, px(12.0), px(12.0), 0),
-        EnemyType::Octorok => (ecfg.octorok.hp, ecfg.octorok.speed * PIXEL_SCALE, px(14.0), px(14.0), 120),
-        EnemyType::Bat => (ecfg.bat.hp, ecfg.bat.speed * PIXEL_SCALE, px(10.0), px(10.0), 0),
-        EnemyType::Darknut => (ecfg.darknut.hp, ecfg.darknut.speed * PIXEL_SCALE, px(14.0), px(14.0), 0),
-        EnemyType::Boss => (ecfg.boss.hp, ecfg.boss.speed * PIXEL_SCALE, px(24.0), px(24.0), 60),
+        EnemyType::Slime => (
+            ecfg.slime.hp,
+            ecfg.slime.speed * PIXEL_SCALE,
+            px(12.0),
+            px(12.0),
+            0,
+        ),
+        EnemyType::Octorok => (
+            ecfg.octorok.hp,
+            ecfg.octorok.speed * PIXEL_SCALE,
+            px(14.0),
+            px(14.0),
+            120,
+        ),
+        EnemyType::Bat => (
+            ecfg.bat.hp,
+            ecfg.bat.speed * PIXEL_SCALE,
+            px(10.0),
+            px(10.0),
+            0,
+        ),
+        EnemyType::Darknut => (
+            ecfg.darknut.hp,
+            ecfg.darknut.speed * PIXEL_SCALE,
+            px(14.0),
+            px(14.0),
+            0,
+        ),
+        EnemyType::Boss => (
+            ecfg.boss.hp,
+            ecfg.boss.speed * PIXEL_SCALE,
+            px(24.0),
+            px(24.0),
+            60,
+        ),
     };
     Enemy {
         enemy_type: spawn.enemy_type,
@@ -2730,6 +3159,18 @@ fn start_pressed() -> bool {
 
 fn inventory_pressed() -> bool {
     is_key_pressed(KeyCode::I) || is_key_pressed(KeyCode::Tab)
+}
+
+fn console_toggle_pressed() -> bool {
+    is_key_pressed(KeyCode::GraveAccent)
+}
+
+fn console_help_text() -> &'static str {
+    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name>"
+}
+
+fn drain_char_input() {
+    while get_char_pressed().is_some() {}
 }
 
 fn pickup_value(pickup: PickupType) -> i32 {

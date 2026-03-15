@@ -57,6 +57,73 @@ pub fn draw_game(
     draw_hud(sprites, player, world);
 }
 
+pub fn draw_console(input: &str, feedback: &str, frame: i32) {
+    let panel_y = GAME_H;
+    let input_box_y = panel_y + px(42.0);
+    let input_box_h = px(32.0);
+    let prompt_x = px(22.0);
+    let prompt = ">";
+    let prompt_size = px(18.0);
+    let prompt_dims = measure_text(prompt, None, prompt_size as u16, 1.0);
+    let cursor = if (frame / 20) % 2 == 0 { "_" } else { "" };
+    let input_text = format!("{input}{cursor}");
+
+    draw_rectangle(0.0, panel_y, GAME_W, HUD_H, color_u8!(13, 16, 24, 255));
+    draw_rectangle(0.0, panel_y, GAME_W, px(2.0), color_u8!(90, 103, 124, 255));
+    draw_text(
+        "CONSOLE",
+        px(18.0),
+        panel_y + px(18.0),
+        px(14.0),
+        color_u8!(197, 170, 119, 255),
+    );
+    draw_text(
+        "ENTER execute   ESC / ~ close",
+        GAME_W - px(210.0),
+        panel_y + px(18.0),
+        px(10.0),
+        LIGHTGRAY,
+    );
+    if !feedback.is_empty() {
+        draw_text(
+            feedback,
+            px(18.0),
+            panel_y + px(34.0),
+            px(12.0),
+            color_u8!(186, 214, 255, 255),
+        );
+    }
+    draw_rectangle(
+        px(16.0),
+        input_box_y,
+        GAME_W - px(32.0),
+        input_box_h,
+        color_u8!(24, 28, 39, 255),
+    );
+    draw_rectangle_lines(
+        px(16.0),
+        input_box_y,
+        GAME_W - px(32.0),
+        input_box_h,
+        px(1.0),
+        color_u8!(123, 132, 147, 255),
+    );
+    draw_text(
+        prompt,
+        prompt_x,
+        input_box_y + px(21.0),
+        prompt_size,
+        color_u8!(120, 220, 120, 255),
+    );
+    draw_text(
+        &input_text,
+        prompt_x + prompt_dims.width + px(6.0),
+        input_box_y + px(21.0),
+        px(16.0),
+        WHITE,
+    );
+}
+
 pub fn draw_inventory(
     sprites: &Sprites,
     world: &WorldSnapshot,
@@ -67,7 +134,6 @@ pub fn draw_inventory(
     frame: i32,
     save_message_timer: i32,
 ) {
-
     clear_background(color_u8!(13, 16, 24, 255));
 
     let outer_x = px(16.0);
@@ -256,9 +322,30 @@ pub fn draw_inventory(
         );
         let border_color = color_u8!(90, 103, 124, 255);
         let t = px(1.0);
-        draw_line(content_x, content_y, content_x, content_y + content_h, t, border_color);
-        draw_line(content_x + content_w, content_y, content_x + content_w, content_y + content_h, t, border_color);
-        draw_line(content_x, content_y + content_h, content_x + content_w, content_y + content_h, t, border_color);
+        draw_line(
+            content_x,
+            content_y,
+            content_x,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x + content_w,
+            content_y,
+            content_x + content_w,
+            content_y + content_h,
+            t,
+            border_color,
+        );
+        draw_line(
+            content_x,
+            content_y + content_h,
+            content_x + content_w,
+            content_y + content_h,
+            t,
+            border_color,
+        );
 
         let cx = content_x + content_w / 2.0;
         let cy = content_y + content_h / 2.0;
@@ -2289,6 +2376,43 @@ fn draw_action_slot(
     );
 }
 
+fn draw_hud_chip_frame(x: f32, y: f32, w: f32, h: f32, border: Color) {
+    draw_rectangle(x, y, w, h, color_u8!(27, 31, 42, 235));
+    draw_rectangle_lines(x, y, w, h, px(1.0), border);
+}
+
+fn draw_hud_counter_chip<F>(
+    x: f32,
+    y: f32,
+    count: &str,
+    text_color: Color,
+    border: Color,
+    draw_icon: F,
+) -> f32
+where
+    F: FnOnce(f32, f32),
+{
+    let font_size = px(12.0);
+    let text_w = measure_text(count, None, font_size as u16, 1.0).width;
+    let w = (px(34.0) + text_w).max(px(46.0));
+    let h = px(22.0);
+    draw_hud_chip_frame(x, y, w, h, border);
+    draw_icon(x + px(5.0), y + px(3.0));
+    draw_text(count, x + px(24.0), y + px(15.0), font_size, text_color);
+    w
+}
+
+fn draw_hud_icon_chip<F>(x: f32, y: f32, border: Color, draw_icon: F) -> f32
+where
+    F: FnOnce(f32, f32),
+{
+    let w = px(24.0);
+    let h = px(22.0);
+    draw_hud_chip_frame(x, y, w, h, border);
+    draw_icon(x + px(4.0), y + px(3.0));
+    w
+}
+
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
     draw_rectangle(
@@ -2334,58 +2458,64 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         "X",
         player.side_item,
     );
-    let gem_text = format!("x{}", player.gems);
-    let gem_font_size = px(16.0);
-    let gem_measure = measure_text(&gem_text, None, gem_font_size as u16, 1.0);
-    let gem_scale = px(1.0);
-    let gem_icon_w = gem_scale * 12.0;
-    let gem_gap = px(4.0);
-    let gem_text_x = GAME_W - px(12.0) - gem_measure.width;
-    let gem_x = gem_text_x - gem_gap - gem_icon_w;
-    let gem_y = px(30.0);
-    draw_gem_icon(gem_x, gem_y, gem_scale, SKYBLUE);
-    draw_text(&gem_text, gem_text_x, px(44.0), gem_font_size, SKYBLUE);
+
+    let chip_y = px(20.0);
+    let mut chip_x = px(118.0);
+    let chip_gap = px(6.0);
+
+    chip_x += draw_hud_counter_chip(
+        chip_x,
+        chip_y,
+        &format!("x{}", player.gems),
+        SKYBLUE,
+        color_u8!(68, 112, 188, 255),
+        |ix, iy| draw_gem_icon(ix, iy + px(1.0), px(0.8), SKYBLUE),
+    ) + chip_gap;
+
     if player.dragon_pieces > 0 {
-        let x = px(160.0);
-        draw_dragon_piece_icon(x, px(29.0), px(1.0));
-        draw_text(
+        chip_x += draw_hud_counter_chip(
+            chip_x,
+            chip_y,
             &format!("x{}", player.dragon_pieces),
-            x + px(18.0),
-            px(44.0),
-            px(16.0),
             color_u8!(226, 194, 92, 255),
-        );
+            color_u8!(146, 116, 46, 255),
+            |ix, iy| draw_dragon_piece_icon(ix, iy + px(1.0), px(0.8)),
+        ) + chip_gap;
     }
     if player.has_ladder {
-        draw_ladder_icon(px(160.0), px(6.0), px(1.0), color_u8!(186, 145, 96, 255));
-        draw_text(
-            "LADDER",
-            px(176.0),
-            px(20.0),
-            px(16.0),
-            color_u8!(186, 145, 96, 255),
-        );
+        chip_x += draw_hud_icon_chip(chip_x, chip_y, color_u8!(146, 109, 70, 255), |ix, iy| {
+            draw_ladder_icon(ix, iy, px(0.8), color_u8!(186, 145, 96, 255))
+        }) + chip_gap;
     }
     if player.keys > 0 || world.in_dungeon {
-        if !sprites.draw_hud_key(px(106.0), px(6.0), px(16.0)) {
-            draw_rectangle(px(108.0), px(8.0), px(12.0), px(12.0), YELLOW);
-        }
-        draw_text(
+        chip_x += draw_hud_counter_chip(
+            chip_x,
+            chip_y,
             &format!("x{}", player.keys),
-            px(126.0),
-            px(20.0),
-            px(16.0),
             YELLOW,
-        );
+            color_u8!(158, 134, 38, 255),
+            |ix, iy| {
+                if !sprites.draw_hud_key(ix + px(1.0), iy, px(16.0)) {
+                    draw_rectangle(ix + px(3.0), iy + px(2.0), px(12.0), px(12.0), YELLOW);
+                }
+            },
+        ) + chip_gap;
     }
     if player.has_boss_key {
         let boss_key_color = color_u8!(220, 40, 40, 255);
-        if !sprites.draw_hud_boss_key(px(106.0), px(28.0), px(24.0), boss_key_color) {
-            draw_rectangle(px(108.0), px(30.0), px(18.0), px(18.0), boss_key_color);
-        }
-        draw_text("BOSS", px(134.0), px(44.0), px(16.0), boss_key_color);
+        draw_hud_icon_chip(chip_x, chip_y, color_u8!(130, 44, 44, 255), |ix, iy| {
+            if !sprites.draw_hud_boss_key(ix - px(1.0), iy - px(1.0), px(18.0), boss_key_color) {
+                draw_rectangle(
+                    ix + px(1.0),
+                    iy + px(1.0),
+                    px(14.0),
+                    px(14.0),
+                    boss_key_color,
+                );
+            }
+        });
     }
-    // location label stays clear of the item group on the left.
+
     let location = world_data::location_name(
         world.screen_x,
         world.screen_y,
@@ -2394,7 +2524,16 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         world.in_interior,
         &world.interior_id,
     );
-    draw_text(&location, px(178.0), px(20.0), px(14.0), LIGHTGRAY);
+    let location_font = px(12.0);
+    let location_text = fit_text_to_width(&location, GAME_W - px(32.0), location_font);
+    let location_dims = measure_text(&location_text, None, location_font as u16, 1.0);
+    draw_text(
+        &location_text,
+        GAME_W - px(16.0) - location_dims.width,
+        HUD_H - px(10.0),
+        location_font,
+        color_u8!(182, 188, 200, 255),
+    );
 }
 
 fn draw_overworld_map_panel(

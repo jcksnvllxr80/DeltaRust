@@ -1,4 +1,4 @@
-use crate::constants::{attack_duration, PIXEL_SCALE, player_full_hearts_hp, player_max_hp, TILE};
+use crate::constants::{PIXEL_SCALE, TILE, attack_duration, player_full_hearts_hp, player_max_hp};
 use macroquad::prelude::Rect;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

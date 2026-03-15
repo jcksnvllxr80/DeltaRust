@@ -36,8 +36,7 @@ pub fn save_game(data: &SaveData) -> Result<(), String> {
 }
 
 pub fn load_game() -> Result<SaveData, String> {
-    let contents =
-        std::fs::read_to_string(save_path()).map_err(|e| format!("read error: {e}"))?;
+    let contents = std::fs::read_to_string(save_path()).map_err(|e| format!("read error: {e}"))?;
     toml::from_str(&contents).map_err(|e| format!("deserialize error: {e}"))
 }
 
