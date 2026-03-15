@@ -6,6 +6,7 @@ use crate::model::{
     Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType, Transition,
     WorldProp, WorldSnapshot,
 };
+use crate::save::SaveSlotSummary;
 use crate::sprites::{HeartState, Sprites};
 use crate::world_data;
 use macroquad::prelude::*;
@@ -133,6 +134,9 @@ pub fn draw_inventory(
     inventory_selection: usize,
     frame: i32,
     save_message_timer: i32,
+    save_slot_selection: usize,
+    save_slots: &[SaveSlotSummary],
+    pending_load_slot: Option<usize>,
 ) {
     clear_background(color_u8!(13, 16, 24, 255));
 
@@ -168,9 +172,15 @@ pub fn draw_inventory(
         px(22.0),
         WHITE,
     );
+    let pause_help = match active_tab {
+        InventoryTab::Inventory => "I / ESC close   TAB switch tab   Z / Enter main   X side",
+        InventoryTab::Map => "I / ESC close   TAB switch tab",
+        InventoryTab::Save => "I / ESC close   TAB switch tab   ENTER / Z save slot",
+        InventoryTab::Load => "I / ESC close   TAB switch tab   ENTER / Z choose load slot",
+    };
     draw_text(
-        "I / ESC close   TAB switch tab   Z / Enter main   X side",
-        outer_x + outer_w - px(360.0),
+        pause_help,
+        outer_x + outer_w - px(380.0),
         outer_y + px(22.0),
         px(12.0),
         LIGHTGRAY,
@@ -218,6 +228,15 @@ pub fn draw_inventory(
         px(22.0),
         "SAVE",
         active_tab == InventoryTab::Save,
+        panel_bg,
+    );
+    draw_inventory_tab(
+        outer_x + px(280.0),
+        outer_y + px(30.0),
+        px(70.0),
+        px(22.0),
+        "LOAD",
+        active_tab == InventoryTab::Load,
         panel_bg,
     );
 
@@ -312,69 +331,18 @@ pub fn draw_inventory(
         } else {
             draw_overworld_map_panel(world, map_x, map_y, map_w, map_h, frame);
         }
-    } else if active_tab == InventoryTab::Save {
-        draw_rectangle(
+    } else if matches!(active_tab, InventoryTab::Save | InventoryTab::Load) {
+        draw_save_load_panel(
             content_x,
             content_y,
             content_w,
             content_h,
-            color_u8!(18, 22, 30, 255),
+            active_tab,
+            save_slot_selection,
+            save_slots,
+            save_message_timer,
+            pending_load_slot,
         );
-        let border_color = color_u8!(90, 103, 124, 255);
-        let t = px(1.0);
-        draw_line(
-            content_x,
-            content_y,
-            content_x,
-            content_y + content_h,
-            t,
-            border_color,
-        );
-        draw_line(
-            content_x + content_w,
-            content_y,
-            content_x + content_w,
-            content_y + content_h,
-            t,
-            border_color,
-        );
-        draw_line(
-            content_x,
-            content_y + content_h,
-            content_x + content_w,
-            content_y + content_h,
-            t,
-            border_color,
-        );
-
-        let cx = content_x + content_w / 2.0;
-        let cy = content_y + content_h / 2.0;
-
-        if save_message_timer > 0 {
-            draw_text(
-                "Game Saved!",
-                cx - px(60.0),
-                cy - px(10.0),
-                px(22.0),
-                color_u8!(120, 220, 120, 255),
-            );
-        } else if save_message_timer < 0 {
-            draw_text(
-                "Save Failed!",
-                cx - px(64.0),
-                cy - px(10.0),
-                px(22.0),
-                color_u8!(220, 100, 100, 255),
-            );
-        } else {
-            draw_text(
-                "Press ENTER or Z to save your game",
-                cx - px(150.0),
-                cy - px(10.0),
-                px(18.0),
-                WHITE,
-            );
-        }
     } else {
         let list_w = px(250.0);
         let details_x = content_x + list_w + px(12.0);
@@ -542,6 +510,227 @@ pub fn draw_inventory(
             content_y + px(34.0),
             details_w - px(24.0),
             selected,
+        );
+    }
+}
+
+fn draw_save_load_panel(
+    content_x: f32,
+    content_y: f32,
+    content_w: f32,
+    content_h: f32,
+    active_tab: InventoryTab,
+    save_slot_selection: usize,
+    save_slots: &[SaveSlotSummary],
+    save_message_timer: i32,
+    pending_load_slot: Option<usize>,
+) {
+    let border_color = color_u8!(90, 103, 124, 255);
+    let t = px(1.0);
+    draw_rectangle(
+        content_x,
+        content_y,
+        content_w,
+        content_h,
+        color_u8!(18, 22, 30, 255),
+    );
+    draw_line(
+        content_x,
+        content_y,
+        content_x,
+        content_y + content_h,
+        t,
+        border_color,
+    );
+    draw_line(
+        content_x + content_w,
+        content_y,
+        content_x + content_w,
+        content_y + content_h,
+        t,
+        border_color,
+    );
+    draw_line(
+        content_x,
+        content_y + content_h,
+        content_x + content_w,
+        content_y + content_h,
+        t,
+        border_color,
+    );
+
+    // Split the panel into two halves: the save slot list on the left and
+    // the detail panel on the right. This avoids the detail panel being pushed
+    // offscreen on smaller resolutions.
+    let padding = px(16.0);
+    let list_w = (content_w - padding * 3.0) / 2.0;
+    let detail_w = list_w;
+    let row_x = content_x + padding;
+    let row_y = content_y + px(24.0);
+    let row_w = list_w - px(24.0);
+    let row_h = px(58.0);
+    let detail_x = row_x + list_w + padding;
+    let row_gap = px(10.0);
+    let selected = save_slot_selection.min(save_slots.len().saturating_sub(1));
+    let selected_slot = save_slots.get(selected);
+
+    draw_text(
+        if active_tab == InventoryTab::Save {
+            "SAVE SLOTS"
+        } else {
+            "LOAD GAME"
+        },
+        content_x + px(16.0),
+        content_y + px(14.0),
+        px(14.0),
+        color_u8!(197, 170, 119, 255),
+    );
+
+    for slot_info in save_slots {
+        let y = row_y + slot_info.slot as f32 * (row_h + row_gap);
+        let selected_row = slot_info.slot == selected;
+        let fill = if selected_row {
+            color_u8!(52, 63, 85, 255)
+        } else {
+            color_u8!(28, 34, 46, 255)
+        };
+        draw_rectangle(row_x, y, row_w, row_h, fill);
+        draw_rectangle_lines(row_x, y, row_w, row_h, px(1.0), border_color);
+        draw_text(
+            &format!("SLOT {}", slot_info.slot + 1),
+            row_x + px(12.0),
+            y + px(16.0),
+            px(13.0),
+            if slot_info.exists { WHITE } else { LIGHTGRAY },
+        );
+        draw_text(
+            &fit_text_to_width(&slot_info.location, row_w - px(24.0), px(14.0)),
+            row_x + px(12.0),
+            y + px(34.0),
+            px(14.0),
+            if slot_info.exists {
+                color_u8!(220, 220, 220, 255)
+            } else {
+                GRAY
+            },
+        );
+        draw_text(
+            &fit_text_to_width(&slot_info.stats, row_w - px(24.0), px(11.0)),
+            row_x + px(12.0),
+            y + px(50.0),
+            px(11.0),
+            color_u8!(176, 184, 200, 255),
+        );
+    }
+
+    draw_rectangle(
+        detail_x,
+        content_y + px(24.0),
+        detail_w,
+        content_h - px(40.0),
+        color_u8!(22, 27, 38, 255),
+    );
+    draw_rectangle_lines(
+        detail_x,
+        content_y + px(24.0),
+        detail_w,
+        content_h - px(40.0),
+        px(1.0),
+        border_color,
+    );
+
+    if let Some(slot_info) = selected_slot {
+        draw_text(
+            &format!("SLOT {}", slot_info.slot + 1),
+            detail_x + px(16.0),
+            content_y + px(44.0),
+            px(18.0),
+            WHITE,
+        );
+        draw_text(
+            &fit_text_to_width(&slot_info.location, detail_w - px(32.0), px(16.0)),
+            detail_x + px(16.0),
+            content_y + px(74.0),
+            px(16.0),
+            color_u8!(214, 214, 214, 255),
+        );
+        draw_text(
+            &slot_info.stats,
+            detail_x + px(16.0),
+            content_y + px(100.0),
+            px(13.0),
+            LIGHTGRAY,
+        );
+
+        let (prompt, prompt_color) = match active_tab {
+            InventoryTab::Save => {
+                if save_message_timer > 0 {
+                    ("Saved to selected slot.", color_u8!(120, 220, 120, 255))
+                } else if save_message_timer < 0 {
+                    ("Save failed.", color_u8!(220, 100, 100, 255))
+                } else {
+                    ("Press ENTER or Z to save into this slot.", WHITE)
+                }
+            }
+            InventoryTab::Load => {
+                if slot_info.exists {
+                    ("Press ENTER or Z to choose this save for loading.", WHITE)
+                } else {
+                    ("This slot is empty.", GRAY)
+                }
+            }
+            _ => ("", WHITE),
+        };
+        draw_wrapped_text(
+            prompt,
+            detail_x + px(16.0),
+            content_y + px(142.0),
+            detail_w - px(32.0),
+            px(14.0),
+            px(18.0),
+            prompt_color,
+        );
+
+        if active_tab == InventoryTab::Load {
+            draw_wrapped_text(
+                "Loading replaces the current run immediately.",
+                detail_x + px(16.0),
+                content_y + px(168.0),
+                detail_w - px(32.0),
+                px(12.0),
+                px(16.0),
+                color_u8!(180, 186, 196, 255),
+            );
+        }
+    }
+
+    if let Some(slot) = pending_load_slot {
+        let w = px(360.0);
+        let h = px(120.0);
+        let x = content_x + (content_w - w) / 2.0;
+        let y = content_y + (content_h - h) / 2.0;
+        draw_rectangle(x, y, w, h, color_u8!(12, 15, 22, 245));
+        draw_rectangle_lines(x, y, w, h, px(2.0), color_u8!(197, 170, 119, 255));
+        draw_text(
+            &format!("Load Slot {}?", slot + 1),
+            x + px(18.0),
+            y + px(28.0),
+            px(20.0),
+            WHITE,
+        );
+        draw_text(
+            "This will discard the current run state.",
+            x + px(18.0),
+            y + px(56.0),
+            px(14.0),
+            LIGHTGRAY,
+        );
+        draw_text(
+            "ENTER / Y confirm   ESC / N cancel",
+            x + px(18.0),
+            y + px(90.0),
+            px(14.0),
+            color_u8!(255, 215, 120, 255),
         );
     }
 }
@@ -2761,6 +2950,51 @@ fn fit_text_to_width(text: &str, max_width: f32, font_size: f32) -> String {
     }
     fitted.push_str(ellipsis);
     fitted
+}
+
+/// Draws `text` within `max_width` by wrapping on spaces.
+///
+/// This is used for UI prompt text that can overflow a single line.
+fn draw_wrapped_text(
+    text: &str,
+    x: f32,
+    mut y: f32,
+    max_width: f32,
+    font_size: f32,
+    line_height: f32,
+    color: Color,
+) {
+    for line in text.split('\n') {
+        let mut current = String::new();
+
+        for word in line.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_string()
+            } else {
+                format!("{} {}", current, word)
+            };
+
+            if measure_text(&candidate, None, font_size as u16, 1.0).width > max_width {
+                if !current.is_empty() {
+                    draw_text(&current, x, y, font_size, color);
+                    y += line_height;
+                    current = word.to_string();
+                } else {
+                    let fitted = fit_text_to_width(word, max_width, font_size);
+                    draw_text(&fitted, x, y, font_size, color);
+                    y += line_height;
+                    current.clear();
+                }
+            } else {
+                current = candidate;
+            }
+        }
+
+        if !current.is_empty() {
+            draw_text(&current, x, y, font_size, color);
+            y += line_height;
+        }
+    }
 }
 
 fn biome_color(name: &str) -> Color {

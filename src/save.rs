@@ -1,7 +1,9 @@
 use crate::character::CharacterAppearance;
 use crate::model::{Player, TileType};
+use crate::world_data;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::time::SystemTime;
 
 #[derive(Serialize, Deserialize)]
 pub struct SaveData {
@@ -21,25 +23,128 @@ pub struct SaveData {
     pub dungeon_overworld_y: i32,
 }
 
-fn save_path() -> std::path::PathBuf {
+#[derive(Clone, Debug)]
+pub struct SaveSlotSummary {
+    pub slot: usize,
+    pub exists: bool,
+    pub location: String,
+    pub stats: String,
+}
+
+pub const SAVE_SLOT_COUNT: usize = 3;
+
+fn save_root() -> std::path::PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            return dir.join("save.toml");
+            return dir.to_path_buf();
         }
     }
-    std::path::PathBuf::from("save.toml")
+    std::path::PathBuf::from(".")
 }
 
-pub fn save_game(data: &SaveData) -> Result<(), String> {
-    let toml_str = toml::to_string(data).map_err(|e| format!("serialize error: {e}"))?;
-    std::fs::write(save_path(), toml_str).map_err(|e| format!("write error: {e}"))
+fn legacy_save_path() -> std::path::PathBuf {
+    save_root().join("save.toml")
 }
 
-pub fn load_game() -> Result<SaveData, String> {
-    let contents = std::fs::read_to_string(save_path()).map_err(|e| format!("read error: {e}"))?;
+fn save_path(slot: usize) -> std::path::PathBuf {
+    save_root().join(format!("save_slot_{}.toml", slot + 1))
+}
+
+fn slot_file_path(slot: usize) -> std::path::PathBuf {
+    let path = save_path(slot);
+    if slot == 0 && !path.exists() && legacy_save_path().exists() {
+        legacy_save_path()
+    } else {
+        path
+    }
+}
+
+fn read_save(path: &std::path::Path) -> Result<SaveData, String> {
+    let contents = std::fs::read_to_string(path).map_err(|e| format!("read error: {e}"))?;
     toml::from_str(&contents).map_err(|e| format!("deserialize error: {e}"))
 }
 
-pub fn has_save() -> bool {
-    save_path().exists()
+fn slot_summary(slot: usize, data: &SaveData) -> SaveSlotSummary {
+    let location = world_data::location_name(
+        data.screen_x,
+        data.screen_y,
+        data.in_dungeon,
+        data.dungeon_id,
+        data.in_interior,
+        &data.interior_id,
+    );
+    SaveSlotSummary {
+        slot,
+        exists: true,
+        location,
+        stats: format!(
+            "HP {}/{}   Gems {}   Pieces {}",
+            data.player.hp, data.player.max_hp, data.player.gems, data.player.dragon_pieces
+        ),
+    }
+}
+
+pub fn save_game(slot: usize, data: &SaveData) -> Result<(), String> {
+    let toml_str = toml::to_string(data).map_err(|e| format!("serialize error: {e}"))?;
+    std::fs::write(save_path(slot), toml_str).map_err(|e| format!("write error: {e}"))
+}
+
+pub fn load_game(slot: usize) -> Result<SaveData, String> {
+    read_save(&slot_file_path(slot))
+}
+
+pub fn slot_count() -> usize {
+    SAVE_SLOT_COUNT
+}
+
+pub fn has_save(slot: usize) -> bool {
+    slot_file_path(slot).exists()
+}
+
+pub fn has_any_save() -> bool {
+    (0..SAVE_SLOT_COUNT).any(has_save)
+}
+
+pub fn list_saves() -> Vec<SaveSlotSummary> {
+    (0..SAVE_SLOT_COUNT)
+        .map(|slot| {
+            let path = slot_file_path(slot);
+            if path.exists() {
+                match read_save(&path) {
+                    Ok(data) => slot_summary(slot, &data),
+                    Err(_) => SaveSlotSummary {
+                        slot,
+                        exists: true,
+                        location: "Unreadable Save".to_string(),
+                        stats: "Save data could not be parsed".to_string(),
+                    },
+                }
+            } else {
+                SaveSlotSummary {
+                    slot,
+                    exists: false,
+                    location: "Empty Slot".to_string(),
+                    stats: "No save data".to_string(),
+                }
+            }
+        })
+        .collect()
+}
+
+pub fn latest_save_slot() -> Option<usize> {
+    let mut best: Option<(usize, SystemTime)> = None;
+    for slot in 0..SAVE_SLOT_COUNT {
+        let path = slot_file_path(slot);
+        if !path.exists() {
+            continue;
+        }
+        let modified = std::fs::metadata(&path)
+            .and_then(|meta| meta.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        match best {
+            Some((_, best_time)) if modified <= best_time => {}
+            _ => best = Some((slot, modified)),
+        }
+    }
+    best.map(|(slot, _)| slot)
 }

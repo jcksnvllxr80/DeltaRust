@@ -10,7 +10,7 @@ use crate::model::{
     WorldProp,
 };
 use crate::render;
-use crate::save::{self, SaveData};
+use crate::save::{self, SaveData, SaveSlotSummary};
 use crate::sprites::Sprites;
 use crate::world::World;
 use crate::world_data;
@@ -76,6 +76,8 @@ pub struct Game {
     pub console_input: String,
     pub console_feedback: String,
     pub save_message_timer: i32,
+    pub save_slot_selection: usize,
+    pub pending_load_slot: Option<usize>,
     blocked_interaction: Option<InteractionSource>,
 }
 
@@ -84,6 +86,7 @@ pub enum InventoryTab {
     Inventory,
     Map,
     Save,
+    Load,
 }
 
 impl Game {
@@ -123,6 +126,8 @@ impl Game {
             console_input: String::new(),
             console_feedback: String::new(),
             save_message_timer: 0,
+            save_slot_selection: 0,
+            pending_load_slot: None,
             blocked_interaction: None,
         };
         game.apply_starting_loadout();
@@ -144,7 +149,7 @@ impl Game {
         match self.state {
             GameState::Title => {
                 self.audio.play_music(MusicTrack::Title);
-                let has_save = save::has_save();
+                let has_save = save::has_any_save();
                 let max_option = if has_save { 2 } else { 1 };
                 if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
                     self.title_menu_selection = self.title_menu_selection.saturating_sub(1);
@@ -200,7 +205,7 @@ impl Game {
                 &self.sprites,
                 self.frame,
                 self.title_menu_selection,
-                save::has_save(),
+                save::has_any_save(),
             ),
             GameState::CharacterCreate => {
                 render::draw_character_creator(&self.sprites, &self.creator, self.frame)
@@ -215,6 +220,9 @@ impl Game {
                 self.inventory_selection,
                 self.frame,
                 self.save_message_timer,
+                self.save_slot_selection,
+                &self.save_slots(),
+                self.pending_load_slot,
             ),
             GameState::Transition => render::draw_transition(
                 &self.sprites,
@@ -270,6 +278,8 @@ impl Game {
         self.frame = 0;
         self.inventory_tab = InventoryTab::Inventory;
         self.inventory_selection = 0;
+        self.save_slot_selection = 0;
+        self.pending_load_slot = None;
         crate::log_info!(
             "start_new_game dev_mode={} all_items_mode={} full_hearts_mode={}",
             dev,
@@ -285,6 +295,10 @@ impl Game {
         if self.all_items_mode {
             self.player.grant_all_items();
         }
+    }
+
+    fn save_slots(&self) -> Vec<SaveSlotSummary> {
+        save::list_saves()
     }
 
     fn begin_character_create(&mut self) {
@@ -440,20 +454,45 @@ impl Game {
     }
 
     fn update_inventory(&mut self) {
+        if let Some(slot) = self.pending_load_slot {
+            if is_key_pressed(KeyCode::Escape)
+                || is_key_pressed(KeyCode::N)
+                || is_key_pressed(KeyCode::X)
+            {
+                self.pending_load_slot = None;
+                crate::log_debug!("cancel_load_confirmation slot={}", slot + 1);
+                return;
+            }
+            if start_pressed() || is_key_pressed(KeyCode::Y) || is_key_pressed(KeyCode::Z) {
+                self.pending_load_slot = None;
+                self.load_save_slot(slot);
+                return;
+            }
+        }
         if inventory_pressed() || is_key_pressed(KeyCode::Escape) {
             self.state = GameState::Playing;
             crate::log_debug!("close_inventory");
             return;
         }
-        if self.save_message_timer > 0 {
-            self.save_message_timer -= 1;
+        if self.save_message_timer != 0 {
+            self.save_message_timer -= self.save_message_timer.signum();
         }
-        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
+        if is_key_pressed(KeyCode::Tab)
+            || is_key_pressed(KeyCode::Q)
+            || is_key_pressed(KeyCode::E)
         {
-            self.inventory_tab = match self.inventory_tab {
-                InventoryTab::Inventory => InventoryTab::Map,
-                InventoryTab::Map => InventoryTab::Save,
-                InventoryTab::Save => InventoryTab::Inventory,
+            self.pending_load_slot = None;
+            let direction = if is_key_pressed(KeyCode::Q) { -1 } else { 1 };
+            self.inventory_tab = match (self.inventory_tab, direction) {
+                (InventoryTab::Inventory, -1) => InventoryTab::Load,
+                (InventoryTab::Inventory, 1) => InventoryTab::Map,
+                (InventoryTab::Map, -1) => InventoryTab::Inventory,
+                (InventoryTab::Map, 1) => InventoryTab::Save,
+                (InventoryTab::Save, -1) => InventoryTab::Map,
+                (InventoryTab::Save, 1) => InventoryTab::Load,
+                (InventoryTab::Load, -1) => InventoryTab::Save,
+                (InventoryTab::Load, 1) => InventoryTab::Inventory,
+                _ => self.inventory_tab,
             };
             if self.inventory_tab == InventoryTab::Map {
                 self.inventory_map_mode = if self.world.in_dungeon {
@@ -479,11 +518,13 @@ impl Game {
             let map_tab = Rect::new(outer_x + px(118.0), outer_y + px(30.0), px(80.0), px(22.0));
             if inv_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Inventory;
+                self.pending_load_slot = None;
                 crate::log_verbose!("inventory_tab_clicked tab=Inventory");
                 return;
             }
             if map_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Map;
+                self.pending_load_slot = None;
                 self.inventory_map_mode = if self.world.in_dungeon {
                     MapMode::Dungeon
                 } else {
@@ -498,7 +539,15 @@ impl Game {
             let save_tab = Rect::new(outer_x + px(204.0), outer_y + px(30.0), px(70.0), px(22.0));
             if save_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Save;
+                self.pending_load_slot = None;
                 crate::log_verbose!("inventory_tab_clicked tab=Save");
+                return;
+            }
+            let load_tab = Rect::new(outer_x + px(280.0), outer_y + px(30.0), px(70.0), px(22.0));
+            if load_tab.contains(vec2(mx, my)) {
+                self.inventory_tab = InventoryTab::Load;
+                self.pending_load_slot = None;
+                crate::log_verbose!("inventory_tab_clicked tab=Load");
                 return;
             }
         }
@@ -549,8 +598,22 @@ impl Game {
         }
 
         if self.inventory_tab == InventoryTab::Save {
+            self.update_save_load_selection();
             if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
-                self.perform_save();
+                self.perform_save(self.save_slot_selection);
+            }
+            return;
+        }
+
+        if self.inventory_tab == InventoryTab::Load {
+            self.update_save_load_selection();
+            let slots = self.save_slots();
+            let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
+            if let Some(slot) = slots.get(selected).filter(|slot| slot.exists) {
+                if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
+                    self.pending_load_slot = Some(slot.slot);
+                    crate::log_info!("prompt_load_confirmation slot={}", slot.slot + 1);
+                }
             }
             return;
         }
@@ -657,6 +720,52 @@ impl Game {
         }
     }
 
+    fn update_save_load_selection(&mut self) {
+        let slot_count = save::slot_count();
+        if slot_count == 0 {
+            self.save_slot_selection = 0;
+            return;
+        }
+
+        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+            self.save_slot_selection = self.save_slot_selection.saturating_sub(1);
+        }
+        if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+            self.save_slot_selection = (self.save_slot_selection + 1).min(slot_count - 1);
+        }
+
+        let wheel_delta = mouse_wheel().1;
+        if wheel_delta > 0.0 {
+            self.save_slot_selection = self.save_slot_selection.saturating_sub(1);
+        } else if wheel_delta < 0.0 {
+            self.save_slot_selection = (self.save_slot_selection + 1).min(slot_count - 1);
+        }
+
+        if is_mouse_button_pressed(MouseButton::Left) {
+            let (mx, my) = mouse_position();
+            let outer_x = px(16.0);
+            let outer_y = px(14.0);
+            let content_x = outer_x + px(12.0);
+            let content_y = outer_y + px(64.0);
+            let row_x = content_x + px(16.0);
+            let row_w = px(320.0);
+            let row_h = px(58.0);
+            let row_gap = px(10.0);
+            let start_y = content_y + px(24.0);
+            for slot in 0..slot_count {
+                let y = start_y + slot as f32 * (row_h + row_gap);
+                let rect = Rect::new(row_x, y, row_w, row_h);
+                if rect.contains(vec2(mx, my)) {
+                    self.save_slot_selection = slot;
+                    if self.inventory_tab == InventoryTab::Load && save::has_save(slot) {
+                        self.pending_load_slot = Some(slot);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     fn to_save_data(&self) -> SaveData {
         SaveData {
             player: self.player.clone(),
@@ -702,12 +811,12 @@ impl Game {
         self.load_screen_items();
     }
 
-    fn perform_save(&mut self) {
+    fn perform_save(&mut self, slot: usize) {
         let data = self.to_save_data();
-        match save::save_game(&data) {
+        match save::save_game(slot, &data) {
             Ok(()) => {
                 self.save_message_timer = 120;
-                crate::log_info!("game saved successfully");
+                crate::log_info!("game saved successfully slot={}", slot + 1);
             }
             Err(e) => {
                 crate::log_warn!("save failed: {}", e);
@@ -716,8 +825,8 @@ impl Game {
         }
     }
 
-    fn continue_game(&mut self) {
-        match save::load_game() {
+    fn load_save_slot(&mut self, slot: usize) -> bool {
+        match save::load_game(slot) {
             Ok(data) => {
                 let dev = self.world.dev_mode;
                 self.world = World::new(dev);
@@ -731,12 +840,25 @@ impl Game {
                 self.frame = 0;
                 self.inventory_tab = InventoryTab::Inventory;
                 self.inventory_selection = 0;
-                crate::log_info!("game loaded from save");
+                self.pending_load_slot = None;
+                crate::log_info!("game loaded from slot={}", slot + 1);
+                true
             }
             Err(e) => {
                 crate::log_warn!("load failed: {}", e);
+                self.save_message_timer = -120;
+                false
+            }
+        }
+    }
+
+    fn continue_game(&mut self) {
+        if let Some(slot) = save::latest_save_slot() {
+            if !self.load_save_slot(slot) {
                 self.start_new_game();
             }
+        } else {
+            self.start_new_game();
         }
     }
 
