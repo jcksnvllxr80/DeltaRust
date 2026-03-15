@@ -81,6 +81,7 @@ pub struct Game {
     pub console_feedback: String,
     pub save_message_timer: i32,
     pub save_slot_selection: usize,
+    pub pending_save_slot: Option<usize>,
     pub pending_load_slot: Option<usize>,
     blocked_interaction: Option<InteractionSource>,
 }
@@ -135,6 +136,7 @@ impl Game {
             console_feedback: String::new(),
             save_message_timer: 0,
             save_slot_selection: 0,
+            pending_save_slot: None,
             pending_load_slot: None,
             blocked_interaction: None,
         };
@@ -230,6 +232,7 @@ impl Game {
                 self.save_message_timer,
                 self.save_slot_selection,
                 &self.save_slots(),
+                self.pending_save_slot,
                 self.pending_load_slot,
                 self.controls_scroll,
             ),
@@ -288,6 +291,7 @@ impl Game {
         self.inventory_tab = InventoryTab::Inventory;
         self.inventory_selection = 0;
         self.save_slot_selection = 0;
+        self.pending_save_slot = None;
         self.pending_load_slot = None;
         crate::log_info!(
             "start_new_game dev_mode={} all_items_mode={} full_hearts_mode={}",
@@ -463,6 +467,21 @@ impl Game {
     }
 
     fn update_inventory(&mut self) {
+        if let Some(slot) = self.pending_save_slot {
+            if is_key_pressed(KeyCode::Escape)
+                || is_key_pressed(KeyCode::N)
+                || is_key_pressed(KeyCode::X)
+            {
+                self.pending_save_slot = None;
+                crate::log_debug!("cancel_save_confirmation slot={}", slot + 1);
+                return;
+            }
+            if start_pressed() || is_key_pressed(KeyCode::Y) || is_key_pressed(KeyCode::Z) {
+                self.pending_save_slot = None;
+                self.perform_save(slot);
+                return;
+            }
+        }
         if let Some(slot) = self.pending_load_slot {
             if is_key_pressed(KeyCode::Escape)
                 || is_key_pressed(KeyCode::N)
@@ -486,10 +505,9 @@ impl Game {
         if self.save_message_timer != 0 {
             self.save_message_timer -= self.save_message_timer.signum();
         }
-        if is_key_pressed(KeyCode::Tab)
-            || is_key_pressed(KeyCode::Q)
-            || is_key_pressed(KeyCode::E)
+        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
         {
+            self.pending_save_slot = None;
             self.pending_load_slot = None;
             let direction = if is_key_pressed(KeyCode::Q) { -1 } else { 1 };
             self.inventory_tab = match (self.inventory_tab, direction) {
@@ -530,12 +548,14 @@ impl Game {
             let map_tab = Rect::new(outer_x + px(85.0), outer_y + px(30.0), px(53.0), px(22.0));
             if inv_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Inventory;
+                self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 crate::log_verbose!("inventory_tab_clicked tab=Inventory");
                 return;
             }
             if map_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Map;
+                self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 self.inventory_map_mode = if self.world.in_dungeon {
                     MapMode::Dungeon
@@ -548,16 +568,20 @@ impl Game {
                 );
                 return;
             }
-            let saveload_tab = Rect::new(outer_x + px(144.0), outer_y + px(30.0), px(67.0), px(22.0));
+            let saveload_tab =
+                Rect::new(outer_x + px(144.0), outer_y + px(30.0), px(67.0), px(22.0));
             if saveload_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::SaveLoad;
+                self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 crate::log_verbose!("inventory_tab_clicked tab=SaveLoad");
                 return;
             }
-            let controls_tab = Rect::new(outer_x + px(217.0), outer_y + px(30.0), px(67.0), px(22.0));
+            let controls_tab =
+                Rect::new(outer_x + px(217.0), outer_y + px(30.0), px(67.0), px(22.0));
             if controls_tab.contains(vec2(mx, my)) {
                 self.inventory_tab = InventoryTab::Controls;
+                self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 self.controls_scroll = 0.0;
                 crate::log_verbose!("inventory_tab_clicked tab=Controls");
@@ -613,7 +637,11 @@ impl Game {
         if self.inventory_tab == InventoryTab::SaveLoad {
             self.update_save_load_selection();
             if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
-                self.perform_save(self.save_slot_selection);
+                self.pending_save_slot = Some(self.save_slot_selection);
+                crate::log_info!(
+                    "prompt_save_confirmation slot={}",
+                    self.save_slot_selection + 1
+                );
             }
             if is_key_pressed(KeyCode::L) {
                 let slots = self.save_slots();
@@ -834,10 +862,24 @@ impl Game {
             let action_btn_h = px(22.0);
             let action_btn_w = (detail_w - px(48.0)) / 2.0;
             let action_btn_y = content_y + px(190.0);
-            let save_btn = Rect::new(detail_x + px(16.0), action_btn_y, action_btn_w, action_btn_h);
-            let load_btn = Rect::new(detail_x + px(16.0) + action_btn_w + px(8.0), action_btn_y, action_btn_w, action_btn_h);
+            let save_btn = Rect::new(
+                detail_x + px(16.0),
+                action_btn_y,
+                action_btn_w,
+                action_btn_h,
+            );
+            let load_btn = Rect::new(
+                detail_x + px(16.0) + action_btn_w + px(8.0),
+                action_btn_y,
+                action_btn_w,
+                action_btn_h,
+            );
             if save_btn.contains(vec2(mx, my)) {
-                self.perform_save(self.save_slot_selection);
+                self.pending_save_slot = Some(self.save_slot_selection);
+                crate::log_info!(
+                    "prompt_save_confirmation slot={}",
+                    self.save_slot_selection + 1
+                );
             } else if load_btn.contains(vec2(mx, my)) {
                 let slots = self.save_slots();
                 let sel = self.save_slot_selection.min(slots.len().saturating_sub(1));
@@ -923,6 +965,7 @@ impl Game {
                 self.frame = 0;
                 self.inventory_tab = InventoryTab::Inventory;
                 self.inventory_selection = 0;
+                self.pending_save_slot = None;
                 self.pending_load_slot = None;
                 crate::log_info!("game loaded from slot={}", slot + 1);
                 true
@@ -942,6 +985,7 @@ impl Game {
         self.inventory_tab = InventoryTab::SaveLoad;
         self.inventory_selection = 0;
         self.save_slot_selection = 0;
+        self.pending_save_slot = None;
         self.pending_load_slot = None;
     }
 

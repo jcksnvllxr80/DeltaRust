@@ -138,6 +138,7 @@ pub fn draw_inventory(
     save_message_timer: i32,
     save_slot_selection: usize,
     save_slots: &[SaveSlotSummary],
+    pending_save_slot: Option<usize>,
     pending_load_slot: Option<usize>,
     controls_scroll: f32,
 ) {
@@ -355,6 +356,7 @@ pub fn draw_inventory(
             save_slot_selection,
             save_slots,
             save_message_timer,
+            pending_save_slot,
             pending_load_slot,
         );
     } else if active_tab == InventoryTab::Controls {
@@ -391,21 +393,8 @@ pub fn draw_inventory(
             .saturating_sub(visible_rows / 2)
             .min(max_scroll);
 
-        draw_rectangle(
-            list_x,
-            inner_y,
-            list_w,
-            inner_h,
-            color_u8!(31, 38, 51, 255),
-        );
-        draw_line(
-            list_x,
-            inner_y,
-            list_x,
-            inner_y + inner_h,
-            t,
-            border_color,
-        );
+        draw_rectangle(list_x, inner_y, list_w, inner_h, color_u8!(31, 38, 51, 255));
+        draw_line(list_x, inner_y, list_x, inner_y + inner_h, t, border_color);
         draw_line(
             list_x + list_w,
             inner_y,
@@ -555,6 +544,7 @@ fn draw_save_load_panel(
     save_slot_selection: usize,
     save_slots: &[SaveSlotSummary],
     save_message_timer: i32,
+    pending_save_slot: Option<usize>,
     pending_load_slot: Option<usize>,
 ) {
     let border_color = color_u8!(90, 103, 124, 255);
@@ -704,11 +694,18 @@ fn draw_save_load_panel(
         } else if save_message_timer < 0 {
             ("Save failed.", color_u8!(220, 100, 100, 255))
         } else {
-            ("", WHITE)
+            (
+                "Choose SAVE to confirm before writing.",
+                color_u8!(180, 186, 196, 255),
+            )
         };
-        if !status_msg.is_empty() {
-            draw_text(status_msg, detail_x + px(16.0), content_y + px(132.0), px(13.0), status_color);
-        }
+        draw_text(
+            status_msg,
+            detail_x + px(16.0),
+            content_y + px(132.0),
+            px(13.0),
+            status_color,
+        );
 
         draw_wrapped_text(
             "Loading replaces the current run immediately.",
@@ -737,7 +734,14 @@ fn draw_save_load_panel(
                 color_u8!(30, 35, 46, 255)
             };
             draw_rectangle(bx, action_btn_y, action_btn_w, action_btn_h, btn_fill);
-            draw_rectangle_lines(bx, action_btn_y, action_btn_w, action_btn_h, px(1.0), border_color);
+            draw_rectangle_lines(
+                bx,
+                action_btn_y,
+                action_btn_w,
+                action_btn_h,
+                px(1.0),
+                border_color,
+            );
             let label_size = px(13.0);
             let label_dims = measure_text(label, None, label_size as u16, 1.0);
             draw_text(
@@ -758,7 +762,35 @@ fn draw_save_load_panel(
         );
     }
 
-    if let Some(slot) = pending_load_slot {
+    if let Some(slot) = pending_save_slot {
+        let w = px(360.0);
+        let h = px(120.0);
+        let x = content_x + (content_w - w) / 2.0;
+        let y = content_y + (content_h - h) / 2.0;
+        draw_rectangle(x, y, w, h, color_u8!(12, 15, 22, 245));
+        draw_rectangle_lines(x, y, w, h, px(2.0), color_u8!(197, 170, 119, 255));
+        draw_text(
+            &format!("Save to Slot {}?", slot + 1),
+            x + px(18.0),
+            y + px(28.0),
+            px(20.0),
+            WHITE,
+        );
+        draw_text(
+            "This will overwrite the selected save slot.",
+            x + px(18.0),
+            y + px(56.0),
+            px(14.0),
+            LIGHTGRAY,
+        );
+        draw_text(
+            "ENTER / Y confirm   ESC / N cancel",
+            x + px(18.0),
+            y + px(90.0),
+            px(14.0),
+            color_u8!(255, 215, 120, 255),
+        );
+    } else if let Some(slot) = pending_load_slot {
         let w = px(360.0);
         let h = px(120.0);
         let x = content_x + (content_w - w) / 2.0;
@@ -789,10 +821,22 @@ fn draw_save_load_panel(
     }
 }
 
-fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h: f32, scroll_y: f32) {
+fn draw_controls_panel(
+    content_x: f32,
+    content_y: f32,
+    content_w: f32,
+    content_h: f32,
+    scroll_y: f32,
+) {
     let border_color = color_u8!(90, 103, 124, 255);
     let t = px(1.0);
-    draw_rectangle(content_x, content_y, content_w, content_h, color_u8!(18, 22, 30, 255));
+    draw_rectangle(
+        content_x,
+        content_y,
+        content_w,
+        content_h,
+        color_u8!(18, 22, 30, 255),
+    );
     draw_rectangle_lines(content_x, content_y, content_w, content_h, t, border_color);
 
     // Clip controls content to the panel area by only drawing rows that intersect the visible region.
@@ -821,7 +865,14 @@ fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h
             return;
         }
         draw_text(title, col1_x, y + px(12.0), header_size, header_color);
-        draw_line(col1_x, y + px(14.0), content_x + content_w - px(16.0), y + px(14.0), px(1.0), border_color);
+        draw_line(
+            col1_x,
+            y + px(14.0),
+            content_x + content_w - px(16.0),
+            y + px(14.0),
+            px(1.0),
+            border_color,
+        );
     };
     let draw_row = |y: f32, action: &str, key: &str| {
         if !is_visible(y) {
@@ -833,44 +884,64 @@ fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h
 
     draw_section_header(y, "MOVEMENT");
     y += section_gap;
-    draw_row(y, "move", "WASD / Arrows"); y += row_h;
-    draw_row(y, "interact / confirm", "Enter / Z / Space"); y += row_h;
-    draw_row(y, "use side item", "X"); y += row_h + section_gap;
+    draw_row(y, "move", "WASD / Arrows");
+    y += row_h;
+    draw_row(y, "interact / confirm", "Enter / Z / Space");
+    y += row_h;
+    draw_row(y, "use side item", "X");
+    y += row_h + section_gap;
 
     draw_section_header(y, "MENU NAVIGATION");
     y += section_gap;
-    draw_row(y, "open / close inventory", "I / Tab"); y += row_h;
-    draw_row(y, "switch tab", "Tab / Q / E"); y += row_h;
-    draw_row(y, "navigate list", "W / S, Up / Down"); y += row_h;
-    draw_row(y, "close / cancel", "ESC"); y += row_h + section_gap;
+    draw_row(y, "open / close inventory", "I / Tab");
+    y += row_h;
+    draw_row(y, "switch tab", "Tab / Q / E");
+    y += row_h;
+    draw_row(y, "navigate list", "W / S, Up / Down");
+    y += row_h;
+    draw_row(y, "close / cancel", "ESC");
+    y += row_h + section_gap;
 
     draw_section_header(y, "ITEMS");
     y += section_gap;
-    draw_row(y, "assign to MAIN slot", "Z / Enter / Space"); y += row_h;
+    draw_row(y, "assign to MAIN slot", "Z / Enter / Space");
+    y += row_h;
     draw_row(y, "assign to SIDE slot", "X");
     y += row_h + section_gap;
 
     draw_section_header(y, "SAVE / LOAD");
     y += section_gap;
-    draw_row(y, "save to selected slot", "Z / Enter"); y += row_h;
-    draw_row(y, "load selected slot", "L"); y += row_h;
-    draw_row(y, "confirm load dialog", "Y / Enter"); y += row_h;
-    draw_row(y, "cancel dialog", "N / ESC / X"); y += row_h + section_gap;
+    draw_row(y, "save to selected slot", "Z / Enter");
+    y += row_h;
+    draw_row(y, "load selected slot", "L");
+    y += row_h;
+    draw_row(y, "confirm load dialog", "Y / Enter");
+    y += row_h;
+    draw_row(y, "cancel dialog", "N / ESC / X");
+    y += row_h + section_gap;
 
     draw_section_header(y, "MAP");
     y += section_gap;
-    draw_row(y, "switch map view", "W / S, Up / Down"); y += row_h + section_gap;
+    draw_row(y, "switch map view", "W / S, Up / Down");
+    y += row_h + section_gap;
 
     draw_section_header(y, "DEBUG");
     y += section_gap;
-    draw_row(y, "toggle dev console", "~"); y += row_h;
+    draw_row(y, "toggle dev console", "~");
+    y += row_h;
     let _ = y;
 
     // Scrollbar
     let track_x = content_x + content_w - px(12.0);
     let track_y = content_y + px(18.0);
     let track_h = content_h - px(36.0);
-    draw_rectangle(track_x, track_y, px(4.0), track_h, color_u8!(50, 58, 74, 255));
+    draw_rectangle(
+        track_x,
+        track_y,
+        px(4.0),
+        track_h,
+        color_u8!(50, 58, 74, 255),
+    );
 
     // Use the final y position (before scroll) to compute total content height.
     // The `y` variable includes scroll offset, so add scroll_y back to get the unscrolled position.
@@ -882,7 +953,13 @@ fn draw_controls_panel(content_x: f32, content_y: f32, content_w: f32, content_h
         let thumb_h = (visible_height * visible_height / total_height).max(px(18.0));
         let thumb_y = track_y + (scroll_y / max_scroll) * (visible_height - thumb_h);
         let thumb_y = thumb_y.clamp(track_y, track_y + visible_height - thumb_h);
-        draw_rectangle(track_x - px(1.0), thumb_y, px(6.0), thumb_h, color_u8!(168, 177, 194, 255));
+        draw_rectangle(
+            track_x - px(1.0),
+            thumb_y,
+            px(6.0),
+            thumb_h,
+            color_u8!(168, 177, 194, 255),
+        );
     }
 }
 
@@ -1329,7 +1406,13 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
         caption_h,
         color_u8!(0, 0, 0, 180),
     );
-    draw_text(title, cx - title_dims.width / 2.0, title_y, title_font, YELLOW);
+    draw_text(
+        title,
+        cx - title_dims.width / 2.0,
+        title_y,
+        title_font,
+        YELLOW,
+    );
     draw_text(
         subtitle,
         cx - subtitle_dims.width / 2.0,
@@ -1341,7 +1424,8 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     let menu_panel_w = (menu_content_w + px(84.0)).max(px(230.0));
     let row_h = px(24.0);
     let menu_start_y = px(18.0);
-    let menu_panel_h = menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
+    let menu_panel_h =
+        menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
     let menu_panel_x = cx - menu_panel_w / 2.0;
     let menu_panel_y = 3.0 * total_h / 4.0;
     draw_rectangle(
