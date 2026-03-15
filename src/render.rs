@@ -2,8 +2,8 @@ use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, InventoryEntry, InventoryItem,
-    Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType,
-    Transition, WorldProp, WorldSnapshot,
+    Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType, Transition,
+    WorldProp, WorldSnapshot,
 };
 use crate::sprites::{HeartState, Sprites};
 use crate::world_data;
@@ -91,10 +91,16 @@ pub fn draw_inventory(
         px(2.0),
         color_u8!(197, 170, 119, 255),
     );
-    draw_text("PAUSE", outer_x + px(12.0), outer_y + px(22.0), px(22.0), WHITE);
     draw_text(
-        "I / ESC close   TAB switch tab",
-        outer_x + outer_w - px(210.0),
+        "PAUSE",
+        outer_x + px(12.0),
+        outer_y + px(22.0),
+        px(22.0),
+        WHITE,
+    );
+    draw_text(
+        "I / ESC close   TAB switch tab   Z / Enter main   X side",
+        outer_x + outer_w - px(360.0),
         outer_y + px(22.0),
         px(12.0),
         LIGHTGRAY,
@@ -145,7 +151,13 @@ pub fn draw_inventory(
         color_u8!(214, 214, 214, 255),
     );
     if show_map_tab {
-        draw_rectangle(content_x, content_y, content_w, content_h, color_u8!(18, 22, 30, 255));
+        draw_rectangle(
+            content_x,
+            content_y,
+            content_w,
+            content_h,
+            color_u8!(18, 22, 30, 255),
+        );
         draw_rectangle_lines(
             content_x,
             content_y,
@@ -210,7 +222,13 @@ pub fn draw_inventory(
             .saturating_sub(visible_rows / 2)
             .min(max_scroll);
 
-        draw_rectangle(content_x, content_y, list_w, content_h, color_u8!(31, 38, 51, 255));
+        draw_rectangle(
+            content_x,
+            content_y,
+            list_w,
+            content_h,
+            color_u8!(31, 38, 51, 255),
+        );
         draw_rectangle_lines(
             content_x,
             content_y,
@@ -219,7 +237,13 @@ pub fn draw_inventory(
             px(1.0),
             color_u8!(90, 103, 124, 255),
         );
-        draw_rectangle(details_x, content_y, details_w, content_h, color_u8!(18, 22, 30, 255));
+        draw_rectangle(
+            details_x,
+            content_y,
+            details_w,
+            content_h,
+            color_u8!(18, 22, 30, 255),
+        );
         draw_rectangle_lines(
             details_x,
             content_y,
@@ -235,6 +259,20 @@ pub fn draw_inventory(
             content_y + px(18.0),
             px(14.0),
             color_u8!(197, 170, 119, 255),
+        );
+        draw_text(
+            "M",
+            content_x + list_w - px(32.0),
+            content_y + px(18.0),
+            px(12.0),
+            color_u8!(255, 215, 120, 255),
+        );
+        draw_text(
+            "S",
+            content_x + list_w - px(18.0),
+            content_y + px(18.0),
+            px(12.0),
+            color_u8!(160, 214, 255, 255),
         );
         for (row_index, (index, entry)) in entries
             .iter()
@@ -265,7 +303,13 @@ pub fn draw_inventory(
             } else {
                 track_y + thumb_travel * scroll_offset as f32 / max_scroll as f32
             };
-            draw_rectangle(track_x, track_y, px(2.0), track_h, color_u8!(50, 58, 74, 255));
+            draw_rectangle(
+                track_x,
+                track_y,
+                px(2.0),
+                track_h,
+                color_u8!(50, 58, 74, 255),
+            );
             draw_rectangle(
                 track_x - px(1.0),
                 thumb_y,
@@ -300,7 +344,12 @@ fn draw_inventory_tab(x: f32, y: f32, w: f32, h: f32, label: &str, active: bool)
         color_u8!(28, 34, 46, 255)
     };
     draw_rectangle(x, y, w, h, fill);
-    draw_rectangle_lines(x, y, w, h, px(1.0), color_u8!(123, 132, 147, 255));
+    // draw only the top/left/right edges so the bottom edge blends with the
+    // underlying panel (avoids a thin "trash" line under the tabs)
+    let edge_color = color_u8!(123, 132, 147, 255);
+    draw_line(x, y, x + w, y, px(1.0), edge_color); // top
+    draw_line(x, y, x, y + h, px(1.0), edge_color); // left
+    draw_line(x + w, y, x + w, y + h, px(1.0), edge_color); // right
     draw_text(
         label,
         x + px(10.0),
@@ -327,23 +376,36 @@ fn draw_inventory_entry_row(
         player,
         x + px(4.0),
         y,
-        w - px(24.0),
+        w - px(38.0),
         entry.label,
         entry.owned,
         entry.count,
     );
     if entry.equipable && entry.owned {
-        let equipped = match entry.item {
-            InventoryItem::Bombs => player.equipped_item == EquippedItem::Bombs,
-            InventoryItem::Hammer => player.equipped_item == EquippedItem::Hammer,
-            _ => false,
-        };
+        let equipped = entry.item.equipped_item();
+        let main_assigned = equipped == Some(player.main_item);
+        let side_assigned = equipped == Some(player.side_item);
         draw_text(
-            if equipped { "X" } else { "-" },
-            x + w - px(14.0),
+            if main_assigned { "M" } else { "-" },
+            x + w - px(24.0),
             y,
             px(14.0),
-            if equipped { color_u8!(255, 215, 120, 255) } else { GRAY },
+            if main_assigned {
+                color_u8!(255, 215, 120, 255)
+            } else {
+                GRAY
+            },
+        );
+        draw_text(
+            if side_assigned { "S" } else { "-" },
+            x + w - px(12.0),
+            y,
+            px(14.0),
+            if side_assigned {
+                color_u8!(160, 214, 255, 255)
+            } else {
+                GRAY
+            },
         );
     }
 }
@@ -367,24 +429,30 @@ fn draw_inventory_detail_panel(
         entry.count,
     );
     let status = if entry.equipable {
-        let equipped = match entry.item {
-            InventoryItem::Bombs => player.equipped_item == EquippedItem::Bombs,
-            InventoryItem::Hammer => player.equipped_item == EquippedItem::Hammer,
-            _ => false,
-        };
+        let equipped = entry.item.equipped_item();
+        let main_assigned = equipped == Some(player.main_item);
+        let side_assigned = equipped == Some(player.side_item);
         if !entry.owned {
             "Locked".to_string()
-        } else if equipped {
-            "Equipped to X".to_string()
+        } else if main_assigned {
+            "Assigned to MAIN (Z / Space)".to_string()
+        } else if side_assigned {
+            "Assigned to SIDE (X)".to_string()
         } else {
-            "Press Enter/Z/Space to equip".to_string()
+            "Press Enter/Z/Space for MAIN or X for SIDE".to_string()
         }
     } else if entry.owned {
         "Passive / always available".to_string()
     } else {
         "Not acquired yet".to_string()
     };
-    draw_text(&status, x, y + px(42.0), px(12.0), color_u8!(196, 196, 196, 255));
+    draw_text(
+        &status,
+        x,
+        y + px(42.0),
+        px(12.0),
+        color_u8!(196, 196, 196, 255),
+    );
 
     let wrapped = wrap_text_to_width(entry.description, w, px(12.0));
     for (i, line) in wrapped.iter().enumerate() {
@@ -399,37 +467,36 @@ fn draw_inventory_detail_panel(
     let info_y = y + px(72.0) + wrapped.len() as f32 * px(14.0) + px(16.0);
 
     draw_text(
-        &format!("Quick slot: {}", equipped_item_label(player.equipped_item)),
+        &format!("Main: {}", player.main_item.label()),
         x,
         info_y,
         px(12.0),
         color_u8!(255, 215, 120, 255),
     );
     draw_text(
-        &format!("HP {} / {}", player.hp, player.max_hp),
+        &format!("Side: {}", player.side_item.label()),
         x,
         info_y + px(24.0),
+        px(12.0),
+        color_u8!(160, 214, 255, 255),
+    );
+    draw_text(
+        &format!("HP {} / {}", player.hp, player.max_hp),
+        x,
+        info_y + px(48.0),
         px(12.0),
         WHITE,
     );
     draw_text(
         &format!("Gems {}   Keys {}", player.gems, player.keys),
         x,
-        info_y + px(42.0),
+        info_y + px(66.0),
         px(12.0),
         WHITE,
     );
 }
 
-fn equipped_item_label(item: EquippedItem) -> &'static str {
-    match item {
-        EquippedItem::None => "None",
-        EquippedItem::Bombs => "Bombs",
-        EquippedItem::Hammer => "Hammer",
-    }
-}
-
-fn wrap_text_to_width(text: &str, max_width: f32, font_size: f32) -> Vec<String> {
+pub fn wrap_text_to_width(text: &str, max_width: f32, font_size: f32) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {
@@ -900,9 +967,14 @@ pub fn draw_victory(frame: i32) {
 }
 
 pub fn draw_message_box(text: &str) {
-    let lines: Vec<&str> = text.lines().collect();
-    let height = px(24.0) + lines.len() as f32 * px(20.0);
     let width = px(240.0);
+    let text_width = width - px(20.0); // Account for padding on both sides
+    let font_size = px(20.0);
+
+    // Wrap text to fit the box width
+    let lines = wrap_text_to_width(text, text_width, font_size);
+
+    let height = px(24.0) + lines.len() as f32 * px(20.0);
     let x = (GAME_W - width) / 2.0;
     let y = ((GAME_H + HUD_H) - height) / 2.0;
     draw_rectangle(x, y, width, height, BLACK);
@@ -912,7 +984,7 @@ pub fn draw_message_box(text: &str) {
             line,
             x + px(10.0),
             y + px(24.0) + index as f32 * px(18.0),
-            px(20.0),
+            font_size,
             WHITE,
         );
     }
@@ -972,7 +1044,13 @@ fn draw_house_tile(tile: TileType, x: f32, y: f32) -> bool {
                 vec2(x, y + TILE),
                 roof_shadow,
             );
-            draw_rectangle(x + px(4.0), y + TILE - px(4.0), TILE - px(4.0), px(3.0), trim);
+            draw_rectangle(
+                x + px(4.0),
+                y + TILE - px(4.0),
+                TILE - px(4.0),
+                px(3.0),
+                trim,
+            );
             true
         }
         TileType::HouseRoofRight => {
@@ -1000,7 +1078,13 @@ fn draw_house_tile(tile: TileType, x: f32, y: f32) -> bool {
             draw_rectangle(x, y + TILE - px(3.0), TILE, px(3.0), timber);
             draw_rectangle(x + px(3.0), y, px(3.0), TILE, timber);
             draw_rectangle(x + TILE - px(6.0), y, px(3.0), TILE, timber);
-            draw_rectangle(x + px(5.0), y + px(5.0), TILE - px(10.0), TILE - px(10.0), window);
+            draw_rectangle(
+                x + px(5.0),
+                y + px(5.0),
+                TILE - px(10.0),
+                TILE - px(10.0),
+                window,
+            );
             draw_line(
                 x + TILE / 2.0,
                 y + px(5.0),
@@ -1022,8 +1106,20 @@ fn draw_house_tile(tile: TileType, x: f32, y: f32) -> bool {
         TileType::HouseDoor => {
             draw_rectangle(x, y, TILE, TILE, plaster);
             draw_rectangle(x, y, TILE, px(3.0), timber);
-            draw_rectangle(x + px(2.0), y + px(3.0), TILE - px(4.0), TILE - px(3.0), door_dark);
-            draw_rectangle(x + px(4.0), y + px(5.0), TILE - px(8.0), TILE - px(7.0), door_light);
+            draw_rectangle(
+                x + px(2.0),
+                y + px(3.0),
+                TILE - px(4.0),
+                TILE - px(3.0),
+                door_dark,
+            );
+            draw_rectangle(
+                x + px(4.0),
+                y + px(5.0),
+                TILE - px(8.0),
+                TILE - px(7.0),
+                door_light,
+            );
             draw_circle(x + TILE - px(6.0), y + TILE / 2.0, px(1.4), trim);
             true
         }
@@ -1037,8 +1133,20 @@ fn draw_house_tile(tile: TileType, x: f32, y: f32) -> bool {
         }
         TileType::HouseChair => {
             draw_house_tile(TileType::WoodFloor, x, y);
-            draw_rectangle(x + px(5.0), y + px(4.0), TILE - px(10.0), px(4.0), chair_wood);
-            draw_rectangle(x + px(5.0), y + px(8.0), px(3.0), TILE - px(12.0), chair_shadow);
+            draw_rectangle(
+                x + px(5.0),
+                y + px(4.0),
+                TILE - px(10.0),
+                px(4.0),
+                chair_wood,
+            );
+            draw_rectangle(
+                x + px(5.0),
+                y + px(8.0),
+                px(3.0),
+                TILE - px(12.0),
+                chair_shadow,
+            );
             draw_rectangle(
                 x + TILE - px(8.0),
                 y + px(8.0),
@@ -1587,9 +1695,17 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                     draw_dragon_piece_icon(x + px(3.0), y + px(2.0), draw_w / px(16.0))
                 }
                 PickupType::Sword => draw_hammer_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
-                PickupType::TideChart => draw_rectangle(x + px(3.0), y + px(3.0), draw_w - px(6.0), draw_h - px(6.0), color),
+                PickupType::TideChart => draw_rectangle(
+                    x + px(3.0),
+                    y + px(3.0),
+                    draw_w - px(6.0),
+                    draw_h - px(6.0),
+                    color,
+                ),
                 PickupType::EmberCrystal => draw_gem_icon(x, y, draw_w / px(16.0), color),
-                PickupType::VoidCompass => draw_portal_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::VoidCompass => {
+                    draw_portal_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0))
+                }
                 PickupType::CrystalOfSeeing => draw_gem_icon(x, y, draw_w / px(16.0), color),
                 _ => draw_rectangle(x, y, draw_w, draw_h, color),
             }
@@ -1848,6 +1964,91 @@ fn draw_dragon_piece_icon(x: f32, y: f32, scale: f32) {
     );
 }
 
+fn draw_equipped_item_icon(sprites: &Sprites, item: EquippedItem, x: f32, y: f32) {
+    match item {
+        EquippedItem::None => {}
+        EquippedItem::Sword => draw_sword_icon(x + px(4.0), y + px(1.0), px(0.8), LIGHTGRAY),
+        EquippedItem::Bombs => {
+            if !sprites.draw_hud_bomb(x + px(1.0), y + px(1.0), px(16.0)) {
+                draw_rectangle(x + px(3.0), y + px(3.0), px(12.0), px(12.0), DARKGRAY);
+            }
+        }
+        EquippedItem::Hammer => draw_hammer_icon(x + px(1.0), y + px(2.0), px(1.0)),
+    }
+}
+
+fn draw_action_slot(
+    sprites: &Sprites,
+    player: &Player,
+    x: f32,
+    y: f32,
+    title: &str,
+    control: &str,
+    item: EquippedItem,
+) {
+    let w = px(38.0);
+    let h = px(32.0);
+    let header_h = px(10.0);
+    let has_item = item != EquippedItem::None;
+    let border = if has_item {
+        color_u8!(197, 170, 119, 255)
+    } else {
+        color_u8!(96, 104, 118, 255)
+    };
+
+    draw_rectangle(x, y, w, h, color_u8!(27, 31, 42, 255));
+    draw_rectangle(x, y, w, header_h, color_u8!(48, 56, 73, 255));
+    draw_rectangle_lines(x, y, w, h, px(1.0), border);
+
+    let title_size = px(7.0);
+    let title_dims = measure_text(title, None, title_size as u16, 1.0);
+    draw_text(
+        title,
+        x + (w - title_dims.width) / 2.0,
+        y + px(8.0),
+        title_size,
+        LIGHTGRAY,
+    );
+
+    if has_item {
+        draw_equipped_item_icon(sprites, item, x + px(9.0), y + px(12.0));
+    } else {
+        let empty_size = px(14.0);
+        let empty = "--";
+        let empty_dims = measure_text(empty, None, empty_size as u16, 1.0);
+        draw_text(
+            empty,
+            x + (w - empty_dims.width) / 2.0,
+            y + px(26.0),
+            empty_size,
+            GRAY,
+        );
+    }
+
+    if item == EquippedItem::Bombs && player.has_bombs {
+        let count = format!("x{}", player.bomb_count);
+        let count_size = px(8.0);
+        let count_dims = measure_text(&count, None, count_size as u16, 1.0);
+        draw_text(
+            &count,
+            x + w - count_dims.width - px(3.0),
+            y + h - px(3.0),
+            count_size,
+            WHITE,
+        );
+    }
+
+    let control_size = px(9.0);
+    let control_dims = measure_text(control, None, control_size as u16, 1.0);
+    draw_text(
+        control,
+        x + (w - control_dims.width) / 2.0,
+        y + h + px(11.0),
+        control_size,
+        if has_item { WHITE } else { LIGHTGRAY },
+    );
+}
+
 fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     draw_rectangle(0.0, 0.0, GAME_W, HUD_H, color_u8!(17, 17, 17, 255));
     draw_rectangle(
@@ -1875,10 +2076,24 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
             draw_rectangle(x, px(8.0), px(10.0), px(10.0), color);
         }
     }
-    if player.has_sword {
-        draw_sword_icon(px(16.0), px(6.0), px(1.2), LIGHTGRAY);
-        draw_text("SWORD", px(34.0), px(20.0), px(16.0), WHITE);
-    }
+    draw_action_slot(
+        sprites,
+        player,
+        px(16.0),
+        px(10.0),
+        "MAIN",
+        "Z / SPC",
+        player.main_item,
+    );
+    draw_action_slot(
+        sprites,
+        player,
+        px(62.0),
+        px(10.0),
+        "SIDE",
+        "X",
+        player.side_item,
+    );
     let gem_text = format!("x{}", player.gems);
     let gem_font_size = px(16.0);
     let gem_measure = measure_text(&gem_text, None, gem_font_size as u16, 1.0);
@@ -1890,18 +2105,6 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     let gem_y = px(30.0);
     draw_gem_icon(gem_x, gem_y, gem_scale, SKYBLUE);
     draw_text(&gem_text, gem_text_x, px(44.0), gem_font_size, SKYBLUE);
-    if player.has_bombs {
-        if !sprites.draw_hud_bomb(px(16.0), px(28.0), px(16.0)) {
-            draw_rectangle(px(18.0), px(30.0), px(12.0), px(12.0), DARKGRAY);
-        }
-        draw_text(
-            &format!("x{}", player.bomb_count),
-            px(36.0),
-            px(42.0),
-            px(16.0),
-            WHITE,
-        );
-    }
     if player.dragon_pieces > 0 {
         let x = px(160.0);
         draw_dragon_piece_icon(x, px(29.0), px(1.0));
@@ -2113,6 +2316,9 @@ fn draw_inventory_stat(
         }
         "Bombs" if player.has_bombs => {
             let _ = sprites.draw_hud_bomb(x, y - px(10.0), px(22.0));
+        }
+        "Hammer" if player.has_hammer => {
+            draw_hammer_icon(x + px(4.0), y - px(11.0), px(0.9));
         }
         "Dragon Pieces" => {
             draw_dragon_piece_icon(x + px(3.0), y - px(11.0), px(0.85));

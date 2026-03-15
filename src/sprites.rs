@@ -554,9 +554,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::VAULT_DOOR
-            }
+            | TileType::BossDoor => &frame_const::VAULT_DOOR,
             TileType::Cracked => &frame_const::IRON_ROCK_ALT,
             TileType::Bridge | TileType::Stairs => &frame_const::GREAT_AQUEDUCT,
             TileType::Floor | TileType::Goal | TileType::Chest => &frame_const::IRON_ROCK_ALT,
@@ -580,9 +578,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::TIDAL_GATE
-            }
+            | TileType::BossDoor => &frame_const::TIDAL_GATE,
             TileType::Cracked => &frame_const::RUIN_ROOFTOP,
             TileType::Stairs => &frame_const::SEA_STACK,
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
@@ -608,9 +604,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::FORGE_ENTRANCE
-            }
+            | TileType::BossDoor => &frame_const::FORGE_ENTRANCE,
             TileType::Cracked => &frame_const::CALDERA_VIEW,
             TileType::Stairs => &frame_const::SUMMIT_APPROACH,
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
@@ -636,9 +630,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::SANCTUM_ENTRANCE
-            }
+            | TileType::BossDoor => &frame_const::SANCTUM_ENTRANCE,
             TileType::Cracked => &frame_const::VOID_SHIMMER,
             TileType::Stairs => &frame_const::SANCTUM_APPROACH,
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
@@ -664,9 +656,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::SPIRE_ARCHWAY
-            }
+            | TileType::BossDoor => &frame_const::SPIRE_ARCHWAY,
             TileType::Cracked => &frame_const::NIGHT_SKY,
             TileType::Stairs => &frame_const::SPIRE_BASE,
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {
@@ -692,9 +682,7 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
             | TileType::Door
             | TileType::HouseDoor
             | TileType::DoorLocked
-            | TileType::BossDoor => {
-                &frame_const::THRONE_ENTRANCE
-            }
+            | TileType::BossDoor => &frame_const::THRONE_ENTRANCE,
             TileType::Cracked => &frame_const::MEMORY_ALCOVE,
             TileType::Stairs => &frame_const::FINAL_APPROACH,
             TileType::Floor | TileType::Goal | TileType::Chest | TileType::FloorAlt => {

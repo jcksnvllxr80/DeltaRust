@@ -6,8 +6,8 @@ use crate::constants::{
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState,
-    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind,
-    TileType, Transition, WorldProp,
+    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType,
+    Transition, WorldProp,
 };
 use crate::render;
 use crate::sprites::Sprites;
@@ -161,17 +161,15 @@ impl Game {
                 render::draw_character_creator(&self.sprites, &self.creator, self.frame)
             }
             GameState::Playing => self.draw_game(),
-            GameState::Inventory => {
-                render::draw_inventory(
-                    &self.sprites,
-                    &self.world.snapshot(),
-                    &self.player,
-                    self.inventory_tab == InventoryTab::Map,
-                    self.inventory_map_mode,
-                    self.inventory_selection,
-                    self.frame,
-                )
-            }
+            GameState::Inventory => render::draw_inventory(
+                &self.sprites,
+                &self.world.snapshot(),
+                &self.player,
+                self.inventory_tab == InventoryTab::Map,
+                self.inventory_map_mode,
+                self.inventory_selection,
+                self.frame,
+            ),
             GameState::Transition => render::draw_transition(
                 &self.sprites,
                 &self.world.snapshot(),
@@ -299,7 +297,9 @@ impl Game {
         }
 
         match self.check_tile_interaction() {
-            Some((TileInteraction::EnterDungeon, source)) if !self.is_interaction_blocked(source) => {
+            Some((TileInteraction::EnterDungeon, source))
+                if !self.is_interaction_blocked(source) =>
+            {
                 if self.can_enter_current_dungeon() {
                     self.enter_dungeon();
                 }
@@ -311,7 +311,9 @@ impl Game {
                 self.enter_interior();
                 return;
             }
-            Some((TileInteraction::ExitDungeon, source)) if !self.is_interaction_blocked(source) => {
+            Some((TileInteraction::ExitDungeon, source))
+                if !self.is_interaction_blocked(source) =>
+            {
                 self.exit_dungeon();
                 return;
             }
@@ -351,7 +353,8 @@ impl Game {
             self.state = GameState::Playing;
             return;
         }
-        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E) {
+        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
+        {
             self.inventory_tab = match self.inventory_tab {
                 InventoryTab::Inventory => InventoryTab::Map,
                 InventoryTab::Map => InventoryTab::Inventory,
@@ -404,12 +407,8 @@ impl Game {
                     let outer_y = px(14.0);
                     // Buttons sit below the inventory/map tabs
                     let button_y = outer_y + px(60.0);
-                    let overworld_btn = Rect::new(
-                        outer_x + px(12.0),
-                        button_y,
-                        px(110.0),
-                        px(18.0),
-                    );
+                    let overworld_btn =
+                        Rect::new(outer_x + px(12.0), button_y, px(110.0), px(18.0));
                     let dungeon_btn = Rect::new(
                         outer_x + px(12.0) + px(110.0) + px(8.0),
                         button_y,
@@ -479,11 +478,14 @@ impl Game {
             self.inventory_scroll_timer = (self.inventory_scroll_timer - 1).max(0);
         }
         if start_pressed() || is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
-            self.toggle_selected_inventory_item();
+            self.assign_selected_inventory_item(ItemSlot::Main);
+        }
+        if is_key_pressed(KeyCode::X) {
+            self.assign_selected_inventory_item(ItemSlot::Side);
         }
     }
 
-    fn toggle_selected_inventory_item(&mut self) {
+    fn assign_selected_inventory_item(&mut self, slot: ItemSlot) {
         let Some(entry) = self
             .player
             .inventory_entries()
@@ -495,28 +497,80 @@ impl Game {
         if !entry.owned || !entry.equipable {
             return;
         }
-        self.player.equipped_item = match entry.item {
-            InventoryItem::Bombs => {
-                if self.player.equipped_item == EquippedItem::Bombs {
-                    EquippedItem::None
-                } else {
-                    EquippedItem::Bombs
-                }
-            }
-            InventoryItem::Hammer => {
-                if self.player.equipped_item == EquippedItem::Hammer {
-                    EquippedItem::None
-                } else {
-                    EquippedItem::Hammer
-                }
-            }
-            _ => self.player.equipped_item,
+        let Some(item) = entry.item.equipped_item() else {
+            return;
         };
+        self.assign_item_to_slot(slot, item);
     }
 
-    fn try_use_equipped_item(&mut self) {
-        match self.player.equipped_item {
-            EquippedItem::None => {}
+    fn assign_item_to_slot(&mut self, slot: ItemSlot, item: EquippedItem) {
+        let current = match slot {
+            ItemSlot::Main => self.player.main_item,
+            ItemSlot::Side => self.player.side_item,
+        };
+        if current == item {
+            match slot {
+                ItemSlot::Main => self.player.main_item = EquippedItem::None,
+                ItemSlot::Side => self.player.side_item = EquippedItem::None,
+            }
+            return;
+        }
+
+        let other = match slot {
+            ItemSlot::Main => self.player.side_item,
+            ItemSlot::Side => self.player.main_item,
+        };
+        if other == item {
+            match slot {
+                ItemSlot::Main => self.player.side_item = current,
+                ItemSlot::Side => self.player.main_item = current,
+            }
+        }
+
+        match slot {
+            ItemSlot::Main => self.player.main_item = item,
+            ItemSlot::Side => self.player.side_item = item,
+        }
+    }
+
+    fn auto_assign_item(&mut self, item: EquippedItem, preferred_slot: ItemSlot) {
+        if self.player.main_item == item || self.player.side_item == item {
+            return;
+        }
+
+        let preferred_empty = match preferred_slot {
+            ItemSlot::Main => self.player.main_item == EquippedItem::None,
+            ItemSlot::Side => self.player.side_item == EquippedItem::None,
+        };
+        if preferred_empty {
+            self.assign_item_to_slot(preferred_slot, item);
+            return;
+        }
+
+        let alternate_slot = match preferred_slot {
+            ItemSlot::Main => ItemSlot::Side,
+            ItemSlot::Side => ItemSlot::Main,
+        };
+        let alternate_empty = match alternate_slot {
+            ItemSlot::Main => self.player.main_item == EquippedItem::None,
+            ItemSlot::Side => self.player.side_item == EquippedItem::None,
+        };
+        if alternate_empty {
+            self.assign_item_to_slot(alternate_slot, item);
+        }
+    }
+
+    fn try_use_item(&mut self, item: EquippedItem) -> bool {
+        match item {
+            EquippedItem::None => false,
+            EquippedItem::Sword => {
+                if !self.player.has_sword {
+                    return false;
+                }
+                self.player.begin_attack();
+                self.audio.sword();
+                true
+            }
             EquippedItem::Bombs => {
                 if self.player.has_bombs && self.player.bomb_count > 0 {
                     self.player.bomb_count -= 1;
@@ -530,8 +584,12 @@ impl Game {
                     }
                     self.spawn_bomb(bx, by);
                 }
+                false
             }
-            EquippedItem::Hammer => self.try_use_hammer(),
+            EquippedItem::Hammer => {
+                self.try_use_hammer();
+                false
+            }
         }
     }
 
@@ -636,13 +694,15 @@ impl Game {
             }
             return None;
         }
-        if (is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space)) && self.player.has_sword {
-            self.player.begin_attack();
-            self.audio.sword();
-            return None;
+        if is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
+            if self.try_use_item(self.player.main_item) {
+                return None;
+            }
         }
         if is_key_pressed(KeyCode::X) {
-            self.try_use_equipped_item();
+            if self.try_use_item(self.player.side_item) {
+                return None;
+            }
         }
         let mut dx = 0.0;
         let mut dy = 0.0;
@@ -727,7 +787,10 @@ impl Game {
 
         match front_tile {
             TileType::HouseDoor if self.world.in_interior => {
-                return Some((TileInteraction::ExitInterior, InteractionSource::FrontTile(fx, fy)));
+                return Some((
+                    TileInteraction::ExitInterior,
+                    InteractionSource::FrontTile(fx, fy),
+                ));
             }
             TileType::Cave
                 if !self.world.in_dungeon
@@ -740,7 +803,10 @@ impl Game {
                     )
                     .is_some() =>
             {
-                return Some((TileInteraction::EnterInterior, InteractionSource::FrontTile(fx, fy)));
+                return Some((
+                    TileInteraction::EnterInterior,
+                    InteractionSource::FrontTile(fx, fy),
+                ));
             }
             TileType::HouseDoor
                 if !self.world.in_dungeon
@@ -753,17 +819,27 @@ impl Game {
                     )
                     .is_some() =>
             {
-                return Some((TileInteraction::EnterInterior, InteractionSource::FrontTile(fx, fy)));
+                return Some((
+                    TileInteraction::EnterInterior,
+                    InteractionSource::FrontTile(fx, fy),
+                ));
             }
             _ => {}
         }
 
         match self.world.get_tile(cx, cy) {
-            TileType::Dungeon => Some((TileInteraction::EnterDungeon, InteractionSource::CurrentTile(cx, cy))),
-            TileType::Stairs => Some((TileInteraction::ExitDungeon, InteractionSource::CurrentTile(cx, cy))),
-            TileType::Door if self.world.in_interior => {
-                Some((TileInteraction::ExitInterior, InteractionSource::CurrentTile(cx, cy)))
-            }
+            TileType::Dungeon => Some((
+                TileInteraction::EnterDungeon,
+                InteractionSource::CurrentTile(cx, cy),
+            )),
+            TileType::Stairs => Some((
+                TileInteraction::ExitDungeon,
+                InteractionSource::CurrentTile(cx, cy),
+            )),
+            TileType::Door if self.world.in_interior => Some((
+                TileInteraction::ExitInterior,
+                InteractionSource::CurrentTile(cx, cy),
+            )),
             TileType::Door
                 if !self.world.in_dungeon
                     && !self.world.in_interior
@@ -775,7 +851,10 @@ impl Game {
                     )
                     .is_some() =>
             {
-                Some((TileInteraction::EnterInterior, InteractionSource::CurrentTile(cx, cy)))
+                Some((
+                    TileInteraction::EnterInterior,
+                    InteractionSource::CurrentTile(cx, cy),
+                ))
             }
             TileType::Cave
                 if !self.world.in_dungeon
@@ -788,10 +867,19 @@ impl Game {
                     )
                     .is_some() =>
             {
-                Some((TileInteraction::EnterInterior, InteractionSource::CurrentTile(cx, cy)))
+                Some((
+                    TileInteraction::EnterInterior,
+                    InteractionSource::CurrentTile(cx, cy),
+                ))
             }
-            TileType::Cave => Some((TileInteraction::CaveInteract, InteractionSource::CurrentTile(cx, cy))),
-            TileType::Goal => Some((TileInteraction::Victory, InteractionSource::CurrentTile(cx, cy))),
+            TileType::Cave => Some((
+                TileInteraction::CaveInteract,
+                InteractionSource::CurrentTile(cx, cy),
+            )),
+            TileType::Goal => Some((
+                TileInteraction::Victory,
+                InteractionSource::CurrentTile(cx, cy),
+            )),
             _ => None,
         }
     }
@@ -1079,7 +1167,8 @@ impl Game {
             PickupType::Bombs => {
                 self.player.has_bombs = true;
                 self.player.bomb_count = 8;
-                self.show_message("You found BOMBS!\nPress X to use.");
+                self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
+                self.show_message("You found BOMBS!");
             }
             PickupType::HeartContainer => {
                 self.player.max_hp += 2;
@@ -1104,6 +1193,7 @@ impl Game {
             }
             PickupType::Hammer => {
                 self.player.has_hammer = true;
+                self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
                 self.show_message("You found the HAMMER!");
             }
             PickupType::Raft => {
@@ -1336,7 +1426,8 @@ impl Game {
             world_data::CaveKind::Sword => {
                 if !self.player.has_sword {
                     self.player.has_sword = true;
-                    self.show_message("You found a sword!\nUse it to fight enemies.");
+                    self.auto_assign_item(EquippedItem::Sword, ItemSlot::Main);
+                    self.show_message("You found a SWORD!");
                 } else {
                     self.show_message("The cave is empty.");
                 }
@@ -1446,8 +1537,8 @@ impl Game {
                     if !self.player.has_bombs {
                         self.player.has_bombs = true;
                         self.player.bomb_count = 8;
-                        self.player.equipped_item = EquippedItem::Bombs;
-                        self.show_message("You found BOMBS!\nPress X to use.");
+                        self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
+                        self.show_message("You found BOMBS!");
                     } else {
                         self.player.bomb_count =
                             (self.player.bomb_count + 8).min(self.player.max_bombs);
@@ -1756,8 +1847,8 @@ impl Game {
             PickupType::Bombs => {
                 self.player.has_bombs = true;
                 self.player.bomb_count = 8;
-                self.player.equipped_item = EquippedItem::Bombs;
-                self.show_message("You found BOMBS!\nPress X to use.");
+                self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
+                self.show_message("You found BOMBS!");
             }
             PickupType::Gem => {
                 self.player.gems += pickup_value(pickup);
@@ -1768,9 +1859,7 @@ impl Game {
             }
             PickupType::Hammer => {
                 self.player.has_hammer = true;
-                if self.player.equipped_item == EquippedItem::None {
-                    self.player.equipped_item = EquippedItem::Hammer;
-                }
+                self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
                 self.show_message("You found the HAMMER!");
             }
             PickupType::Raft => {
@@ -1791,7 +1880,8 @@ impl Game {
             }
             PickupType::Sword => {
                 self.player.has_sword = true;
-                self.show_message("You found a sword!\nUse it to fight enemies.");
+                self.auto_assign_item(EquippedItem::Sword, ItemSlot::Main);
+                self.show_message("You found a SWORD!");
             }
             PickupType::TideChart => {
                 self.player.has_tide_chart = true;
@@ -2025,9 +2115,7 @@ impl Game {
                 if !self.player.has_hammer {
                     if self.spend_gems(24) {
                         self.player.has_hammer = true;
-                        if self.player.equipped_item == EquippedItem::None {
-                            self.player.equipped_item = EquippedItem::Hammer;
-                        }
+                        self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
                         self.show_message(
                             "Maren sells you a HAMMER.\nIt feels heavy and reliable.",
                         );
@@ -2432,5 +2520,8 @@ fn pickup_value(pickup: PickupType) -> i32 {
 }
 
 fn pickup_times_out(pickup: PickupType) -> bool {
-    matches!(pickup, PickupType::Heart | PickupType::BombAmmo | PickupType::Gem)
+    matches!(
+        pickup,
+        PickupType::Heart | PickupType::BombAmmo | PickupType::Gem
+    )
 }

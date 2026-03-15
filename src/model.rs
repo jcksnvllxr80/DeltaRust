@@ -125,8 +125,26 @@ pub enum PlayerState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EquippedItem {
     None,
+    Sword,
     Bombs,
     Hammer,
+}
+
+impl EquippedItem {
+    pub fn label(self) -> &'static str {
+        match self {
+            EquippedItem::None => "None",
+            EquippedItem::Sword => "Sword",
+            EquippedItem::Bombs => "Bombs",
+            EquippedItem::Hammer => "Hammer",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ItemSlot {
+    Main,
+    Side,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -149,6 +167,17 @@ pub enum InventoryItem {
     CrystalOfSeeing,
     Gems,
     DragonPieces,
+}
+
+impl InventoryItem {
+    pub fn equipped_item(self) -> Option<EquippedItem> {
+        match self {
+            InventoryItem::Sword => Some(EquippedItem::Sword),
+            InventoryItem::Bombs => Some(EquippedItem::Bombs),
+            InventoryItem::Hammer => Some(EquippedItem::Hammer),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -240,7 +269,8 @@ pub struct Player {
     pub has_raft: bool,
     pub has_strong_arm_glove: bool,
     pub has_portal_tool: bool,
-    pub equipped_item: EquippedItem,
+    pub main_item: EquippedItem,
+    pub side_item: EquippedItem,
     pub walk_frame: i32,
     pub walk_timer: i32,
     pub last_axis: Option<char>,
@@ -280,7 +310,8 @@ impl Player {
             has_raft: false,
             has_strong_arm_glove: false,
             has_portal_tool: false,
-            equipped_item: EquippedItem::None,
+            main_item: EquippedItem::None,
+            side_item: EquippedItem::None,
             walk_frame: 0,
             walk_timer: 0,
             last_axis: None,
@@ -300,15 +331,15 @@ impl Player {
             InventoryItem::Sword => InventoryEntry {
                 item,
                 label: "Sword",
-                description: "Your basic weapon. Z / Space swings it instantly.",
+                description: "Assign to MAIN or SIDE. Swings instantly and interrupts movement.",
                 owned: self.has_sword,
                 count: None,
-                equipable: false,
+                equipable: true,
             },
             InventoryItem::Bombs => InventoryEntry {
                 item,
                 label: "Bombs",
-                description: "Equip to X. Explodes cracked walls and damages clustered foes.",
+                description: "Assign to MAIN or SIDE. Explodes cracked walls and damages clustered foes.",
                 owned: self.has_bombs,
                 count: Some(self.bomb_count),
                 equipable: true,
@@ -340,7 +371,7 @@ impl Player {
             InventoryItem::Hammer => InventoryEntry {
                 item,
                 label: "Hammer",
-                description: "Equip to X. Smashes cracked tiles directly in front of you.",
+                description: "Assign to MAIN or SIDE. Smashes cracked tiles directly in front of you.",
                 owned: self.has_hammer,
                 count: None,
                 equipable: true,
