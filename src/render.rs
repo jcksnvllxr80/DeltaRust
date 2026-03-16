@@ -61,9 +61,10 @@ pub fn draw_game(
 pub fn draw_console(input: &str, feedback: &str, frame: i32) {
     // Shift console up slightly so the input box isn't pushed below the window
     // border on smaller displays.
-    let panel_y = GAME_H - px(12.0);
-    let input_box_y = panel_y + px(34.0);
-    let input_box_h = px(32.0);
+    let total_h = GAME_H + HUD_H;
+    let panel_y = total_h - HUD_H;
+    let input_box_y = panel_y + px(40.0);
+    let input_box_h = px(20.0);
     let prompt_x = px(22.0);
     let prompt = ">";
     let prompt_size = px(18.0);
@@ -114,14 +115,14 @@ pub fn draw_console(input: &str, feedback: &str, frame: i32) {
     draw_text(
         prompt,
         prompt_x,
-        input_box_y + px(21.0),
+        input_box_y + px(14.0),
         prompt_size,
         color_u8!(120, 220, 120, 255),
     );
     draw_text(
         &input_text,
         prompt_x + prompt_dims.width + px(6.0),
-        input_box_y + px(21.0),
+        input_box_y + px(14.0),
         px(16.0),
         WHITE,
     );

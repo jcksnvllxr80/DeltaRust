@@ -21,6 +21,8 @@ pub struct SaveData {
     pub appearance: CharacterAppearance,
     pub dungeon_overworld_x: i32,
     pub dungeon_overworld_y: i32,
+    #[serde(default)]
+    pub visited_screens: Vec<Vec<bool>>,
 }
 
 #[derive(Clone, Debug)]

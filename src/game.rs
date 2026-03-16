@@ -79,6 +79,8 @@ pub struct Game {
     pub console_open: bool,
     pub console_input: String,
     pub console_feedback: String,
+    pub console_backspace_timer: i32,
+    pub console_backspace_delay: i32,
     pub pause_menu_selection: usize,
     pub pause_confirm: Option<PauseConfirm>,
     pub save_message_timer: i32,
@@ -150,6 +152,8 @@ impl Game {
             console_open: false,
             console_input: String::new(),
             console_feedback: String::new(),
+            console_backspace_timer: 0,
+            console_backspace_delay: 0,
             pause_menu_selection: 0,
             pause_confirm: None,
             save_message_timer: 0,
@@ -437,6 +441,14 @@ impl Game {
             self.inventory_from_title = false;
             self.state = GameState::Inventory;
             crate::log_debug!("open_inventory selection_reset=true");
+            return;
+        }
+        if is_key_pressed(KeyCode::M) {
+            self.inventory_tab = InventoryTab::Map;
+            self.inventory_map_mode = if self.world.in_dungeon { MapMode::Dungeon } else { MapMode::Overworld };
+            self.inventory_from_title = false;
+            self.state = GameState::Inventory;
+            crate::log_debug!("open_map shortcut");
             return;
         }
         if let Some((dir, nx, ny)) = self.update_player() {
@@ -1060,6 +1072,7 @@ impl Game {
             appearance: self.appearance.clone(),
             dungeon_overworld_x: self.dungeon_overworld_x,
             dungeon_overworld_y: self.dungeon_overworld_y,
+            visited_screens: self.world.visited_screens.clone(),
         }
     }
 
@@ -1083,6 +1096,13 @@ impl Game {
         self.world.cleared_rooms = data.cleared_rooms;
         self.world.opened_chests = data.opened_chests;
         self.world.destroyed_tiles = data.destroyed_tiles;
+        if data.visited_screens.len() == WORLD_H as usize
+            && data.visited_screens.iter().all(|row| row.len() == WORLD_W as usize)
+        {
+            self.world.visited_screens = data.visited_screens;
+        } else {
+            self.world.visited_screens = vec![vec![false; WORLD_W as usize]; WORLD_H as usize];
+        }
         self.world.load_screen(data.screen_x, data.screen_y);
         self.spawn_for_screen();
         self.reset_items();
@@ -2651,8 +2671,23 @@ impl Game {
             crate::log_debug!("console_closed");
             return;
         }
+        // Backspace repeat behavior
+        const BACKSPACE_INITIAL_DELAY: i32 = 30;
+        const BACKSPACE_REPEAT_DELAY: i32 = 15;
+
         if is_key_pressed(KeyCode::Backspace) {
             self.console_input.pop();
+            self.console_backspace_timer = BACKSPACE_INITIAL_DELAY;
+            self.console_backspace_delay = BACKSPACE_REPEAT_DELAY;
+        } else if is_key_down(KeyCode::Backspace) {
+            if self.console_backspace_timer <= 0 {
+                self.console_input.pop();
+                self.console_backspace_timer = self.console_backspace_delay;
+            } else {
+                self.console_backspace_timer -= 1;
+            }
+        } else {
+            self.console_backspace_timer = 0;
         }
         while let Some(ch) = get_char_pressed() {
             if !ch.is_control() && self.console_input.len() < 96 {

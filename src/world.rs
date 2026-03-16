@@ -1,4 +1,4 @@
-use crate::constants::{COLS, ROWS, TILE};
+use crate::constants::{COLS, ROWS, TILE, WORLD_H, WORLD_W};
 use crate::model::{EnemySpawn, ItemDef, TileGrid, TileType, WorldSnapshot};
 use crate::world_data::{
     build_dungeons, build_interiors, build_overworld, dungeon_entry, dungeon_map_rooms,
@@ -18,6 +18,7 @@ pub struct World {
     pub cleared_rooms: HashSet<String>,
     pub opened_chests: HashMap<String, Vec<(usize, usize)>>,
     pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
+    pub visited_screens: Vec<Vec<bool>>,
     pub dev_mode: bool,
     overworld_data: HashMap<String, TileGrid>,
     interior_data: HashMap<String, TileGrid>,
@@ -39,6 +40,7 @@ impl World {
             cleared_rooms: HashSet::new(),
             opened_chests: HashMap::new(),
             destroyed_tiles: HashMap::new(),
+            visited_screens: vec![vec![false; WORLD_W as usize]; WORLD_H as usize],
             dev_mode,
             overworld_data: build_overworld(),
             interior_data: build_interiors(),
@@ -87,6 +89,13 @@ impl World {
             self.interior_id
         );
         self.visited.insert(self.visit_key(&key));
+        if !self.in_dungeon && !self.in_interior {
+            let ux = sx as usize;
+            let uy = sy as usize;
+            if uy < WORLD_H as usize && ux < WORLD_W as usize {
+                self.visited_screens[uy][ux] = true;
+            }
+        }
         self.tiles = if self.in_interior {
             self.interior_data
                 .get(&self.interior_id)
