@@ -180,7 +180,7 @@ impl Game {
             GameState::Title => {
                 self.audio.play_music(MusicTrack::Title);
                 let has_save = save::has_any_save();
-                let max_option = if has_save { 2 } else { 1 };
+                let max_option = if has_save { 3 } else { 2 };
                 if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
                     self.title_menu_selection = self.title_menu_selection.saturating_sub(1);
                 }
@@ -192,12 +192,14 @@ impl Game {
                         match self.title_menu_selection {
                             0 => self.continue_game(),
                             1 => self.start_new_game(),
-                            _ => self.begin_character_create(),
+                            2 => self.begin_character_create(),
+                            _ => miniquad::window::request_quit(),
                         }
                     } else {
                         match self.title_menu_selection {
                             0 => self.start_new_game(),
-                            _ => self.begin_character_create(),
+                            1 => self.begin_character_create(),
+                            _ => miniquad::window::request_quit(),
                         }
                     }
                 }

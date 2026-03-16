@@ -1377,10 +1377,11 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     }
     items.push("Start Game");
     items.push("Customize Hero");
+    items.push("Exit");
 
     let mut menu_content_w: f32 = 0.0;
     for &label in &items {
-        let font_size = if label == "Customize Hero" {
+        let font_size = if label == "Customize Hero" || label == "Exit" {
             px(18.0)
         } else {
             px(20.0)
@@ -1441,10 +1442,9 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
     let menu_panel_w = (menu_content_w + px(84.0)).max(px(230.0));
     let row_h = px(24.0);
     let menu_start_y = px(18.0);
-    let menu_panel_h =
-        menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
+    let menu_panel_h = menu_start_y + px(8.0) + (items.len().saturating_sub(1) as f32 * row_h) + px(14.0);
     let menu_panel_x = cx - menu_panel_w / 2.0;
-    let menu_panel_y = 3.0 * total_h / 4.0;
+    let menu_panel_y = 2.75 * total_h / 4.0;
     draw_rectangle(
         menu_panel_x,
         menu_panel_y - px(8.0),
@@ -1477,7 +1477,7 @@ pub fn draw_title(sprites: &Sprites, frame: i32, selected_menu: usize, has_save:
             }
         }
 
-        let font_size = if label == "Customize Hero" {
+        let font_size = if label == "Customize Hero" || label == "Exit" {
             px(18.0)
         } else {
             px(20.0)
