@@ -2930,6 +2930,14 @@ impl Game {
                     }
                 }
             }
+            "show_map_poi" => {
+                self.world.dev_mode = !self.world.dev_mode;
+                if self.world.dev_mode {
+                    "Map POI markers enabled.".to_string()
+                } else {
+                    "Map POI markers disabled.".to_string()
+                }
+            }
             _ => format!("Unknown command: {command}"),
         }
     }
@@ -3570,7 +3578,7 @@ fn console_toggle_pressed() -> bool {
 }
 
 fn console_help_text() -> &'static str {
-    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name>"
+    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name> | show_map_poi"
 }
 
 fn drain_char_input() {

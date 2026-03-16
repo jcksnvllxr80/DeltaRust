@@ -1758,7 +1758,7 @@ pub fn draw_load_menu(
         let label = if slot.map(|s| s.exists).unwrap_or(false) {
             format!("Slot {}  {}", i + 1, slot.map(|s| s.location.as_str()).unwrap_or(""))
         } else {
-            format!("Slot {}  — empty —", i + 1)
+            format!("Slot {}  - empty -", i + 1)
         };
 
         let lsz = px(11.0);
@@ -1783,7 +1783,7 @@ pub fn draw_load_menu(
     }
 
     // Bottom hint
-    let hint = "↑↓ select   ENTER load   ESC back";
+    let hint = "Up/Down select   ENTER load   ESC back";
     let hsz = px(9.0);
     let hdims = measure_text(hint, None, hsz as u16, 1.0);
     draw_text(
