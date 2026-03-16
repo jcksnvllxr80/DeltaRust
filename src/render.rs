@@ -1637,6 +1637,164 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     );
 }
 
+/// Draw the in-game pause menu overlay.
+pub fn draw_pause_menu(
+    sprites: &Sprites,
+    frame: i32,
+    selection: usize,
+    confirm_is_main_menu: Option<bool>,
+    confirm_pending: bool,
+) {
+    let total_w = GAME_W;
+    let total_h = GAME_H + HUD_H;
+
+    draw_rectangle(0.0, 0.0, total_w, total_h, Color::new(0.0, 0.0, 0.15, 0.65));
+
+    let sprite_draw_size = 48.0 * 2.0 * 2.5; // 240px — 2.5× normal render size
+    let panel_w = sprite_draw_size + px(20.0);
+    let pad = px(12.0);
+    let item_h = px(18.0);
+    let panel_h = pad + sprite_draw_size + pad + 3.0 * item_h + pad;
+
+    let panel_x = (total_w - panel_w) / 2.0;
+    let panel_y = (total_h - panel_h) / 2.0;
+
+    draw_rectangle(panel_x, panel_y, panel_w, panel_h, color_u8!(16, 20, 30, 240));
+    draw_rectangle_lines(panel_x, panel_y, panel_w, panel_h, px(2.0), color_u8!(160, 180, 220, 255));
+
+    // Player portrait — sprite already has sad eyes set by game.rs on pause
+    let portrait_cx = panel_x + panel_w / 2.0;
+    let portrait_cy = panel_y + pad + sprite_draw_size / 2.0;
+    sprites.draw_player_portrait(portrait_cx, portrait_cy, frame, 2.5);
+
+    // Menu items
+    let menu_labels = ["Resume", "Main Menu", "Exit"];
+    let menu_y_start = panel_y + pad + sprite_draw_size + pad;
+    for (i, label) in menu_labels.iter().enumerate() {
+        let item_y = menu_y_start + i as f32 * item_h;
+        let font_sz = px(14.0);
+        let label_dims = measure_text(label, None, font_sz as u16, 1.0);
+
+        if i == selection && !confirm_pending {
+            draw_rectangle(
+                panel_x + px(4.0),
+                item_y - px(1.0),
+                panel_w - px(8.0),
+                item_h - px(1.0),
+                color_u8!(50, 65, 100, 200),
+            );
+        }
+
+        let label_color = if i == selection && !confirm_pending { WHITE } else { color_u8!(180, 195, 220, 255) };
+
+        if i == selection && !confirm_pending && (frame / 30) % 2 == 0 {
+            draw_text(">", panel_x + px(8.0), item_y + label_dims.offset_y, font_sz, YELLOW);
+        }
+
+        draw_text(
+            label,
+            panel_x + (panel_w - label_dims.width) / 2.0,
+            item_y + label_dims.offset_y,
+            font_sz,
+            label_color,
+        );
+    }
+
+    // Confirmation sub-panel
+    if confirm_pending {
+        let confirm_label = if confirm_is_main_menu == Some(true) { "Return to Main Menu?" } else { "Exit to Desktop?" };
+        let cpanel_w = px(160.0);
+        let cpanel_h = px(60.0);
+        let cpanel_x = (total_w - cpanel_w) / 2.0;
+        let cpanel_y = panel_y + panel_h + px(6.0);
+
+        draw_rectangle(cpanel_x, cpanel_y, cpanel_w, cpanel_h, color_u8!(10, 14, 24, 250));
+        draw_rectangle_lines(cpanel_x, cpanel_y, cpanel_w, cpanel_h, px(2.0), color_u8!(220, 140, 60, 255));
+
+        let qsz = px(11.0);
+        let qdims = measure_text(confirm_label, None, qsz as u16, 1.0);
+        draw_text(confirm_label, cpanel_x + (cpanel_w - qdims.width) / 2.0, cpanel_y + px(14.0), qsz, WHITE);
+
+        let hint = "ENTER=Yes   ESC=No";
+        let hsz = px(10.0);
+        let hdims = measure_text(hint, None, hsz as u16, 1.0);
+        draw_text(hint, cpanel_x + (cpanel_w - hdims.width) / 2.0, cpanel_y + px(30.0), hsz, color_u8!(160, 180, 200, 255));
+    }
+
+}
+
+/// Standalone load-game popup shown when "Continue" is picked from the main menu.
+pub fn draw_load_menu(
+    save_slot_selection: usize,
+    save_slots: &[SaveSlotSummary],
+    _pending_load_slot: Option<usize>,
+) {
+    clear_background(color_u8!(13, 16, 24, 255));
+
+    let total_h = GAME_H + HUD_H;
+    const NUM_SLOTS: usize = 3;
+    let slot_h = px(28.0);
+    let info_h = px(36.0);
+    let pad = px(12.0);
+    let panel_w = px(240.0);
+    let panel_h = pad + slot_h * NUM_SLOTS as f32 + px(6.0) + info_h + pad;
+    let panel_x = (GAME_W - panel_w) / 2.0;
+    let panel_y = (total_h - panel_h) / 2.0;
+
+    // Panel background
+    draw_rectangle(panel_x, panel_y, panel_w, panel_h, color_u8!(20, 24, 34, 245));
+    draw_rectangle_lines(panel_x, panel_y, panel_w, panel_h, px(2.0), color_u8!(90, 103, 124, 255));
+
+    // Slot rows
+    for i in 0..NUM_SLOTS {
+        let sy = panel_y + pad + i as f32 * slot_h;
+        let selected = i == save_slot_selection;
+
+        if selected {
+            draw_rectangle(panel_x + px(4.0), sy, panel_w - px(8.0), slot_h - px(2.0), color_u8!(40, 55, 80, 255));
+        }
+
+        let slot = save_slots.get(i);
+        let label = if slot.map(|s| s.exists).unwrap_or(false) {
+            format!("Slot {}  {}", i + 1, slot.map(|s| s.location.as_str()).unwrap_or(""))
+        } else {
+            format!("Slot {}  — empty —", i + 1)
+        };
+
+        let lsz = px(11.0);
+        let col = if selected { WHITE } else { color_u8!(150, 165, 190, 255) };
+        draw_text(&label, panel_x + px(10.0), sy + slot_h * 0.65, lsz, col);
+    }
+
+    // Divider
+    let div_y = panel_y + pad + NUM_SLOTS as f32 * slot_h + px(2.0);
+    draw_line(panel_x + px(8.0), div_y, panel_x + panel_w - px(8.0), div_y, px(1.0), color_u8!(70, 85, 110, 255));
+
+    // Info for selected slot
+    let info_y = div_y + px(4.0);
+    if let Some(slot) = save_slots.get(save_slot_selection) {
+        if slot.exists {
+            let isz = px(10.0);
+            draw_text(&slot.stats, panel_x + px(10.0), info_y + isz + px(2.0), isz, color_u8!(160, 180, 210, 255));
+        } else {
+            let isz = px(10.0);
+            draw_text("No save data", panel_x + px(10.0), info_y + isz + px(2.0), isz, color_u8!(100, 115, 140, 200));
+        }
+    }
+
+    // Bottom hint
+    let hint = "↑↓ select   ENTER load   ESC back";
+    let hsz = px(9.0);
+    let hdims = measure_text(hint, None, hsz as u16, 1.0);
+    draw_text(
+        hint,
+        panel_x + (panel_w - hdims.width) / 2.0,
+        panel_y + panel_h + px(5.0),
+        hsz,
+        color_u8!(110, 130, 155, 200),
+    );
+}
+
 pub fn draw_game_over(frame: i32) {
     clear_background(BLACK);
     draw_text(

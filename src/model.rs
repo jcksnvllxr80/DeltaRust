@@ -25,6 +25,7 @@ pub enum GameState {
     Message,
     GameOver,
     Victory,
+    PauseMenu,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

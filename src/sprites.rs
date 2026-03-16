@@ -138,6 +138,26 @@ impl Sprites {
         }
     }
 
+    /// Draw the hero idle (Down) animation at `scale_mult × normal` scale, centered at (cx, cy).
+    /// Returns the on-screen `Rect` that was drawn, or `None` if no sprite sheet is loaded.
+    pub fn draw_player_portrait(&self, cx: f32, cy: f32, anim_frame: i32, scale_mult: f32) -> Option<Rect> {
+        let sheet = self.hero_idle.as_ref()?;
+        let frames = &self.layout.hero.down;
+        if frames.is_empty() {
+            return None;
+        }
+        let frame_index = ((anim_frame / IDLE_FRAME_TICKS) as usize) % frames.len();
+        let fr = &frames[frame_index];
+        let base_scale = self.layout.hero.dest_scale.unwrap_or(PIXEL_SCALE);
+        let draw_scale = base_scale * scale_mult;
+        let w = fr.w * draw_scale;
+        let h = fr.h * draw_scale;
+        let draw_x = cx - w / 2.0;
+        let draw_y = cy - h / 2.0;
+        draw_frame_to_size(sheet, fr, draw_x, draw_y, w, h, WHITE);
+        Some(Rect::new(draw_x, draw_y, w, h))
+    }
+
     pub fn draw_enemy(&self, biome_id: Option<i32>, enemy: &Enemy, x: f32, y: f32) -> bool {
         let themed = biome_id
             .and_then(|id| self.biome_sheets.get(&id))

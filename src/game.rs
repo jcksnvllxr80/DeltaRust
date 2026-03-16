@@ -1,5 +1,5 @@
 use crate::audio::{Audio, MusicTrack};
-use crate::character::{CharacterAppearance, CharacterCreator};
+use crate::character::{CharacterAppearance, CharacterCreator, EyeExpression};
 use crate::constants::{
     COLS, GAME_H, GAME_W, HUD_H, PIXEL_SCALE, ROWS, TILE, WORLD_H, WORLD_W, attack_duration,
     knockback_frames, knockback_speed, player_speed, trans_speed,
@@ -79,11 +79,14 @@ pub struct Game {
     pub console_open: bool,
     pub console_input: String,
     pub console_feedback: String,
+    pub pause_menu_selection: usize,
+    pub pause_confirm: Option<PauseConfirm>,
     pub save_message_timer: i32,
     pub save_slot_selection: usize,
     pub save_load_action_selected: SaveLoadAction,
     pub pending_save_slot: Option<usize>,
     pub pending_load_slot: Option<usize>,
+    pub inventory_from_title: bool,
     blocked_interaction: Option<InteractionSource>,
 }
 
@@ -99,6 +102,12 @@ pub enum InventoryTab {
 pub enum SaveLoadAction {
     Save,
     Load,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PauseConfirm {
+    MainMenu,
+    Exit,
 }
 
 impl Game {
@@ -141,11 +150,14 @@ impl Game {
             console_open: false,
             console_input: String::new(),
             console_feedback: String::new(),
+            pause_menu_selection: 0,
+            pause_confirm: None,
             save_message_timer: 0,
             save_slot_selection: 0,
             save_load_action_selected: SaveLoadAction::Save,
             pending_save_slot: None,
             pending_load_slot: None,
+            inventory_from_title: false,
             blocked_interaction: None,
         };
         game.apply_starting_loadout();
@@ -214,6 +226,7 @@ impl Game {
                     self.frame = 0;
                 }
             }
+            GameState::PauseMenu => self.update_pause_menu(),
         }
     }
 
@@ -229,22 +242,32 @@ impl Game {
                 render::draw_character_creator(&self.sprites, &self.creator, self.frame)
             }
             GameState::Playing => self.draw_game(),
-            GameState::Inventory => render::draw_inventory(
-                &self.sprites,
-                &self.world.snapshot(),
-                &self.player,
-                self.inventory_tab,
-                self.inventory_map_mode,
-                self.inventory_selection,
-                self.frame,
-                self.save_message_timer,
-                self.save_slot_selection,
-                self.save_load_action_selected,
-                &self.save_slots(),
-                self.pending_save_slot,
-                self.pending_load_slot,
-                self.controls_scroll,
-            ),
+            GameState::Inventory => {
+                if self.inventory_from_title {
+                    render::draw_load_menu(
+                        self.save_slot_selection,
+                        &self.save_slots(),
+                        self.pending_load_slot,
+                    )
+                } else {
+                    render::draw_inventory(
+                        &self.sprites,
+                        &self.world.snapshot(),
+                        &self.player,
+                        self.inventory_tab,
+                        self.inventory_map_mode,
+                        self.inventory_selection,
+                        self.frame,
+                        self.save_message_timer,
+                        self.save_slot_selection,
+                        self.save_load_action_selected,
+                        &self.save_slots(),
+                        self.pending_save_slot,
+                        self.pending_load_slot,
+                        self.controls_scroll,
+                    )
+                }
+            }
             GameState::Transition => render::draw_transition(
                 &self.sprites,
                 &self.world.snapshot(),
@@ -263,6 +286,16 @@ impl Game {
             }
             GameState::GameOver => render::draw_game_over(self.frame),
             GameState::Victory => render::draw_victory(self.frame),
+            GameState::PauseMenu => {
+                self.draw_game();
+                render::draw_pause_menu(
+                    &self.sprites,
+                    self.frame,
+                    self.pause_menu_selection,
+                    self.pause_confirm.map(|c| matches!(c, PauseConfirm::MainMenu)),
+                    self.pause_confirm.is_some(),
+                );
+            }
         }
     }
 
@@ -386,9 +419,20 @@ impl Game {
             self.update_console_input();
             return;
         }
+        if is_key_pressed(KeyCode::Escape) {
+            self.state = GameState::PauseMenu;
+            self.pause_menu_selection = 0;
+            self.pause_confirm = None;
+            let mut sad = self.appearance.clone();
+            sad.eyes = EyeExpression::Sad;
+            self.sprites.set_hero_appearance(&sad);
+            crate::log_debug!("pause_menu_opened");
+            return;
+        }
         if inventory_pressed() {
             self.inventory_tab = InventoryTab::Inventory;
             self.inventory_selection = 0;
+            self.inventory_from_title = false;
             self.state = GameState::Inventory;
             crate::log_debug!("open_inventory selection_reset=true");
             return;
@@ -476,6 +520,62 @@ impl Game {
         }
     }
 
+    fn restore_sprites(&mut self) {
+        self.sprites.set_hero_appearance(&self.appearance);
+    }
+
+    fn update_pause_menu(&mut self) {
+        const MENU_COUNT: usize = 3;
+        if self.pause_confirm.is_some() {
+            if start_pressed() || is_key_pressed(KeyCode::Y) {
+                match self.pause_confirm {
+                    Some(PauseConfirm::MainMenu) => {
+                        crate::log_info!("pause_menu: returning to title");
+                        self.restore_sprites();
+                        self.state = GameState::Title;
+                        self.frame = 0;
+                        self.pause_confirm = None;
+                    }
+                    Some(PauseConfirm::Exit) => {
+                        crate::log_info!("pause_menu: exit to desktop");
+                        std::process::exit(0);
+                    }
+                    None => {}
+                }
+            }
+            if is_key_pressed(KeyCode::Escape)
+                || is_key_pressed(KeyCode::N)
+                || is_key_pressed(KeyCode::X)
+            {
+                self.pause_confirm = None;
+            }
+            return;
+        }
+        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+            self.pause_menu_selection = self.pause_menu_selection.saturating_sub(1);
+        }
+        if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+            self.pause_menu_selection = (self.pause_menu_selection + 1).min(MENU_COUNT - 1);
+        }
+        if is_key_pressed(KeyCode::Escape) {
+            self.restore_sprites();
+            self.state = GameState::Playing;
+            crate::log_debug!("pause_menu: resumed");
+            return;
+        }
+        if start_pressed() {
+            match self.pause_menu_selection {
+                0 => {
+                    self.restore_sprites();
+                    self.state = GameState::Playing;
+                    crate::log_debug!("pause_menu: resumed via select");
+                }
+                1 => self.pause_confirm = Some(PauseConfirm::MainMenu),
+                _ => self.pause_confirm = Some(PauseConfirm::Exit),
+            }
+        }
+    }
+
     fn update_inventory(&mut self) {
         if let Some(slot) = self.pending_save_slot {
             if is_key_pressed(KeyCode::Escape)
@@ -508,14 +608,22 @@ impl Game {
             }
         }
         if inventory_pressed() || is_key_pressed(KeyCode::Escape) {
-            self.state = GameState::Playing;
-            crate::log_debug!("close_inventory");
+            if self.inventory_from_title {
+                self.inventory_from_title = false;
+                self.state = GameState::Title;
+                crate::log_debug!("close_load_menu: back to title");
+            } else {
+                self.state = GameState::Playing;
+                crate::log_debug!("close_inventory");
+            }
             return;
         }
         if self.save_message_timer != 0 {
             self.save_message_timer -= self.save_message_timer.signum();
         }
-        if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E)
+        // Block tab switching when opened from title (load-only mode)
+        if !self.inventory_from_title
+            && (is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Q) || is_key_pressed(KeyCode::E))
         {
             self.pending_save_slot = None;
             self.pending_load_slot = None;
@@ -549,8 +657,8 @@ impl Game {
             return;
         }
 
-        // Tab clicks
-        if is_mouse_button_pressed(MouseButton::Left) {
+        // Tab clicks (disabled when opened from title for load-only mode)
+        if !self.inventory_from_title && is_mouse_button_pressed(MouseButton::Left) {
             let (mx, my) = mouse_position();
             let outer_x = px(16.0);
             let outer_y = px(14.0);
@@ -1020,6 +1128,7 @@ impl Game {
         self.save_load_action_selected = SaveLoadAction::Load;
         self.pending_save_slot = None;
         self.pending_load_slot = None;
+        self.inventory_from_title = true;
     }
 
     fn auto_assign_item(&mut self, item: EquippedItem, preferred_slot: ItemSlot) {
