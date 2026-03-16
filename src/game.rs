@@ -579,6 +579,17 @@ impl Game {
     }
 
     fn update_inventory(&mut self) {
+        // In load-from-title mode: Enter loads immediately, no confirmation step.
+        if self.inventory_from_title && start_pressed() {
+            let slots = self.save_slots();
+            let selected = self.save_slot_selection.min(slots.len().saturating_sub(1));
+            if let Some(slot) = slots.get(selected).filter(|s| s.exists) {
+                let slot_idx = slot.slot;
+                self.inventory_from_title = false;
+                self.load_save_slot(slot_idx);
+            }
+            return;
+        }
         if let Some(slot) = self.pending_save_slot {
             if is_key_pressed(KeyCode::Escape)
                 || is_key_pressed(KeyCode::N)
