@@ -135,6 +135,13 @@ pub enum OffhandStyle {
     Book,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum Gender {
+    #[default]
+    Male,
+    Female,
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct HeroPalette {
     #[serde(with = "color_serde")]
@@ -157,6 +164,8 @@ pub struct HeroPalette {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CharacterAppearance {
+    #[serde(default)]
+    pub gender: Gender,
     pub palette: HeroPalette,
     pub face: FaceShape,
     pub eyes: EyeExpression,
@@ -175,6 +184,7 @@ pub struct CharacterAppearance {
 impl Default for CharacterAppearance {
     fn default() -> Self {
         Self {
+            gender: Gender::Male,
             palette: HeroPalette {
                 skin: rgb(255, 204, 153),
                 hair: rgb(42, 21, 0),
@@ -204,6 +214,7 @@ impl Default for CharacterAppearance {
 impl CharacterAppearance {
     pub fn random() -> Self {
         Self {
+            gender: Gender::Male,
             palette: HeroPalette {
                 skin: pick_color(&SKIN_COLORS),
                 hair: pick_color(&HAIR_COLORS),
@@ -430,6 +441,13 @@ impl CharacterCreator {
 
     pub fn adjust_selected(&mut self, delta: i32) {
         match CREATOR_FIELDS[self.selected_field] {
+            CreatorField::Gender => {
+                self.appearance.gender = match self.appearance.gender {
+                    Gender::Male => Gender::Female,
+                    Gender::Female => Gender::Male,
+                };
+                apply_gender_preset(&mut self.appearance);
+            }
             CreatorField::Skin => {
                 cycle_color(&mut self.appearance.palette.skin, &SKIN_COLORS, delta)
             }
@@ -491,6 +509,13 @@ impl CharacterCreator {
 
     pub fn field_text(&self, index: usize) -> String {
         match CREATOR_FIELDS[index] {
+            CreatorField::Gender => format!(
+                "Gender: {}",
+                match self.appearance.gender {
+                    Gender::Male => "Male",
+                    Gender::Female => "Female",
+                }
+            ),
             CreatorField::Skin => format!("Skin: {}", color_label(self.appearance.palette.skin)),
             CreatorField::HairColor => {
                 format!("Hair Color: {}", color_label(self.appearance.palette.hair))
@@ -580,6 +605,7 @@ impl CharacterCreator {
 
     pub fn field_color(&self, index: usize) -> Option<Color> {
         match CREATOR_FIELDS[index] {
+            CreatorField::Gender => None,
             CreatorField::Skin => Some(self.appearance.palette.skin),
             CreatorField::HairColor => Some(self.appearance.palette.hair),
             CreatorField::ShirtColor => Some(self.appearance.palette.shirt),
@@ -595,6 +621,7 @@ impl CharacterCreator {
 
 #[derive(Clone, Copy)]
 enum CreatorField {
+    Gender,
     Skin,
     HairColor,
     ShirtColor,
@@ -621,7 +648,8 @@ enum CreatorField {
     Offhand,
 }
 
-const CREATOR_FIELDS: [CreatorField; 24] = [
+const CREATOR_FIELDS: [CreatorField; 25] = [
+    CreatorField::Gender,
     CreatorField::Skin,
     CreatorField::HairColor,
     CreatorField::ShirtColor,
@@ -2190,7 +2218,24 @@ const HAIR_COLORS: [Color; 10] = [
     rgb(255, 255, 255),
     rgb(17, 17, 17),
 ];
-const SHIRT_COLORS: [Color; 9] = [
+fn apply_gender_preset(appearance: &mut CharacterAppearance) {
+    match appearance.gender {
+        Gender::Female => {
+            appearance.hair_style = HairStyle::Long;
+            appearance.palette.shirt = rgb(220, 100, 150);
+            appearance.palette.pants = rgb(200, 120, 155);
+            appearance.palette.boots = rgb(160, 70, 100);
+        }
+        Gender::Male => {
+            appearance.hair_style = HairStyle::Short;
+            appearance.palette.shirt = rgb(34, 102, 170);
+            appearance.palette.pants = rgb(85, 51, 17);
+            appearance.palette.boots = rgb(42, 26, 10);
+        }
+    }
+}
+
+const SHIRT_COLORS: [Color; 10] = [
     rgb(34, 102, 170),
     rgb(34, 153, 68),
     rgb(170, 34, 34),
@@ -2200,8 +2245,9 @@ const SHIRT_COLORS: [Color; 9] = [
     rgb(170, 170, 170),
     rgb(26, 26, 26),
     rgb(245, 230, 200),
+    rgb(220, 100, 150),
 ];
-const PANTS_COLORS: [Color; 7] = [
+const PANTS_COLORS: [Color; 8] = [
     rgb(85, 51, 17),
     rgb(51, 68, 85),
     rgb(34, 34, 34),
@@ -2209,13 +2255,15 @@ const PANTS_COLORS: [Color; 7] = [
     rgb(136, 68, 34),
     rgb(136, 136, 170),
     rgb(204, 153, 51),
+    rgb(200, 120, 155),
 ];
-const BOOTS_COLORS: [Color; 5] = [
+const BOOTS_COLORS: [Color; 6] = [
     rgb(42, 26, 10),
     rgb(92, 58, 30),
     rgb(26, 42, 58),
     rgb(58, 58, 58),
     rgb(138, 106, 58),
+    rgb(160, 70, 100),
 ];
 const ARMOR_COLORS: [Color; 7] = [
     rgb(136, 153, 170),
