@@ -866,7 +866,7 @@ impl Game {
             return;
         }
 
-        let entry_count = self.player.inventory_entries().len();
+        let entry_count = self.player.inventory_entries(&crate::world_data::dungeon_ids()).len();
         const INITIAL_SCROLL_DELAY: i32 = 45; // frames before repeat starts
         const REPEAT_SCROLL_DELAY: i32 = 15; // frames between repeated moves
 
@@ -923,7 +923,7 @@ impl Game {
     fn assign_selected_inventory_item(&mut self, slot: ItemSlot) {
         let Some(entry) = self
             .player
-            .inventory_entries()
+            .inventory_entries(&crate::world_data::dungeon_ids())
             .get(self.inventory_selection)
             .copied()
         else {
@@ -1277,8 +1277,7 @@ impl Game {
             self.player.x = 7.0 * TILE;
             self.player.y = 9.0 * TILE;
             self.player.dir = Dir::Up;
-            self.player.keys = 0;
-            self.player.has_boss_key = false;
+            // boss_keys persists per-dungeon; no reset needed on dungeon enter
             self.spawn_for_screen();
             self.reset_items();
             self.load_screen_items();
@@ -1398,7 +1397,7 @@ impl Game {
                 self.audio.door();
                 self.show_message("Door opened!");
             }
-            if front_tile == TileType::BossDoor && self.player.has_boss_key {
+            if front_tile == TileType::BossDoor && self.player.has_boss_key_for(self.world.dungeon_id) {
                 self.open_all_doors(TileType::BossDoor);
                 self.audio.door();
                 self.show_message("Boss door opened!");
@@ -2513,7 +2512,7 @@ impl Game {
             }
             PickupType::Key => self.player.keys += 1,
             PickupType::BossKey => {
-                self.player.has_boss_key = true;
+                self.player.grant_boss_key_for(self.world.dungeon_id);
                 self.show_message("Boss Key found!");
             }
             PickupType::BombAmmo => {
@@ -2637,7 +2636,7 @@ impl Game {
             }
             return;
         }
-        if self.world.in_dungeon && !self.player.has_boss_key {
+        if self.world.in_dungeon && !self.player.has_boss_key_for(self.world.dungeon_id) {
             if let Some((tile_x, tile_y)) = world_data::boss_key_spawn_tile(
                 self.world.dungeon_id,
                 self.world.screen_x,
@@ -2801,13 +2800,19 @@ impl Game {
                             "Already have BOMBS (full).".to_string()
                         }
                     }
-                    "boss_key" => {
-                        if !self.player.has_boss_key {
-                            self.player.has_boss_key = true;
-                            crate::log_info!("console_get_item item=boss_key");
-                            "Got BOSS KEY!".to_string()
-                        } else {
-                            "Already have BOSS KEY.".to_string()
+                    s if s.starts_with("boss_key_") => {
+                        let suffix = &s["boss_key_".len()..];
+                        match suffix.parse::<i32>() {
+                            Ok(id) if crate::world_data::dungeon_ids().contains(&id) => {
+                                if !self.player.has_boss_key_for(id) {
+                                    self.player.grant_boss_key_for(id);
+                                    crate::log_info!("console_get_item item=boss_key_{id}");
+                                    format!("Got BOSS KEY for dungeon {id}!")
+                                } else {
+                                    format!("Already have BOSS KEY for dungeon {id}.")
+                                }
+                            }
+                            _ => format!("Unknown dungeon: {suffix}. Valid: boss_key_1 … boss_key_8"),
                         }
                     }
                     "keys" => {
@@ -2944,7 +2949,7 @@ impl Game {
                         let valid_items = [
                             "sword",
                             "bombs",
-                            "boss_key",
+                            "boss_key_1 … boss_key_8",
                             "keys",
                             "gems",
                             "dragon_pieces",
@@ -3057,7 +3062,7 @@ impl Game {
             .filter(|prop| matches!(prop.kind, PropKind::PressurePlate))
             .map(|prop| (prop.tile_x, prop.tile_y))
             .collect();
-        if plate_positions.is_empty() || self.player.has_boss_key {
+        if plate_positions.is_empty() || self.player.has_boss_key_for(self.world.dungeon_id) {
             return;
         }
         let all_pressed = plate_positions

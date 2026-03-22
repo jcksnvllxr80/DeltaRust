@@ -6853,6 +6853,11 @@ pub fn build_dungeons() -> HashMap<i32, HashMap<String, TileGrid>> {
     all
 }
 
+/// Returns all dungeon IDs in order.
+pub fn dungeon_ids() -> Vec<i32> {
+    AUTHORED_DUNGEONS.iter().map(|d| d.id).collect()
+}
+
 /// Returns (screen_x, screen_y) of the entry room for a given dungeon.
 pub fn dungeon_entry(id: i32) -> (i32, i32) {
     if let Some(dungeon) = authored_dungeon(id) {

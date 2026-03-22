@@ -32,7 +32,7 @@ Press `Enter` to run the current command, and `Esc` or `~` to close the console.
 | `keys` | Adds 1 key each time |
 | `gems` | Adds 10 gems each time |
 | `dragon_pieces` | Sets count to 7 (all pieces) |
-| `boss_key` | Grants the boss key for the current dungeon |
+| `boss_key_1` … `boss_key_8` | Grants the boss key for the specified dungeon (e.g. `boss_key_3`) |
 | `ladder` | Lets you climb at ladder markers |
 | `raft` | Lets you cross water tiles |
 | `strong_arm_glove` | Also accepted as `strong_glove` |
@@ -80,18 +80,6 @@ To regenerate the starter sheets:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\generate_sprites.ps1
 ```
-
-## Git Setup
-
-To start tracking this project in a repository, initialize git and make an initial commit:
-
-```sh
-git init
-git add .
-git commit -m "Initial commit"
-```
-
-A `.gitignore` file is included to exclude build artifacts, editor files, and other temporary data.
 
 ## License
 

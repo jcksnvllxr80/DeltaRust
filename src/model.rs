@@ -154,7 +154,7 @@ pub enum InventoryItem {
     Sword,
     Bombs,
     Keys,
-    BossKey,
+    BossKey(i32), // dungeon_id
     Ladder,
     Hammer,
     Raft,
@@ -192,11 +192,11 @@ pub struct InventoryEntry {
     pub equipable: bool,
 }
 
-pub const INVENTORY_ITEMS: [InventoryItem; 18] = [
+// BossKey is excluded — entries are appended dynamically per dungeon in inventory_entries().
+pub const INVENTORY_ITEMS: [InventoryItem; 17] = [
     InventoryItem::Sword,
     InventoryItem::Bombs,
     InventoryItem::Keys,
-    InventoryItem::BossKey,
     InventoryItem::Ladder,
     InventoryItem::Hammer,
     InventoryItem::Raft,
@@ -253,7 +253,8 @@ pub struct Player {
     pub knock_dy: f32,
     pub has_sword: bool,
     pub has_bombs: bool,
-    pub has_boss_key: bool,
+    #[serde(default)]
+    pub boss_keys: HashSet<i32>,
     pub keys: i32,
     pub gems: i32,
     pub dragon_pieces: i32,
@@ -278,6 +279,34 @@ pub struct Player {
     pub last_axis: Option<char>,
 }
 
+fn boss_key_label(id: i32) -> &'static str {
+    match id {
+        1 => "BK1",
+        2 => "BK2",
+        3 => "BK3",
+        4 => "BK4",
+        5 => "BK5",
+        6 => "BK6",
+        7 => "BK7",
+        8 => "BK8",
+        _ => "BK?",
+    }
+}
+
+fn boss_key_description(id: i32) -> &'static str {
+    match id {
+        1 => "Boss Key for Dungeon 1. Unlocks the boss door in Mosshaven Cave.",
+        2 => "Boss Key for Dungeon 2. Unlocks the boss door in Ruins of Ashenfall.",
+        3 => "Boss Key for Dungeon 3. Unlocks the boss door in Ironclad Vault.",
+        4 => "Boss Key for Dungeon 4. Unlocks the boss door in Sunken Citadel.",
+        5 => "Boss Key for Dungeon 5. Unlocks the boss door in Grimforge Depths.",
+        6 => "Boss Key for Dungeon 6. Unlocks the boss door in Fractured Sanctum.",
+        7 => "Boss Key for Dungeon 7. Unlocks the boss door in Aetherian Spire.",
+        8 => "Boss Key for Dungeon 8. Unlocks the boss door in Dragon's Eternal Throne.",
+        _ => "Boss Key for an unknown dungeon.",
+    }
+}
+
 impl Player {
     pub fn new() -> Self {
         Self {
@@ -294,7 +323,7 @@ impl Player {
             knock_dy: 0.0,
             has_sword: false,
             has_bombs: false,
-            has_boss_key: false,
+            boss_keys: HashSet::new(),
             keys: 0,
             gems: 0,
             dragon_pieces: 0,
@@ -323,7 +352,7 @@ impl Player {
     pub fn grant_all_items(&mut self) {
         self.has_sword = true;
         self.has_bombs = true;
-        self.has_boss_key = true;
+        self.boss_keys = (1..=10).collect();
         self.keys = 9999;
         self.gems = 9999;
         self.dragon_pieces = 7;
@@ -349,12 +378,25 @@ impl Player {
         self.hp = self.max_hp;
     }
 
-    pub fn inventory_entries(&self) -> Vec<InventoryEntry> {
-        INVENTORY_ITEMS
+    pub fn has_boss_key_for(&self, dungeon_id: i32) -> bool {
+        self.boss_keys.contains(&dungeon_id)
+    }
+
+    pub fn grant_boss_key_for(&mut self, dungeon_id: i32) {
+        self.boss_keys.insert(dungeon_id);
+    }
+
+    pub fn inventory_entries(&self, dungeon_ids: &[i32]) -> Vec<InventoryEntry> {
+        let mut entries: Vec<InventoryEntry> = INVENTORY_ITEMS
             .iter()
             .copied()
             .map(|item| self.inventory_entry(item))
-            .collect()
+            .collect();
+        // Append one boss key entry per dungeon, in order.
+        for &id in dungeon_ids {
+            entries.push(self.inventory_entry(InventoryItem::BossKey(id)));
+        }
+        entries
     }
 
     pub fn inventory_entry(&self, item: InventoryItem) -> InventoryEntry {
@@ -383,11 +425,11 @@ impl Player {
                 count: Some(self.keys),
                 equipable: false,
             },
-            InventoryItem::BossKey => InventoryEntry {
+            InventoryItem::BossKey(id) => InventoryEntry {
                 item,
-                label: "Boss Key",
-                description: "Unlocks the large boss door in the current dungeon.",
-                owned: self.has_boss_key,
+                label: boss_key_label(id),
+                description: boss_key_description(id),
+                owned: self.has_boss_key_for(id),
                 count: None,
                 equipable: false,
             },

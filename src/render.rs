@@ -381,7 +381,7 @@ pub fn draw_inventory(
         let list_w = px(250.0);
         let details_x = content_x + px(12.0) + list_w + px(12.0);
         let details_w = content_w - list_w - px(36.0);
-        let entries = player.inventory_entries();
+        let entries = player.inventory_entries(&world_data::dungeon_ids());
         let selected_index = inventory_selection.min(entries.len().saturating_sub(1));
         let selected = entries
             .get(selected_index)
@@ -3145,7 +3145,7 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
             },
         ) + chip_gap;
     }
-    if player.has_boss_key {
+    if player.has_boss_key_for(world.dungeon_id) {
         let boss_key_color = color_u8!(220, 40, 40, 255);
         draw_hud_icon_chip(chip_x, chip_y, color_u8!(130, 44, 44, 255), |ix, iy| {
             if !sprites.draw_hud_boss_key(ix - px(1.0), iy - px(1.0), px(18.0), boss_key_color) {
@@ -3349,7 +3349,7 @@ fn draw_inventory_stat(
         "Keys" if player.keys > 0 => {
             let _ = sprites.draw_hud_key(x + px(2.0), y - px(8.0), px(18.0));
         }
-        "Boss Key" if player.has_boss_key => {
+        s if s.starts_with("BK") && active => {
             let _ =
                 sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
         }
