@@ -3187,9 +3187,10 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         (if h == 12 { 12 } else { h - 12 }, "PM")
     };
     let time_str = format!("{h12}:{m:02} {ampm}");
+    let time_dims = measure_text(&time_str, None, location_font as u16, 1.0);
     draw_text(
         &time_str,
-        px(16.0),
+        (GAME_W - time_dims.width) / 2.0,
         HUD_H - px(10.0),
         location_font,
         color_u8!(182, 188, 200, 255),

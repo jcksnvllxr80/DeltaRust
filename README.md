@@ -16,6 +16,8 @@ During gameplay, press `~` to open the console at the bottom of the screen.
 - `teleport x,y` moves you to an overworld screen coordinate such as `teleport 3,4`
 - `god_mode 0/1` disables or enables player invulnerability
 - `get_item <item_name>` adds an item to your inventory
+- `set_time HH:MM` sets the in-game clock to a specific time (e.g. `set_time 18:30`)
+- `time_speed <n>` sets the clock multiplier to an integer (e.g. `time_speed 4` runs time 4× faster); always multiplies the base rate, so calling it again resets to that value rather than stacking
 - `show_map_poi` toggles the map points-of-interest overlay (same as launching with `--dev-mode`)
 
 Press `Enter` to run the current command, and `Esc` or `~` to close the console.

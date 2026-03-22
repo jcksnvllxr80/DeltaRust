@@ -92,6 +92,7 @@ pub struct Game {
     blocked_interaction: Option<InteractionSource>,
     pub time_minutes: i32,
     time_tick: i32,
+    pub time_speed: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -167,6 +168,7 @@ impl Game {
             blocked_interaction: None,
             time_minutes: 360, // 6:00 AM
             time_tick: 0,
+            time_speed: 1,
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
@@ -182,7 +184,7 @@ impl Game {
     pub fn update(&mut self) {
         self.frame += 1;
         if matches!(self.state, GameState::Playing) {
-            self.time_tick += 1;
+            self.time_tick += self.time_speed;
             if self.time_tick >= 60 {
                 self.time_tick = 0;
                 self.time_minutes = (self.time_minutes + 1) % 1440;
@@ -2998,6 +3000,17 @@ impl Game {
                     "Map POI markers disabled.".to_string()
                 }
             }
+            "time_speed" => {
+                let arg = command[name.len()..].trim();
+                match arg.parse::<i32>() {
+                    Ok(n) if n >= 1 => {
+                        self.time_speed = n;
+                        self.time_tick = 0;
+                        format!("Time speed set to {n}x")
+                    }
+                    _ => "Usage: time_speed <integer>  (e.g. time_speed 4)".to_string(),
+                }
+            }
             "set_time" => {
                 let arg = command[name.len()..].trim();
                 let parts: Vec<&str> = arg.splitn(2, ':').collect();
@@ -3653,7 +3666,7 @@ fn console_toggle_pressed() -> bool {
 }
 
 fn console_help_text() -> &'static str {
-    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name> | set_time HH:MM | show_map_poi"
+    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name> | set_time HH:MM | time_speed <n> | show_map_poi"
 }
 
 fn drain_char_input() {
