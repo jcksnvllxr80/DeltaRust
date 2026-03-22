@@ -3028,10 +3028,6 @@ fn moon_phase(day_number: i32) -> i32 {
     day_number.rem_euclid(8)
 }
 
-/// Returns true if the moon provides meaningful light at night.
-fn moon_is_out(day_number: i32) -> bool {
-    moon_phase(day_number) <= 4
-}
 
 /// Lerp between two f32 values by t in [0, 1].
 fn lerpf(a: f32, b: f32, t: f32) -> f32 {
@@ -3040,8 +3036,16 @@ fn lerpf(a: f32, b: f32, t: f32) -> f32 {
 
 /// Sky overlay color for the current time. Returns (r, g, b, a) all in [0, 255].
 fn sky_overlay_color(time_minutes: i32, day_number: i32) -> (u8, u8, u8, u8) {
-    // Night alpha: dimmer when moon is out, darker on new moon.
-    let night_a: f32 = if moon_is_out(day_number) { 0.55 } else { 0.78 };
+    // Moon illumination 0.0 (new moon, darkest night) → 1.0 (full moon, lightest night).
+    let moon_illum: f32 = match moon_phase(day_number) {
+        0 => 1.00,      // full moon
+        1 | 2 => 0.70,  // gibbous
+        3 => 0.45,      // half
+        4 | 5 => 0.20,  // crescent
+        _ => 0.00,      // new moon
+    };
+    // night_a: 0.82 at new moon (very dark), 0.28 at full moon (much lighter).
+    let night_a = lerpf(0.82, 0.28, moon_illum);
 
     // Keyframes: (minutes, r, g, b, alpha)
     // Covers 0..=1440 so wrap is seamless.
@@ -3107,7 +3111,7 @@ fn draw_celestial_chip(x: f32, y: f32, time_minutes: i32, day_number: i32) -> f3
             let r = px(5.5);
             draw_circle(cx, cy, r, moon_col);
             // Overlay a dark circle offset to simulate phase shadow.
-            let shadow = color_u8!(17, 17, 17, 255); // matches HUD background
+            let shadow = color_u8!(26, 30, 40, 255); // matches chip interior background
             match phase {
                 0 => {}                                                        // full — no shadow
                 1 | 2 => draw_circle(cx + px(3.0), cy, r * 0.9, shadow),     // gibbous
