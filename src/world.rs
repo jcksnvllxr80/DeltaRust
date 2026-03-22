@@ -72,6 +72,7 @@ impl World {
             dungeon_rooms: self.dungeon_rooms(),
             dev_mode: self.dev_mode,
             time_minutes: 360, // patched by Game before passing to render
+            day_number: 0,     // patched by Game before passing to render
         }
     }
 

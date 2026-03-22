@@ -55,6 +55,9 @@ pub fn draw_game(
     }
     draw_death_animations(death_animations);
     draw_player(sprites, player, frame);
+    if !world.in_dungeon && !world.in_interior {
+        draw_sky_overlay(world.time_minutes, world.day_number);
+    }
     draw_hud(sprites, player, world);
 }
 
@@ -3020,6 +3023,114 @@ fn draw_action_slot(
     );
 }
 
+/// 0 = full moon, 1-2 = gibbous, 3 = half, 4-5 = crescent, 6-7 = new moon
+fn moon_phase(day_number: i32) -> i32 {
+    day_number.rem_euclid(8)
+}
+
+/// Returns true if the moon provides meaningful light at night.
+fn moon_is_out(day_number: i32) -> bool {
+    moon_phase(day_number) <= 4
+}
+
+/// Lerp between two f32 values by t in [0, 1].
+fn lerpf(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
+/// Sky overlay color for the current time. Returns (r, g, b, a) all in [0, 255].
+fn sky_overlay_color(time_minutes: i32, day_number: i32) -> (u8, u8, u8, u8) {
+    // Night alpha: dimmer when moon is out, darker on new moon.
+    let night_a: f32 = if moon_is_out(day_number) { 0.55 } else { 0.78 };
+
+    // Keyframes: (minutes, r, g, b, alpha)
+    // Covers 0..=1440 so wrap is seamless.
+    let kf: &[(i32, f32, f32, f32, f32)] = &[
+        (0,    15.0, 20.0,  55.0, night_a), // midnight
+        (300,  15.0, 20.0,  55.0, night_a), // 5:00 AM — still night
+        (390,  170.0, 85.0, 40.0, 0.22),    // 6:30 AM — sunrise orange
+        (510,  0.0,  0.0,   0.0,  0.0),     // 8:30 AM — full day
+        (1050, 0.0,  0.0,   0.0,  0.0),     // 5:30 PM — still day
+        (1110, 155.0, 65.0, 30.0, 0.28),    // 6:30 PM — sunset orange-red
+        (1200, 55.0, 28.0,  80.0, 0.52),    // 8:00 PM — dusk purple
+        (1320, 15.0, 20.0,  55.0, night_a), // 10:00 PM — full night
+        (1440, 15.0, 20.0,  55.0, night_a), // midnight (wrap anchor)
+    ];
+
+    // Find surrounding keyframes.
+    let mut lo = kf.last().unwrap();
+    let mut hi = kf.first().unwrap();
+    for i in 0..kf.len() - 1 {
+        if time_minutes >= kf[i].0 && time_minutes < kf[i + 1].0 {
+            lo = &kf[i];
+            hi = &kf[i + 1];
+            break;
+        }
+    }
+
+    let span = (hi.0 - lo.0).max(1) as f32;
+    let t = (time_minutes - lo.0) as f32 / span;
+    let r = lerpf(lo.1, hi.1, t) as u8;
+    let g = lerpf(lo.2, hi.2, t) as u8;
+    let b = lerpf(lo.3, hi.3, t) as u8;
+    let a = (lerpf(lo.4, hi.4, t) * 255.0) as u8;
+    (r, g, b, a)
+}
+
+fn draw_sky_overlay(time_minutes: i32, day_number: i32) {
+    let (r, g, b, a) = sky_overlay_color(time_minutes, day_number);
+    if a == 0 {
+        return;
+    }
+    draw_rectangle(
+        0.0,
+        HUD_H,
+        GAME_W,
+        GAME_H,
+        Color::from_rgba(r, g, b, a),
+    );
+}
+
+/// Draw the sun or moon phase chip in the HUD chip row.
+/// Returns the chip width so the caller can advance chip_x.
+fn draw_celestial_chip(x: f32, y: f32, time_minutes: i32, day_number: i32) -> f32 {
+    let is_night = time_minutes < 360 || time_minutes >= 1200;
+    let phase = moon_phase(day_number);
+
+    if is_night {
+        // Moon: white circle with darkened bite taken out based on phase.
+        let moon_col = color_u8!(220, 220, 200, 255);
+        let border_col = color_u8!(100, 100, 80, 255);
+        draw_hud_icon_chip(x, y, border_col, move |ix, iy| {
+            let cx = ix + px(8.0);
+            let cy = iy + px(8.0);
+            let r = px(5.5);
+            draw_circle(cx, cy, r, moon_col);
+            // Overlay a dark circle offset to simulate phase shadow.
+            let shadow = color_u8!(17, 17, 17, 255); // matches HUD background
+            match phase {
+                0 => {}                                                        // full — no shadow
+                1 | 2 => draw_circle(cx + px(3.0), cy, r * 0.9, shadow),     // gibbous
+                3 => draw_circle(cx + px(5.5), cy, r, shadow),                // half
+                4 | 5 => draw_circle(cx + px(7.5), cy, r * 1.1, shadow),     // crescent
+                _ => draw_circle(cx, cy, r, shadow),                           // new — fully dark
+            }
+        })
+    } else {
+        // Sun: yellow circle, brighter midday.
+        let sun_col = if time_minutes >= 480 && time_minutes < 1020 {
+            color_u8!(255, 220, 60, 255)
+        } else {
+            color_u8!(220, 140, 60, 255) // morning/evening — more orange
+        };
+        draw_hud_icon_chip(x, y, color_u8!(140, 100, 20, 255), move |ix, iy| {
+            let cx = ix + px(8.0);
+            let cy = iy + px(8.0);
+            draw_circle(cx, cy, px(5.5), sun_col);
+        })
+    }
+}
+
 fn draw_hud_chip_frame(x: f32, y: f32, w: f32, h: f32, border: Color) {
     draw_rectangle(x, y, w, h, color_u8!(27, 31, 42, 235));
     draw_rectangle_lines(x, y, w, h, px(1.0), border);
@@ -3147,7 +3258,7 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
     }
     if player.has_boss_key_for(world.dungeon_id) {
         let boss_key_color = color_u8!(220, 40, 40, 255);
-        draw_hud_icon_chip(chip_x, chip_y, color_u8!(130, 44, 44, 255), |ix, iy| {
+        chip_x += draw_hud_icon_chip(chip_x, chip_y, color_u8!(130, 44, 44, 255), |ix, iy| {
             if !sprites.draw_hud_boss_key(ix - px(1.0), iy - px(1.0), px(18.0), boss_key_color) {
                 draw_rectangle(
                     ix + px(1.0),
@@ -3157,8 +3268,10 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
                     boss_key_color,
                 );
             }
-        });
+        }) + chip_gap;
     }
+
+    draw_celestial_chip(chip_x, chip_y, world.time_minutes, world.day_number);
 
     let location = world_data::location_name(
         world.screen_x,

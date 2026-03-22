@@ -668,4 +668,5 @@ pub struct WorldSnapshot {
     pub dungeon_rooms: HashSet<String>,
     pub dev_mode: bool,
     pub time_minutes: i32,
+    pub day_number: i32,
 }

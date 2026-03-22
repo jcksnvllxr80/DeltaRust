@@ -8,19 +8,66 @@ Native Rust version of the Delta game, kept separate from the original browser i
 cargo run
 ```
 
+## Character Customization
+
+Before starting a new game, the character creator lets you build your hero's appearance. Use the arrow keys to cycle through each field.
+
+**Gender** is the first option and acts as a preset:
+
+- **Male** — default color palette (green shirt, brown pants, grey boots)
+- **Female** — pink clothing palette and long hair style applied automatically
+
+All other fields (hair style, hair color, shirt, pants, boots) can be adjusted independently after selecting a gender, so the preset is just a starting point.
+
+## Day / Night Cycle
+
+Time passes automatically at one in-game minute per 60 frames (roughly one full day every 24 real minutes at default speed). The world reacts to the current time:
+
+| Time | Atmosphere |
+|---|---|
+| 12:00 AM – 5:00 AM | Night — dark blue overlay |
+| 5:00 – 6:30 AM | Pre-dawn — fading night |
+| 6:30 – 8:30 AM | Sunrise — warm orange tint |
+| 8:30 AM – 5:30 PM | Day — no overlay, full brightness |
+| 5:30 – 6:30 PM | Sunset — orange-red tint |
+| 6:30 – 8:00 PM | Dusk — purple haze |
+| 8:00 – 10:00 PM | Evening — darkening |
+| 10:00 PM – 12:00 AM | Night |
+
+The night overlay darkness depends on the **moon phase**, which runs on an 8-day cycle:
+
+- **Full moon** (days 0–2) — lighter night, more visibility
+- **Half moon** (days 3–4) — moderate darkness
+- **New moon** (days 5–7) — darkest nights
+
+Dungeons and interiors are unaffected by the cycle and always render at full brightness.
+
+### HUD
+
+The current time is displayed centered at the bottom of the HUD (e.g. `6:00 AM`).
+
+A **celestial chip** in the HUD chip row shows the sun or moon:
+
+- **Sun** — visible during daytime; appears orange-gold near dawn and dusk, bright yellow midday
+- **Moon** — visible at night; the circle shape reflects the current moon phase (full circle, gibbous, half, crescent, or dark on a new moon)
+
+### Per-dungeon boss keys
+
+Each dungeon has its own boss key. Collecting a boss key in dungeon 3 does not carry over to dungeon 4. The inventory shows each dungeon's boss key as **Boss Key 1** through **Boss Key 8**, and the HUD chip highlights only the key for the dungeon you are currently in.
+
 ## In-game console
 
 During gameplay, press `~` to open the console at the bottom of the screen.
 
-- `help` lists the supported console commands
-- `teleport x,y` moves you to an overworld screen coordinate such as `teleport 3,4`
-- `god_mode 0/1` disables or enables player invulnerability
-- `get_item <item_name>` adds an item to your inventory
-- `set_time HH:MM` sets the in-game clock to a specific time (e.g. `set_time 18:30`)
-- `time_speed <n>` sets the clock multiplier to an integer (e.g. `time_speed 4` runs time 4× faster); always multiplies the base rate, so calling it again resets to that value rather than stacking
-- `show_map_poi` toggles the map points-of-interest overlay (same as launching with `--dev-mode`)
+- `help` — lists all supported commands
+- `teleport x,y` — moves you to an overworld screen coordinate (e.g. `teleport 3,4`)
+- `god_mode 0/1` — disables or enables player invulnerability
+- `get_item <item_name>` — adds an item to your inventory
+- `set_time HH:MM` — sets the clock to a specific time (e.g. `set_time 18:30`)
+- `time_speed <n>` — sets the clock speed multiplier; `time_speed 4` runs time 4× faster. Always multiplies the base rate — calling it again sets a new multiplier rather than stacking
+- `show_map_poi` — toggles map points-of-interest markers (same effect as `--dev-mode`)
 
-Press `Enter` to run the current command, and `Esc` or `~` to close the console.
+Press `Enter` to execute, `Esc` or `~` to close.
 
 ### get_item
 
@@ -64,16 +111,16 @@ You can open the PNGs in any pixel editor, save over them, and rerun the game. I
 Default layout:
 
 - `hero.png`: 2 columns x 4 rows of `16x16` frames
-- row 1: down
-- row 2: up
-- row 3: left
-- row 4: right
+  - row 1: down
+  - row 2: up
+  - row 3: left
+  - row 4: right
 - `enemies.png`: stacked rows
-- row 1: slime `16x16`, 2 frames
-- row 2: octorok `16x16`, 2 frames
-- row 3: bat `16x16`, 2 frames
-- row 4: darknut `16x16`, 2 frames
-- row 5: boss `24x24`, 2 frames
+  - row 1: slime `16x16`, 2 frames
+  - row 2: octorok `16x16`, 2 frames
+  - row 3: bat `16x16`, 2 frames
+  - row 4: darknut `16x16`, 2 frames
+  - row 5: boss `24x24`, 2 frames
 - `tiles.png`: 5 columns x 4 rows of `16x16` tiles for terrain, dungeon pieces, doors, chest, goal
 - `items.png`: 4 columns x 4 rows of `16x16` icons for pickups, bombs, projectiles, and HUD icons
 

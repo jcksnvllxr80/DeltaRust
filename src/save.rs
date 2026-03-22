@@ -25,6 +25,8 @@ pub struct SaveData {
     pub visited_screens: Vec<Vec<bool>>,
     #[serde(default = "default_time_minutes")]
     pub time_minutes: i32,
+    #[serde(default)]
+    pub day_number: i32,
 }
 
 fn default_time_minutes() -> i32 {

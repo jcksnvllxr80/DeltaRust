@@ -91,6 +91,7 @@ pub struct Game {
     pub inventory_from_title: bool,
     blocked_interaction: Option<InteractionSource>,
     pub time_minutes: i32,
+    pub day_number: i32,
     time_tick: i32,
     pub time_speed: i32,
 }
@@ -167,6 +168,7 @@ impl Game {
             inventory_from_title: false,
             blocked_interaction: None,
             time_minutes: 360, // 6:00 AM
+            day_number: 0,
             time_tick: 0,
             time_speed: 1,
         };
@@ -187,7 +189,11 @@ impl Game {
             self.time_tick += self.time_speed;
             if self.time_tick >= 60 {
                 self.time_tick = 0;
+                let prev = self.time_minutes;
                 self.time_minutes = (self.time_minutes + 1) % 1440;
+                if prev == 1439 {
+                    self.day_number += 1;
+                }
             }
         }
         if !matches!(self.state, GameState::Playing) || !self.console_open {
@@ -321,6 +327,7 @@ impl Game {
     fn timed_snapshot(&self) -> crate::model::WorldSnapshot {
         let mut s = self.world.snapshot();
         s.time_minutes = self.time_minutes;
+        s.day_number = self.day_number;
         s
     }
 
@@ -1093,6 +1100,7 @@ impl Game {
             dungeon_overworld_y: self.dungeon_overworld_y,
             visited_screens: self.world.visited_screens.clone(),
             time_minutes: self.time_minutes,
+            day_number: self.day_number,
         }
     }
 
@@ -1124,6 +1132,7 @@ impl Game {
             self.world.visited_screens = vec![vec![false; WORLD_W as usize]; WORLD_H as usize];
         }
         self.time_minutes = data.time_minutes;
+        self.day_number = data.day_number;
         self.time_tick = 0;
         self.world.load_screen(data.screen_x, data.screen_y);
         self.spawn_for_screen();
