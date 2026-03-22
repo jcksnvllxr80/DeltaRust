@@ -281,15 +281,15 @@ pub struct Player {
 
 fn boss_key_label(id: i32) -> &'static str {
     match id {
-        1 => "BK1",
-        2 => "BK2",
-        3 => "BK3",
-        4 => "BK4",
-        5 => "BK5",
-        6 => "BK6",
-        7 => "BK7",
-        8 => "BK8",
-        _ => "BK?",
+        1 => "Boss Key 1",
+        2 => "Boss Key 2",
+        3 => "Boss Key 3",
+        4 => "Boss Key 4",
+        5 => "Boss Key 5",
+        6 => "Boss Key 6",
+        7 => "Boss Key 7",
+        8 => "Boss Key 8",
+        _ => "Boss Key ?",
     }
 }
 

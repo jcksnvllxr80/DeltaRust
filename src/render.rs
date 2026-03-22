@@ -3365,7 +3365,7 @@ fn draw_inventory_stat(
         "Keys" if player.keys > 0 => {
             let _ = sprites.draw_hud_key(x + px(2.0), y - px(8.0), px(18.0));
         }
-        s if s.starts_with("BK") && active => {
+        s if s.starts_with("Boss Key") && active => {
             let _ =
                 sprites.draw_hud_boss_key(x, y - px(10.0), px(22.0), color_u8!(220, 40, 40, 255));
         }
