@@ -83,6 +83,7 @@ Press `Enter` to execute, `Esc` or `~` to close.
 | `dragon_pieces` | Sets count to 7 (all pieces) |
 | `boss_key_1` … `boss_key_8` | Grants the boss key for the specified dungeon (e.g. `boss_key_3`) |
 | `ladder` | Lets you climb at ladder markers |
+| `lantern` | Casts a warm circle of light around you at night |
 | `raft` | Lets you cross water tiles |
 | `strong_arm_glove` | Also accepted as `strong_glove` |
 | `portal_tool` | Grants the portal attunement focus |

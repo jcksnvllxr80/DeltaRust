@@ -57,6 +57,12 @@ pub fn draw_game(
     draw_player(sprites, player, frame);
     if !world.in_dungeon && !world.in_interior {
         draw_sky_overlay(world.time_minutes, world.day_number);
+        let is_night = world.time_minutes < 360 || world.time_minutes >= 1200;
+        if player.has_lantern && is_night {
+            let cx = player.x + 16.0;
+            let cy = player.y + HUD_H + 16.0;
+            draw_lantern_glow(cx, cy);
+        }
     }
     draw_hud(sprites, player, world);
 }
@@ -2848,6 +2854,57 @@ fn draw_hammer_icon(x: f32, y: f32, scale: f32) {
     );
 }
 
+fn draw_lantern_icon(x: f32, y: f32, scale: f32) {
+    // Flame
+    draw_circle(
+        x + scale * 6.0,
+        y + scale * 1.5,
+        scale * 1.5,
+        color_u8!(255, 210, 80, 220),
+    );
+    // Body
+    draw_rectangle(
+        x + scale * 3.0,
+        y + scale * 2.5,
+        scale * 6.0,
+        scale * 8.0,
+        color_u8!(200, 160, 60, 255),
+    );
+    // Glass panel (lighter center strip)
+    draw_rectangle(
+        x + scale * 4.5,
+        y + scale * 3.0,
+        scale * 3.0,
+        scale * 6.0,
+        color_u8!(255, 230, 120, 180),
+    );
+    // Top cap
+    draw_rectangle(
+        x + scale * 3.5,
+        y + scale * 2.0,
+        scale * 5.0,
+        scale * 1.2,
+        color_u8!(140, 100, 30, 255),
+    );
+    // Bottom base
+    draw_rectangle(
+        x + scale * 3.0,
+        y + scale * 10.5,
+        scale * 6.0,
+        scale * 1.2,
+        color_u8!(140, 100, 30, 255),
+    );
+    // Handle
+    draw_line(
+        x + scale * 6.0,
+        y,
+        x + scale * 6.0,
+        y + scale * 2.0,
+        scale * 0.8,
+        color_u8!(140, 100, 30, 255),
+    );
+}
+
 fn draw_raft_icon(x: f32, y: f32, scale: f32) {
     let wood = color_u8!(132, 92, 54, 255);
     let rope = color_u8!(206, 178, 114, 255);
@@ -3079,6 +3136,24 @@ fn sky_overlay_color(time_minutes: i32, day_number: i32) -> (u8, u8, u8, u8) {
     let b = lerpf(lo.3, hi.3, t) as u8;
     let a = (lerpf(lo.4, hi.4, t) * 255.0) as u8;
     (r, g, b, a)
+}
+
+fn draw_lantern_glow(cx: f32, cy: f32) {
+    // Warm glow drawn on top of the sky overlay. Concentric circles from outer
+    // (barely warm) to inner (brightly warm), compositing to a smooth radial gradient.
+    let radius = TILE * 3.5;
+    let steps: &[(f32, u8, u8, u8, u8)] = &[
+        (1.00, 200, 120,  40,  12),
+        (0.80, 210, 130,  45,  20),
+        (0.62, 220, 140,  50,  32),
+        (0.46, 232, 158,  58,  48),
+        (0.32, 242, 172,  65,  66),
+        (0.20, 250, 188,  74,  86),
+        (0.10, 255, 205,  88, 100),
+    ];
+    for &(frac, r, g, b, a) in steps {
+        draw_circle(cx, cy, radius * frac, Color::from_rgba(r, g, b, a));
+    }
 }
 
 fn draw_sky_overlay(time_minutes: i32, day_number: i32) {
@@ -3494,6 +3569,9 @@ fn draw_inventory_stat(
                 px(0.9),
                 color_u8!(181, 141, 91, 255),
             );
+        }
+        "Lantern" if player.has_lantern => {
+            draw_lantern_icon(x + px(3.0), y - px(12.0), px(0.9));
         }
         _ => {}
     }

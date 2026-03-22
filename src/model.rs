@@ -158,6 +158,7 @@ pub enum InventoryItem {
     Ladder,
     Hammer,
     Raft,
+    Lantern,
     StrongArmGlove,
     PortalTool,
     AncientKey,
@@ -193,13 +194,14 @@ pub struct InventoryEntry {
 }
 
 // BossKey is excluded — entries are appended dynamically per dungeon in inventory_entries().
-pub const INVENTORY_ITEMS: [InventoryItem; 17] = [
+pub const INVENTORY_ITEMS: [InventoryItem; 18] = [
     InventoryItem::Sword,
     InventoryItem::Bombs,
     InventoryItem::Keys,
     InventoryItem::Ladder,
     InventoryItem::Hammer,
     InventoryItem::Raft,
+    InventoryItem::Lantern,
     InventoryItem::StrongArmGlove,
     InventoryItem::PortalTool,
     InventoryItem::AncientKey,
@@ -270,6 +272,8 @@ pub struct Player {
     pub has_ladder: bool,
     pub has_hammer: bool,
     pub has_raft: bool,
+    #[serde(default)]
+    pub has_lantern: bool,
     pub has_strong_arm_glove: bool,
     pub has_portal_tool: bool,
     pub main_item: EquippedItem,
@@ -339,6 +343,7 @@ impl Player {
             has_ladder: false,
             has_hammer: false,
             has_raft: false,
+            has_lantern: false,
             has_strong_arm_glove: false,
             has_portal_tool: false,
             main_item: EquippedItem::None,
@@ -367,6 +372,7 @@ impl Player {
         self.has_ladder = true;
         self.has_hammer = true;
         self.has_raft = true;
+        self.has_lantern = true;
         self.has_strong_arm_glove = true;
         self.has_portal_tool = true;
         self.main_item = EquippedItem::Sword;
@@ -454,6 +460,14 @@ impl Player {
                 label: "Raft",
                 description: "Lets you travel safely across water tiles.",
                 owned: self.has_raft,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::Lantern => InventoryEntry {
+                item,
+                label: "Lantern",
+                description: "Casts a warm circle of light around you at night.",
+                owned: self.has_lantern,
                 count: None,
                 equipable: false,
             },

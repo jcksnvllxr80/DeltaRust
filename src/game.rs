@@ -2958,6 +2958,15 @@ impl Game {
                             "Already have RAFT.".to_string()
                         }
                     }
+                    "lantern" => {
+                        if !self.player.has_lantern {
+                            self.player.has_lantern = true;
+                            crate::log_info!("console_get_item item=lantern");
+                            "Got LANTERN!".to_string()
+                        } else {
+                            "Already have LANTERN.".to_string()
+                        }
+                    }
                     "strong_arm_glove" | "strong_glove" => {
                         if !self.player.has_strong_arm_glove {
                             self.player.has_strong_arm_glove = true;
@@ -2994,6 +3003,7 @@ impl Game {
                             "ladder",
                             "hammer",
                             "raft",
+                            "lantern",
                             "strong_arm_glove",
                             "portal_tool",
                         ];
