@@ -23,6 +23,12 @@ pub struct SaveData {
     pub dungeon_overworld_y: i32,
     #[serde(default)]
     pub visited_screens: Vec<Vec<bool>>,
+    #[serde(default = "default_time_minutes")]
+    pub time_minutes: i32,
+}
+
+fn default_time_minutes() -> i32 {
+    360 // 6:00 AM
 }
 
 #[derive(Clone, Debug)]

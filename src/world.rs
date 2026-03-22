@@ -71,6 +71,7 @@ impl World {
             destroyed_tiles: self.destroyed_tiles.clone(),
             dungeon_rooms: self.dungeon_rooms(),
             dev_mode: self.dev_mode,
+            time_minutes: 360, // patched by Game before passing to render
         }
     }
 

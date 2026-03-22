@@ -3178,6 +3178,22 @@ fn draw_hud(sprites: &Sprites, player: &Player, world: &WorldSnapshot) {
         location_font,
         color_u8!(182, 188, 200, 255),
     );
+
+    let h = world.time_minutes / 60;
+    let m = world.time_minutes % 60;
+    let (h12, ampm) = if h < 12 {
+        (if h == 0 { 12 } else { h }, "AM")
+    } else {
+        (if h == 12 { 12 } else { h - 12 }, "PM")
+    };
+    let time_str = format!("{h12}:{m:02} {ampm}");
+    draw_text(
+        &time_str,
+        px(16.0),
+        HUD_H - px(10.0),
+        location_font,
+        color_u8!(182, 188, 200, 255),
+    );
 }
 
 fn draw_overworld_map_panel(

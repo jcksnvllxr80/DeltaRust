@@ -667,4 +667,5 @@ pub struct WorldSnapshot {
     pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
     pub dungeon_rooms: HashSet<String>,
     pub dev_mode: bool,
+    pub time_minutes: i32,
 }

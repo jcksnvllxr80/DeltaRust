@@ -90,6 +90,8 @@ pub struct Game {
     pub pending_load_slot: Option<usize>,
     pub inventory_from_title: bool,
     blocked_interaction: Option<InteractionSource>,
+    pub time_minutes: i32,
+    time_tick: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -163,6 +165,8 @@ impl Game {
             pending_load_slot: None,
             inventory_from_title: false,
             blocked_interaction: None,
+            time_minutes: 360, // 6:00 AM
+            time_tick: 0,
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
@@ -177,6 +181,13 @@ impl Game {
 
     pub fn update(&mut self) {
         self.frame += 1;
+        if matches!(self.state, GameState::Playing) {
+            self.time_tick += 1;
+            if self.time_tick >= 60 {
+                self.time_tick = 0;
+                self.time_minutes = (self.time_minutes + 1) % 1440;
+            }
+        }
         if !matches!(self.state, GameState::Playing) || !self.console_open {
             drain_char_input();
         }
@@ -258,7 +269,7 @@ impl Game {
                 } else {
                     render::draw_inventory(
                         &self.sprites,
-                        &self.world.snapshot(),
+                        &self.timed_snapshot(),
                         &self.player,
                         self.inventory_tab,
                         self.inventory_map_mode,
@@ -276,7 +287,7 @@ impl Game {
             }
             GameState::Transition => render::draw_transition(
                 &self.sprites,
-                &self.world.snapshot(),
+                &self.timed_snapshot(),
                 &self.transition,
                 self.world
                     .screen_tiles(self.transition.new_screen_x, self.transition.new_screen_y),
@@ -305,11 +316,17 @@ impl Game {
         }
     }
 
+    fn timed_snapshot(&self) -> crate::model::WorldSnapshot {
+        let mut s = self.world.snapshot();
+        s.time_minutes = self.time_minutes;
+        s
+    }
+
     fn draw_game(&self) {
         render::draw_game(
             &self.sprites,
             self.frame,
-            &self.world.snapshot(),
+            &self.timed_snapshot(),
             &self.player,
             &self.enemies,
             &self.pickups,
@@ -1073,6 +1090,7 @@ impl Game {
             dungeon_overworld_x: self.dungeon_overworld_x,
             dungeon_overworld_y: self.dungeon_overworld_y,
             visited_screens: self.world.visited_screens.clone(),
+            time_minutes: self.time_minutes,
         }
     }
 
@@ -1103,6 +1121,8 @@ impl Game {
         } else {
             self.world.visited_screens = vec![vec![false; WORLD_W as usize]; WORLD_H as usize];
         }
+        self.time_minutes = data.time_minutes;
+        self.time_tick = 0;
         self.world.load_screen(data.screen_x, data.screen_y);
         self.spawn_for_screen();
         self.reset_items();
@@ -2978,6 +2998,21 @@ impl Game {
                     "Map POI markers disabled.".to_string()
                 }
             }
+            "set_time" => {
+                let arg = command[name.len()..].trim();
+                let parts: Vec<&str> = arg.splitn(2, ':').collect();
+                match (parts.first(), parts.get(1)) {
+                    (Some(h), Some(m)) => match (h.parse::<i32>(), m.parse::<i32>()) {
+                        (Ok(h), Ok(m)) if (0..24).contains(&h) && (0..60).contains(&m) => {
+                            self.time_minutes = h * 60 + m;
+                            self.time_tick = 0;
+                            format!("Time set to {:02}:{:02}", h, m)
+                        }
+                        _ => "Usage: set_time HH:MM  (e.g. set_time 14:30)".to_string(),
+                    },
+                    _ => "Usage: set_time HH:MM  (e.g. set_time 6:00)".to_string(),
+                }
+            }
             _ => format!("Unknown command: {command}"),
         }
     }
@@ -3618,7 +3653,7 @@ fn console_toggle_pressed() -> bool {
 }
 
 fn console_help_text() -> &'static str {
-    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name> | show_map_poi"
+    "Commands: help | teleport x,y | god_mode 0/1 | get_item <item_name> | set_time HH:MM | show_map_poi"
 }
 
 fn drain_char_input() {
