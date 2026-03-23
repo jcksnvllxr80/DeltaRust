@@ -18,6 +18,7 @@ fn px(v: f32) -> f32 {
 }
 
 const PICKUP_RENDER_SCALE: f32 = 2.0;
+const PREVIEW_FRAME_TICKS: i32 = 18;
 
 const MAP_TILE_SIZE: f32 = 18.0;
 const MAP_TILE_GAP: f32 = 2.0;
@@ -1577,15 +1578,9 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
     let mut preview = Player::new();
     preview.x = outer_x + px(38.0);
     preview.y = outer_y + px(114.0);
-    preview.dir = match (frame / 90) % 4 {
-        0 => Dir::Down,
-        1 => Dir::Left,
-        2 => Dir::Right,
-        _ => Dir::Up,
-    };
-    preview.state = PlayerState::Walking;
-    preview.walk_frame = (frame / 18) % 4;
     preview.has_sword = creator.appearance.weapon != WeaponStyle::None;
+    creator.preview_animation.apply_to_preview(&mut preview);
+    let preview_frame = ((frame / PREVIEW_FRAME_TICKS) as usize) % 4;
     draw_text(
         "PREVIEW",
         outer_x + px(18.0),
@@ -1593,7 +1588,16 @@ pub fn draw_character_creator(sprites: &Sprites, creator: &CharacterCreator, fra
         px(16.0),
         color_u8!(197, 170, 119, 255),
     );
-    draw_player(sprites, &preview, frame);
+    draw_text(
+        creator.preview_animation.label(),
+        outer_x + px(18.0),
+        outer_y + px(76.0),
+        px(11.0),
+        LIGHTGRAY,
+    );
+    if !sprites.draw_player_preview(&preview, preview.x.round(), preview.y.round() + HUD_H, preview_frame) {
+        draw_player(sprites, &preview, frame);
+    }
 
     let rows_per_col = creator.field_count().div_ceil(2);
     let col_w = (list_w - px(20.0)) / 2.0;
@@ -2222,13 +2226,7 @@ fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
         return;
     }
     if sprites.draw_player(player, x, y, frame) {
-        if player.attack_timer > 0 {
-            draw_player_sword(player.dir, x, y, true);
-        }
         return;
-    }
-    if player.attack_timer > 0 {
-        draw_player_sword(player.dir, x, y, false);
     }
     let outline = color_u8!(20, 24, 20, 255);
     let tunic = color_u8!(50, 148, 66, 255);
@@ -2277,100 +2275,6 @@ fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
     draw_rectangle(x + px(18.0), y + px(right_leg), px(6.0), px(6.0), boots);
     draw_rectangle(x + px(9.0), y + px(12.0), px(3.0), px(6.0), skin);
     draw_rectangle(x + px(20.0), y + px(12.0), px(3.0), px(6.0), skin);
-}
-
-fn draw_player_sword(dir: Dir, x: f32, y: f32, sprite_mode: bool) {
-    let blade = LIGHTGRAY;
-    let hilt = color_u8!(196, 160, 74, 255);
-    if sprite_mode {
-        let x_offset = x;
-        let y_offset = y - px(32.0);
-        match dir {
-            Dir::Up => {
-                draw_rectangle(
-                    x_offset + px(22.0),
-                    y_offset - px(10.0),
-                    px(4.0),
-                    px(18.0),
-                    blade,
-                );
-                draw_rectangle(
-                    x_offset + px(20.0),
-                    y_offset + px(7.0),
-                    px(8.0),
-                    px(2.0),
-                    hilt,
-                );
-            }
-            Dir::Down => {
-                draw_rectangle(
-                    x_offset + px(22.0),
-                    y_offset + px(30.0),
-                    px(4.0),
-                    px(18.0),
-                    blade,
-                );
-                draw_rectangle(
-                    x_offset + px(20.0),
-                    y_offset + px(29.0),
-                    px(8.0),
-                    px(2.0),
-                    hilt,
-                );
-            }
-            Dir::Left => {
-                draw_rectangle(
-                    x_offset - px(12.0),
-                    y_offset + px(22.0),
-                    px(18.0),
-                    px(4.0),
-                    blade,
-                );
-                draw_rectangle(
-                    x_offset + px(5.0),
-                    y_offset + px(20.0),
-                    px(2.0),
-                    px(8.0),
-                    hilt,
-                );
-            }
-            Dir::Right => {
-                draw_rectangle(
-                    x_offset + px(42.0),
-                    y_offset + px(22.0),
-                    px(18.0),
-                    px(4.0),
-                    blade,
-                );
-                draw_rectangle(
-                    x_offset + px(41.0),
-                    y_offset + px(20.0),
-                    px(2.0),
-                    px(8.0),
-                    hilt,
-                );
-            }
-        }
-        return;
-    }
-    match dir {
-        Dir::Up => {
-            draw_rectangle(x + px(14.0), y - px(10.0), px(4.0), px(12.0), blade);
-            draw_rectangle(x + px(12.0), y + px(1.0), px(8.0), px(2.0), hilt);
-        }
-        Dir::Down => {
-            draw_rectangle(x + px(14.0), y + px(28.0), px(4.0), px(12.0), blade);
-            draw_rectangle(x + px(12.0), y + px(27.0), px(8.0), px(2.0), hilt);
-        }
-        Dir::Left => {
-            draw_rectangle(x - px(10.0), y + px(14.0), px(12.0), px(4.0), blade);
-            draw_rectangle(x + px(1.0), y + px(12.0), px(2.0), px(8.0), hilt);
-        }
-        Dir::Right => {
-            draw_rectangle(x + px(28.0), y + px(14.0), px(12.0), px(4.0), blade);
-            draw_rectangle(x + px(27.0), y + px(12.0), px(2.0), px(8.0), hilt);
-        }
-    }
 }
 
 fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {

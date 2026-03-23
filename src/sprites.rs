@@ -1,5 +1,5 @@
 use crate::character::{CharacterAppearance, generate_hero_sheets, npc_appearance};
-use crate::constants::{PIXEL_SCALE, TILE};
+use crate::constants::{PIXEL_SCALE, TILE, attack_duration};
 use crate::model::{
     Dir, Enemy, EnemyType, NpcKind, PickupType, Player, PlayerState, Projectile, TileType,
 };
@@ -15,8 +15,13 @@ const IDLE_FRAME_TICKS: i32 = WALK_FRAME_TICKS * 3;
 pub struct Sprites {
     hero_idle: Option<Sheet>,
     hero_walk: Option<Sheet>,
+    hero_attack: Option<Sheet>,
+    hero_idle_armed: Option<Sheet>,
+    hero_walk_armed: Option<Sheet>,
+    hero_attack_armed: Option<Sheet>,
     hero_idle_sword: Option<Sheet>,
     hero_walk_sword: Option<Sheet>,
+    hero_attack_sword: Option<Sheet>,
     npc_idle: HashMap<NpcKind, Sheet>,
     enemies: Option<Sheet>,
     tiles: Option<Sheet>,
@@ -32,8 +37,13 @@ impl Sprites {
         let generated = generate_hero_sheets(appearance);
         let hero_idle = Some(sheet_from_image(&generated.idle));
         let hero_walk = Some(sheet_from_image(&generated.walk));
-        let hero_idle_sword = Some(sheet_from_image(&generated.idle_armed));
-        let hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
+        let hero_attack = Some(sheet_from_image(&generated.attack));
+        let hero_idle_armed = Some(sheet_from_image(&generated.idle_armed));
+        let hero_walk_armed = Some(sheet_from_image(&generated.walk_armed));
+        let hero_attack_armed = Some(sheet_from_image(&generated.attack_armed));
+        let hero_idle_sword = Some(sheet_from_image(&generated.idle_sword));
+        let hero_walk_sword = Some(sheet_from_image(&generated.walk_sword));
+        let hero_attack_sword = Some(sheet_from_image(&generated.attack_sword));
         let npc_idle = load_npc_sheets();
         let enemies = load_sheet(&layout.enemies.sheet).await;
         let tiles = load_sheet(&layout.tiles.sheet).await;
@@ -43,8 +53,13 @@ impl Sprites {
         Self {
             hero_idle,
             hero_walk,
+            hero_attack,
+            hero_idle_armed,
+            hero_walk_armed,
+            hero_attack_armed,
             hero_idle_sword,
             hero_walk_sword,
+            hero_attack_sword,
             npc_idle,
             enemies,
             tiles,
@@ -59,12 +74,37 @@ impl Sprites {
         let generated = generate_hero_sheets(appearance);
         self.hero_idle = Some(sheet_from_image(&generated.idle));
         self.hero_walk = Some(sheet_from_image(&generated.walk));
-        self.hero_idle_sword = Some(sheet_from_image(&generated.idle_armed));
-        self.hero_walk_sword = Some(sheet_from_image(&generated.walk_armed));
+        self.hero_attack = Some(sheet_from_image(&generated.attack));
+        self.hero_idle_armed = Some(sheet_from_image(&generated.idle_armed));
+        self.hero_walk_armed = Some(sheet_from_image(&generated.walk_armed));
+        self.hero_attack_armed = Some(sheet_from_image(&generated.attack_armed));
+        self.hero_idle_sword = Some(sheet_from_image(&generated.idle_sword));
+        self.hero_walk_sword = Some(sheet_from_image(&generated.walk_sword));
+        self.hero_attack_sword = Some(sheet_from_image(&generated.attack_sword));
     }
 
     pub fn draw_player(&self, player: &Player, x: f32, y: f32, anim_frame: i32) -> bool {
-        let (sheet, frames) = match player.state {
+        let (sheet, frames, frame_index) = match player.state {
+            PlayerState::Attacking => {
+                let sheet = if player.has_sword {
+                    self.hero_attack_sword.as_ref().or(self.hero_attack.as_ref())
+                } else {
+                    self.hero_attack.as_ref()
+                };
+                let Some(sheet) = sheet else {
+                    return false;
+                };
+                let frames = self.hero_frames(player.dir);
+                if frames.is_empty() {
+                    return false;
+                }
+                let duration = attack_duration().max(1);
+                let timer = player.attack_timer.clamp(1, duration);
+                let elapsed = duration - timer;
+                let frame_index =
+                    ((elapsed as usize * frames.len()) / duration as usize).min(frames.len().saturating_sub(1));
+                (sheet, frames, frame_index)
+            }
             PlayerState::Walking => {
                 let sheet = if player.has_sword {
                     self.hero_walk_sword.as_ref().or(self.hero_walk.as_ref())
@@ -74,7 +114,12 @@ impl Sprites {
                 let Some(sheet) = sheet else {
                     return false;
                 };
-                (sheet, self.hero_frames(player.dir))
+                let frames = self.hero_frames(player.dir);
+                if frames.is_empty() {
+                    return false;
+                }
+                let frame_index = (player.walk_frame as usize) % frames.len();
+                (sheet, frames, frame_index)
             }
             _ => {
                 let sheet = if player.has_sword {
@@ -85,17 +130,58 @@ impl Sprites {
                 let Some(sheet) = sheet else {
                     return false;
                 };
-                (sheet, self.hero_frames(player.dir))
+                let frames = self.hero_frames(player.dir);
+                if frames.is_empty() {
+                    return false;
+                }
+                let frame_index = ((anim_frame / IDLE_FRAME_TICKS) as usize) % frames.len();
+                (sheet, frames, frame_index)
             }
         };
+        draw_centered_frame(
+            sheet,
+            &frames[frame_index],
+            x,
+            y,
+            self.layout.hero.dest_scale.unwrap_or(PIXEL_SCALE),
+            self.layout.hero.base_w.unwrap_or(frames[frame_index].w),
+            self.layout.hero.base_h.unwrap_or(frames[frame_index].h),
+        );
+        true
+    }
+
+    pub fn draw_player_preview(&self, player: &Player, x: f32, y: f32, frame_index: usize) -> bool {
+        let sheet = match player.state {
+            PlayerState::Attacking => {
+                if player.has_sword {
+                    self.hero_attack_armed.as_ref().or(self.hero_attack.as_ref())
+                } else {
+                    self.hero_attack.as_ref()
+                }
+            }
+            PlayerState::Walking => {
+                if player.has_sword {
+                    self.hero_walk_armed.as_ref().or(self.hero_walk.as_ref())
+                } else {
+                    self.hero_walk.as_ref()
+                }
+            }
+            _ => {
+                if player.has_sword {
+                    self.hero_idle_armed.as_ref().or(self.hero_idle.as_ref())
+                } else {
+                    self.hero_idle.as_ref()
+                }
+            }
+        };
+        let Some(sheet) = sheet else {
+            return false;
+        };
+        let frames = self.hero_frames(player.dir);
         if frames.is_empty() {
             return false;
         }
-        let frame_index = if player.state == PlayerState::Walking {
-            (player.walk_frame as usize) % frames.len()
-        } else {
-            ((anim_frame / IDLE_FRAME_TICKS) as usize) % frames.len()
-        };
+        let frame_index = frame_index % frames.len();
         draw_centered_frame(
             sheet,
             &frames[frame_index],

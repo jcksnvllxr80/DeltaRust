@@ -1,4 +1,4 @@
-use crate::model::NpcKind;
+use crate::model::{Dir, NpcKind, Player, PlayerState};
 use macroquad::prelude::{Color, Image, WHITE};
 use macroquad::rand::gen_range;
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,86 @@ pub const SHEET_SIZE: u16 = FRAME_SIZE * 4;
 pub enum AnimMode {
     Idle,
     Walk,
+    Attack,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PreviewAnimation {
+    IdleDown,
+    IdleLeft,
+    IdleRight,
+    IdleUp,
+    WalkDown,
+    WalkLeft,
+    WalkRight,
+    WalkUp,
+    SwingDown,
+    SwingLeft,
+    SwingRight,
+    SwingUp,
+}
+
+impl PreviewAnimation {
+    pub fn label(self) -> &'static str {
+        match self {
+            PreviewAnimation::IdleDown => "Idle Down",
+            PreviewAnimation::IdleLeft => "Idle Left",
+            PreviewAnimation::IdleRight => "Idle Right",
+            PreviewAnimation::IdleUp => "Idle Up",
+            PreviewAnimation::WalkDown => "Walk Down",
+            PreviewAnimation::WalkLeft => "Walk Left",
+            PreviewAnimation::WalkRight => "Walk Right",
+            PreviewAnimation::WalkUp => "Walk Up",
+            PreviewAnimation::SwingDown => "Thrust Down",
+            PreviewAnimation::SwingLeft => "Thrust Left",
+            PreviewAnimation::SwingRight => "Thrust Right",
+            PreviewAnimation::SwingUp => "Thrust Up",
+        }
+    }
+
+    pub fn apply_to_preview(self, player: &mut Player) {
+        player.dir = match self {
+            PreviewAnimation::IdleDown
+            | PreviewAnimation::WalkDown
+            | PreviewAnimation::SwingDown => Dir::Down,
+            PreviewAnimation::IdleLeft
+            | PreviewAnimation::WalkLeft
+            | PreviewAnimation::SwingLeft => Dir::Left,
+            PreviewAnimation::IdleRight
+            | PreviewAnimation::WalkRight
+            | PreviewAnimation::SwingRight => Dir::Right,
+            PreviewAnimation::IdleUp
+            | PreviewAnimation::WalkUp
+            | PreviewAnimation::SwingUp => Dir::Up,
+        };
+
+        match self {
+            PreviewAnimation::IdleDown
+            | PreviewAnimation::IdleLeft
+            | PreviewAnimation::IdleRight
+            | PreviewAnimation::IdleUp => {
+                player.state = PlayerState::Idle;
+                player.attack_timer = 0;
+                player.walk_frame = 0;
+            }
+            PreviewAnimation::WalkDown
+            | PreviewAnimation::WalkLeft
+            | PreviewAnimation::WalkRight
+            | PreviewAnimation::WalkUp => {
+                player.state = PlayerState::Walking;
+                player.attack_timer = 0;
+                player.walk_frame = 0;
+            }
+            PreviewAnimation::SwingDown
+            | PreviewAnimation::SwingLeft
+            | PreviewAnimation::SwingRight
+            | PreviewAnimation::SwingUp => {
+                player.state = PlayerState::Attacking;
+                player.walk_frame = 0;
+                player.attack_timer = 0;
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -420,6 +500,7 @@ pub fn npc_appearance(kind: NpcKind) -> CharacterAppearance {
 pub struct CharacterCreator {
     pub appearance: CharacterAppearance,
     pub selected_field: usize,
+    pub preview_animation: PreviewAnimation,
 }
 
 impl CharacterCreator {
@@ -427,6 +508,7 @@ impl CharacterCreator {
         Self {
             appearance,
             selected_field: 0,
+            preview_animation: PreviewAnimation::WalkDown,
         }
     }
 
@@ -439,7 +521,7 @@ impl CharacterCreator {
         self.selected_field = (self.selected_field as i32 + delta).rem_euclid(count) as usize;
     }
 
-    pub fn adjust_selected(&mut self, delta: i32) {
+    pub fn adjust_selected(&mut self, delta: i32) -> bool {
         match CREATOR_FIELDS[self.selected_field] {
             CreatorField::Gender => {
                 self.appearance.gender = match self.appearance.gender {
@@ -501,10 +583,15 @@ impl CharacterCreator {
                 cycle_enum(&mut self.appearance.shield_style, &SHIELD_STYLES, delta)
             }
             CreatorField::Weapon => cycle_enum(&mut self.appearance.weapon, &WEAPON_STYLES, delta),
+            CreatorField::PreviewAnimation => {
+                cycle_enum(&mut self.preview_animation, &PREVIEW_ANIMATIONS, delta);
+                return false;
+            }
             CreatorField::Offhand => {
                 cycle_enum(&mut self.appearance.offhand, &OFFHAND_STYLES, delta)
             }
         }
+        true
     }
 
     pub fn field_text(&self, index: usize) -> String {
@@ -595,6 +682,9 @@ impl CharacterCreator {
                 format!("Shield Style: {:?}", self.appearance.shield_style)
             }
             CreatorField::Weapon => format!("Weapon: {:?}", self.appearance.weapon),
+            CreatorField::PreviewAnimation => {
+                format!("Preview: {}", self.preview_animation.label())
+            }
             CreatorField::Offhand => format!("Offhand: {:?}", self.appearance.offhand),
         }
     }
@@ -645,10 +735,11 @@ enum CreatorField {
     Shield,
     ShieldStyle,
     Weapon,
+    PreviewAnimation,
     Offhand,
 }
 
-const CREATOR_FIELDS: [CreatorField; 25] = [
+const CREATOR_FIELDS: [CreatorField; 26] = [
     CreatorField::Gender,
     CreatorField::Skin,
     CreatorField::HairColor,
@@ -673,22 +764,35 @@ const CREATOR_FIELDS: [CreatorField; 25] = [
     CreatorField::Shield,
     CreatorField::ShieldStyle,
     CreatorField::Weapon,
+    CreatorField::PreviewAnimation,
     CreatorField::Offhand,
 ];
 
 pub struct HeroSheets {
     pub idle: Image,
     pub walk: Image,
+    pub attack: Image,
     pub idle_armed: Image,
     pub walk_armed: Image,
+    pub attack_armed: Image,
+    pub idle_sword: Image,
+    pub walk_sword: Image,
+    pub attack_sword: Image,
 }
 
 pub fn generate_hero_sheets(appearance: &CharacterAppearance) -> HeroSheets {
+    let mut sword_appearance = appearance.clone();
+    sword_appearance.weapon = WeaponStyle::Sword;
     HeroSheets {
         idle: build_sheet(appearance, AnimMode::Idle, false),
         walk: build_sheet(appearance, AnimMode::Walk, false),
+        attack: build_sheet(appearance, AnimMode::Attack, false),
         idle_armed: build_sheet(appearance, AnimMode::Idle, true),
         walk_armed: build_sheet(appearance, AnimMode::Walk, true),
+        attack_armed: build_sheet(appearance, AnimMode::Attack, true),
+        idle_sword: build_sheet(&sword_appearance, AnimMode::Idle, true),
+        walk_sword: build_sheet(&sword_appearance, AnimMode::Walk, true),
+        attack_sword: build_sheet(&sword_appearance, AnimMode::Attack, true),
     }
 }
 
@@ -725,38 +829,47 @@ fn draw_frame(
     let bob = match mode {
         AnimMode::Idle => [0, 0, -1, -1][frame],
         AnimMode::Walk => [-1, 0, -1, 0][frame],
+        AnimMode::Attack => [0, 0, -1, 0][frame],
     };
     let leg_swing_left = match mode {
         AnimMode::Idle => [0, 0, 0, 0][frame],
         AnimMode::Walk => [2, 0, -2, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let leg_swing_right = match mode {
         AnimMode::Idle => [0, 0, 0, 0][frame],
         AnimMode::Walk => [-2, 0, 2, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let arm_swing_left = match mode {
         AnimMode::Idle => [-1, -1, 0, 0][frame],
         AnimMode::Walk => [-2, 0, 2, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let arm_swing_right = match mode {
         AnimMode::Idle => [1, 1, 0, 0][frame],
         AnimMode::Walk => [2, 0, -2, 0][frame],
+        AnimMode::Attack => [0, 1, 2, 1][frame],
     };
     let side_front_leg = match mode {
         AnimMode::Idle => [0, 0, 0, 0][frame],
         AnimMode::Walk => [3, 0, -3, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let side_back_leg = match mode {
         AnimMode::Idle => [0, 0, 0, 0][frame],
         AnimMode::Walk => [-3, 0, 3, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let side_front_arm = match mode {
         AnimMode::Idle => [-1, -1, 0, 0][frame],
         AnimMode::Walk => [-3, 0, 3, 0][frame],
+        AnimMode::Attack => [0, 1, 2, 1][frame],
     };
     let side_back_arm = match mode {
         AnimMode::Idle => [1, 1, 0, 0][frame],
         AnimMode::Walk => [3, 0, -3, 0][frame],
+        AnimMode::Attack => [0, 0, 0, 0][frame],
     };
     let build = match appearance.build {
         BuildType::Normal => 0,
@@ -888,7 +1001,7 @@ fn draw_frame(
         pixel(&mut px, hand_x, body_y + 9, appearance.palette.skin);
         pixel(&mut px, hand_x + 1, body_y + 9, appearance.palette.skin);
 
-        if appearance.shield_on {
+        if appearance.shield_on && mode != AnimMode::Attack {
             let back_hand_x = back_leg_x + side_back_arm;
             draw_shield_shape(
                 &mut px,
@@ -899,16 +1012,27 @@ fn draw_frame(
             );
         }
         if armed {
-            draw_weapon_shape(
-                &mut px,
-                hand_x + 2,
-                body_y + 9,
-                appearance.weapon,
-                appearance.palette.weapon,
-                1,
-            );
+            if mode == AnimMode::Attack {
+                draw_attack_weapon_side(
+                    &mut px,
+                    appearance.weapon,
+                    appearance.palette.weapon,
+                    hand_x + 1,
+                    body_y + 9,
+                    frame,
+                );
+            } else {
+                draw_weapon_shape(
+                    &mut px,
+                    hand_x + 2,
+                    body_y + 9,
+                    appearance.weapon,
+                    appearance.palette.weapon,
+                    1,
+                );
+            }
         }
-        if appearance.offhand != OffhandStyle::None {
+        if appearance.offhand != OffhandStyle::None && mode != AnimMode::Attack {
             draw_offhand_shape(
                 &mut px,
                 hand_x - 1,
@@ -1106,7 +1230,7 @@ fn draw_frame(
         );
     }
 
-    if appearance.shield_on && dir == 0 {
+    if appearance.shield_on && dir == 0 && mode != AnimMode::Attack {
         draw_shield_shape(
             &mut px,
             body_x - 5,
@@ -1116,21 +1240,42 @@ fn draw_frame(
         );
     }
     if armed {
-        let (wx, wy, facing) = if dir == 0 {
-            (body_x + body_w + 3, arm_y + 6 + arm_swing_right, 1)
+        if mode == AnimMode::Attack {
+            let (hand_x, hand_y, thrust_dir) = if dir == 0 {
+                (
+                    body_x + body_w + 2,
+                    arm_y + 6 + arm_swing_right,
+                    ThrustDir::Down,
+                )
+            } else {
+                (body_x + body_w / 2, body_y + 1, ThrustDir::Up)
+            };
+            draw_attack_weapon_front_back(
+                &mut px,
+                appearance.weapon,
+                appearance.palette.weapon,
+                hand_x,
+                hand_y,
+                thrust_dir,
+                frame,
+            );
         } else {
-            (body_x - 5, arm_y + arm_swing_left, -1)
-        };
-        draw_weapon_shape(
-            &mut px,
-            wx,
-            wy,
-            appearance.weapon,
-            appearance.palette.weapon,
-            facing,
-        );
+            let (wx, wy, facing) = if dir == 0 {
+                (body_x + body_w + 3, arm_y + 6 + arm_swing_right, 1)
+            } else {
+                (body_x - 5, arm_y + arm_swing_left, -1)
+            };
+            draw_weapon_shape(
+                &mut px,
+                wx,
+                wy,
+                appearance.weapon,
+                appearance.palette.weapon,
+                facing,
+            );
+        }
     }
-    if appearance.offhand != OffhandStyle::None {
+    if appearance.offhand != OffhandStyle::None && mode != AnimMode::Attack {
         let (ox, oy) = if dir == 0 {
             (body_x - 4, arm_y + 7 + arm_swing_left)
         } else {
@@ -1972,6 +2117,310 @@ fn draw_weapon_shape(
     }
 }
 
+#[derive(Clone, Copy)]
+enum ThrustDir {
+    Up,
+    Down,
+    Right,
+}
+
+fn draw_attack_weapon_front_back(
+    px: &mut [Color],
+    weapon: WeaponStyle,
+    color: Color,
+    hand_x: i32,
+    hand_y: i32,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    draw_thrust_weapon(px, hand_x, hand_y, weapon, color, dir, frame);
+}
+
+fn draw_attack_weapon_side(
+    px: &mut [Color],
+    weapon: WeaponStyle,
+    color: Color,
+    hand_x: i32,
+    hand_y: i32,
+    frame: usize,
+) {
+    draw_thrust_weapon(px, hand_x, hand_y, weapon, color, ThrustDir::Right, frame);
+}
+
+fn draw_thrust_weapon(
+    px: &mut [Color],
+    hand_x: i32,
+    hand_y: i32,
+    weapon: WeaponStyle,
+    color: Color,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    match weapon {
+        WeaponStyle::None => {}
+        WeaponStyle::Sword | WeaponStyle::Greatsword | WeaponStyle::Dagger => {
+            draw_thrust_blade(px, hand_x, hand_y, weapon, color, dir, frame)
+        }
+        WeaponStyle::Spear => draw_thrust_spear(px, hand_x, hand_y, color, dir, frame),
+        WeaponStyle::Staff | WeaponStyle::Wand => {
+            draw_thrust_staff(px, hand_x, hand_y, weapon, color, dir, frame)
+        }
+        _ => draw_thrust_weighted_weapon(px, hand_x, hand_y, weapon, color, dir, frame),
+    }
+}
+
+fn draw_thrust_blade(
+    px: &mut [Color],
+    hand_x: i32,
+    hand_y: i32,
+    weapon: WeaponStyle,
+    color: Color,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    let (dx, dy) = thrust_vector(dir);
+    let (pxv, pyv) = thrust_perp(dir);
+    let raw_tip = (
+        hand_x + dx * attack_reach(weapon, frame),
+        hand_y + dy * attack_reach(weapon, frame),
+    );
+    let (tip_x, tip_y) = if weapon == WeaponStyle::Dagger {
+        midpoint((hand_x, hand_y), raw_tip)
+    } else {
+        raw_tip
+    };
+    let dark = shade(color, 0.55);
+    let handle_end = (hand_x - dx * 2, hand_y - dy * 2);
+
+    line(px, hand_x, hand_y, tip_x, tip_y, color);
+    if weapon == WeaponStyle::Greatsword {
+        line(
+            px,
+            hand_x + pxv,
+            hand_y + pyv,
+            tip_x + pxv,
+            tip_y + pyv,
+            shade(color, 0.85),
+        );
+    }
+    line(px, hand_x, hand_y, handle_end.0, handle_end.1, dark);
+    line(
+        px,
+        hand_x - pxv * 2,
+        hand_y - pyv * 2,
+        hand_x + pxv * 2,
+        hand_y + pyv * 2,
+        dark,
+    );
+}
+
+fn draw_thrust_spear(
+    px: &mut [Color],
+    hand_x: i32,
+    hand_y: i32,
+    color: Color,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    let (dx, dy) = thrust_vector(dir);
+    let (pxv, pyv) = thrust_perp(dir);
+    let dark = shade(color, 0.55);
+    let reach = attack_reach(WeaponStyle::Spear, frame);
+    let tip_x = hand_x + dx * reach;
+    let tip_y = hand_y + dy * reach;
+    let butt_x = hand_x - dx * 3;
+    let butt_y = hand_y - dy * 3;
+    line(px, butt_x, butt_y, tip_x, tip_y, dark);
+    pixel(px, tip_x, tip_y, color);
+    pixel(px, tip_x - dx + pxv, tip_y - dy + pyv, color);
+    pixel(px, tip_x - dx - pxv, tip_y - dy - pyv, color);
+}
+
+fn draw_thrust_staff(
+    px: &mut [Color],
+    hand_x: i32,
+    hand_y: i32,
+    weapon: WeaponStyle,
+    color: Color,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    let (dx, dy) = thrust_vector(dir);
+    let (pxv, pyv) = thrust_perp(dir);
+    let dark = shade(color, 0.55);
+    let reach = attack_reach(weapon, frame);
+    let tip_x = hand_x + dx * reach;
+    let tip_y = hand_y + dy * reach;
+    let butt_x = hand_x - dx * 3;
+    let butt_y = hand_y - dy * 3;
+    line(px, butt_x, butt_y, tip_x, tip_y, dark);
+    match weapon {
+        WeaponStyle::Staff => {
+            rect(px, tip_x - pxv, tip_y - pyv, 1 + pxv.abs() * 2, 1 + pyv.abs() * 2, color);
+            pixel(px, tip_x + dx, tip_y + dy, shade(color, 1.2));
+        }
+        WeaponStyle::Wand => {
+            pixel(px, tip_x, tip_y, color);
+            pixel(px, tip_x + pxv, tip_y + pyv, shade(color, 1.3));
+            pixel(px, tip_x - pxv, tip_y - pyv, shade(color, 1.3));
+        }
+        _ => {}
+    }
+}
+
+fn draw_thrust_weighted_weapon(
+    px: &mut [Color],
+    hand_x: i32,
+    hand_y: i32,
+    weapon: WeaponStyle,
+    color: Color,
+    dir: ThrustDir,
+    frame: usize,
+) {
+    let (dx, dy) = thrust_vector(dir);
+    let (pxv, pyv) = thrust_perp(dir);
+    let dark = shade(color, 0.55);
+    let reach = attack_reach(weapon, frame);
+    let head_x = hand_x + dx * reach;
+    let head_y = hand_y + dy * reach;
+    let butt_x = hand_x - dx * 3;
+    let butt_y = hand_y - dy * 3;
+    line(px, butt_x, butt_y, head_x, head_y, dark);
+
+    match weapon {
+        WeaponStyle::Axe => {
+            line(
+                px,
+                head_x,
+                head_y,
+                head_x + pxv * 3 - dx,
+                head_y + pyv * 3 - dy,
+                color,
+            );
+            line(
+                px,
+                head_x,
+                head_y,
+                head_x + pxv * 2,
+                head_y + pyv * 2,
+                shade(color, 0.85),
+            );
+        }
+        WeaponStyle::Hammer => {
+            line(
+                px,
+                head_x - pxv * 2,
+                head_y - pyv * 2,
+                head_x + pxv * 2,
+                head_y + pyv * 2,
+                color,
+            );
+            line(
+                px,
+                head_x - pxv * 2 + dx,
+                head_y - pyv * 2 + dy,
+                head_x + pxv * 2 + dx,
+                head_y + pyv * 2 + dy,
+                color,
+            );
+        }
+        WeaponStyle::Bow => {
+            line(
+                px,
+                head_x - pxv * 2,
+                head_y - pyv * 2,
+                head_x + pxv * 2,
+                head_y + pyv * 2,
+                color,
+            );
+            line(
+                px,
+                head_x - pxv * 2,
+                head_y - pyv * 2,
+                head_x + pxv * 2,
+                head_y + pyv * 2,
+                WHITE,
+            );
+        }
+        WeaponStyle::Crossbow => {
+            line(
+                px,
+                head_x - pxv * 3,
+                head_y - pyv * 3,
+                head_x + pxv * 3,
+                head_y + pyv * 3,
+                shade(color, 0.85),
+            );
+        }
+        WeaponStyle::Boomerang => {
+            line(px, head_x, head_y, head_x + pxv * 2, head_y + pyv * 2, color);
+            line(px, head_x, head_y, head_x - pxv * 2, head_y - pyv * 2, shade(color, 0.85));
+        }
+        WeaponStyle::Scythe => {
+            line(
+                px,
+                head_x,
+                head_y,
+                head_x + pxv * 3 - dx,
+                head_y + pyv * 3 - dy,
+                color,
+            );
+            line(
+                px,
+                head_x + pxv * 3 - dx,
+                head_y + pyv * 3 - dy,
+                head_x + pxv * 2 - dx * 2,
+                head_y + pyv * 2 - dy * 2,
+                color,
+            );
+        }
+        WeaponStyle::Flail => {
+            let chain_x = hand_x + dx * (reach - 2);
+            let chain_y = hand_y + dy * (reach - 2);
+            line(px, hand_x, hand_y, chain_x, chain_y, dark);
+            rect(px, head_x - 1, head_y - 1, 3, 3, color);
+        }
+        _ => {
+            draw_weapon_shape(px, hand_x, hand_y, weapon, color, if dx < 0 { -1 } else { 1 });
+        }
+    }
+}
+
+fn midpoint(a: (i32, i32), b: (i32, i32)) -> (i32, i32) {
+    ((a.0 + b.0) / 2, (a.1 + b.1) / 2)
+}
+
+fn thrust_vector(dir: ThrustDir) -> (i32, i32) {
+    match dir {
+        ThrustDir::Up => (0, -1),
+        ThrustDir::Down => (0, 1),
+        ThrustDir::Right => (1, 0),
+    }
+}
+
+fn thrust_perp(dir: ThrustDir) -> (i32, i32) {
+    match dir {
+        ThrustDir::Up | ThrustDir::Down => (1, 0),
+        ThrustDir::Right => (0, 1),
+    }
+}
+
+fn attack_reach(weapon: WeaponStyle, frame: usize) -> i32 {
+    let base = match frame {
+        0 => 4,
+        1 => 7,
+        2 => 10,
+        _ => 6,
+    };
+    match weapon {
+        WeaponStyle::Dagger | WeaponStyle::Wand => base - 2,
+        WeaponStyle::Greatsword | WeaponStyle::Spear | WeaponStyle::Scythe => base + 3,
+        WeaponStyle::Staff | WeaponStyle::Bow | WeaponStyle::Crossbow => base + 1,
+        WeaponStyle::Hammer | WeaponStyle::Flail => base + 2,
+        _ => base,
+    }
+}
+
 fn draw_offhand_shape(px: &mut [Color], x: i32, y: i32, offhand: OffhandStyle, color: Color) {
     match offhand {
         OffhandStyle::None => {}
@@ -2032,6 +2481,32 @@ fn hline(px: &mut [Color], x1: i32, x2: i32, y: i32, color: Color) {
 fn vline(px: &mut [Color], x: i32, y1: i32, y2: i32, color: Color) {
     for y in y1..=y2 {
         pixel(px, x, y, color);
+    }
+}
+
+fn line(px: &mut [Color], x1: i32, y1: i32, x2: i32, y2: i32, color: Color) {
+    let mut x = x1;
+    let mut y = y1;
+    let dx = (x2 - x1).abs();
+    let sx = if x1 < x2 { 1 } else { -1 };
+    let dy = -(y2 - y1).abs();
+    let sy = if y1 < y2 { 1 } else { -1 };
+    let mut err = dx + dy;
+
+    loop {
+        pixel(px, x, y, color);
+        if x == x2 && y == y2 {
+            break;
+        }
+        let e2 = err * 2;
+        if e2 >= dy {
+            err += dy;
+            x += sx;
+        }
+        if e2 <= dx {
+            err += dx;
+            y += sy;
+        }
     }
 }
 
@@ -2173,6 +2648,20 @@ const SHIELD_STYLES: [ShieldStyle; 4] = [
     ShieldStyle::Kite,
     ShieldStyle::Tower,
     ShieldStyle::Buckler,
+];
+const PREVIEW_ANIMATIONS: [PreviewAnimation; 12] = [
+    PreviewAnimation::IdleDown,
+    PreviewAnimation::IdleLeft,
+    PreviewAnimation::IdleRight,
+    PreviewAnimation::IdleUp,
+    PreviewAnimation::WalkDown,
+    PreviewAnimation::WalkLeft,
+    PreviewAnimation::WalkRight,
+    PreviewAnimation::WalkUp,
+    PreviewAnimation::SwingDown,
+    PreviewAnimation::SwingLeft,
+    PreviewAnimation::SwingRight,
+    PreviewAnimation::SwingUp,
 ];
 const WEAPON_STYLES: [WeaponStyle; 14] = [
     WeaponStyle::None,

@@ -407,12 +407,10 @@ impl Game {
             self.creator.move_selection(1);
         }
         if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) {
-            self.creator.adjust_selected(-1);
-            changed = true;
+            changed |= self.creator.adjust_selected(-1);
         }
         if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) {
-            self.creator.adjust_selected(1);
-            changed = true;
+            changed |= self.creator.adjust_selected(1);
         }
         if is_key_pressed(KeyCode::R) {
             self.creator.randomize();
