@@ -55,6 +55,18 @@ A **celestial chip** in the HUD chip row shows the sun or moon:
 
 Each dungeon has its own boss key. Collecting a boss key in dungeon 3 does not carry over to dungeon 4. The inventory shows each dungeon's boss key as **Boss Key 1** through **Boss Key 8**, and the HUD chip highlights only the key for the dungeon you are currently in.
 
+## Gnomes
+
+### Nip (Wandering Gnome)
+
+A small gnome named **Nip** spawns on each overworld screen. Nip wanders aimlessly but flees when the player gets close. If you catch Nip (walk into them), you gain **+5 HP**.
+
+Nip is purely overworld — does not appear in dungeons or interiors, and a fresh Nip spawns each time you enter a screen.
+
+### Pip (Healer Gnomes)
+
+Four sleepy Pips are seated in fixed spots across the overworld, one per quadrant. Press `Z` / `Enter` while facing one to interact. Pip will say a kind word and **fully restore your HP**. Can be revisited as many times as needed.
+
 ## In-game console
 
 During gameplay, press `~` to open the console at the bottom of the screen.
@@ -131,6 +143,10 @@ To regenerate the starter sheets:
 powershell -ExecutionPolicy Bypass -File .\tools\generate_sprites.ps1
 ```
 
+## Credits
+
+Game sound effects sourced from various authors on [freesound.org](https://freesound.org).
+
 ## License
 
-Include your project license here, for example MIT or Apache-2.0. Adjust as needed.
+This project is released into the public domain under the [Unlicense](LICENSE). Do whatever you want with it.

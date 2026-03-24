@@ -2,9 +2,9 @@ use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::game::InventoryTab;
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, InventoryEntry, InventoryItem,
-    Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileGrid, TileType, Transition,
-    WorldProp, WorldSnapshot,
+    Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, Gnome, InventoryEntry,
+    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind,
+    TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::save::SaveSlotSummary;
 use crate::sprites::{HeartState, Sprites};
@@ -29,6 +29,7 @@ pub fn draw_game(
     world: &WorldSnapshot,
     player: &Player,
     enemies: &[Enemy],
+    gnomes: &[Gnome],
     pickups: &[Pickup],
     props: &[WorldProp],
     bombs: &[Bomb],
@@ -54,6 +55,7 @@ pub fn draw_game(
             draw_enemy(sprites, enemy, theme_id);
         }
     }
+    draw_gnomes(gnomes, frame);
     draw_death_animations(death_animations);
     draw_player(sprites, player, frame);
     if !world.in_dungeon && !world.in_interior {
@@ -2068,6 +2070,64 @@ fn draw_keyhole(x: f32, y: f32, color: Color) {
     draw_rectangle(cx - px(1.0), cy + px(2.0), px(2.0), px(4.0), color);
 }
 
+fn draw_gnomes(gnomes: &[Gnome], frame: i32) {
+    for gnome in gnomes {
+        if gnome.caught {
+            continue;
+        }
+        draw_gnome(gnome.x.round(), gnome.y.round() + HUD_H, frame, false);
+    }
+}
+
+/// Draw a gnome creature at pixel position (x, y).
+/// `sleeping` = true draws closed eyes and still legs (used for the healer prop).
+fn draw_gnome(x: f32, y: f32, frame: i32, sleeping: bool) {
+    let s = PIXEL_SCALE;
+    let hat_col = color_u8!(190, 40, 30, 255);
+    let hat_brim = color_u8!(150, 25, 15, 255);
+    let skin = color_u8!(230, 190, 150, 255);
+    let beard = color_u8!(245, 245, 245, 255);
+    let eye_col = color_u8!(30, 30, 30, 255);
+    let tunic = color_u8!(50, 140, 55, 255);
+    let boot = color_u8!(80, 58, 38, 255);
+
+    // Pointy hat
+    draw_rectangle(x + 4.0 * s, y, 2.0 * s, 1.0 * s, hat_col);
+    draw_rectangle(x + 3.0 * s, y + 1.0 * s, 4.0 * s, 1.0 * s, hat_col);
+    draw_rectangle(x + 2.0 * s, y + 2.0 * s, 6.0 * s, 2.0 * s, hat_col);
+    // Hat brim
+    draw_rectangle(x, y + 4.0 * s, 10.0 * s, 1.0 * s, hat_brim);
+
+    // Head
+    draw_rectangle(x + 2.0 * s, y + 5.0 * s, 6.0 * s, 3.0 * s, skin);
+
+    // Eyes
+    if sleeping {
+        // Closed eyes (horizontal lines)
+        draw_rectangle(x + 3.0 * s, y + 6.0 * s, 2.0 * s, 1.0 * s, eye_col);
+        draw_rectangle(x + 6.0 * s, y + 6.0 * s, 2.0 * s, 1.0 * s, eye_col);
+    } else {
+        draw_rectangle(x + 3.0 * s, y + 6.0 * s, 1.0 * s, 1.0 * s, eye_col);
+        draw_rectangle(x + 6.0 * s, y + 6.0 * s, 1.0 * s, 1.0 * s, eye_col);
+    }
+
+    // Beard
+    draw_rectangle(x + 2.0 * s, y + 7.0 * s, 6.0 * s, 4.0 * s, beard);
+
+    // Body / tunic
+    draw_rectangle(x + 1.0 * s, y + 10.0 * s, 8.0 * s, 5.0 * s, tunic);
+
+    // Legs
+    if sleeping {
+        draw_rectangle(x + 1.0 * s, y + 14.0 * s, 3.0 * s, 3.0 * s, boot);
+        draw_rectangle(x + 6.0 * s, y + 14.0 * s, 3.0 * s, 3.0 * s, boot);
+    } else {
+        let lo = if (frame / 8) % 2 == 0 { 0.0 } else { s };
+        draw_rectangle(x + 1.0 * s, y + 14.0 * s + lo, 3.0 * s, 3.0 * s, boot);
+        draw_rectangle(x + 6.0 * s, y + 14.0 * s - lo, 3.0 * s, 3.0 * s, boot);
+    }
+}
+
 fn draw_props(sprites: &Sprites, props: &[WorldProp], frame: i32) {
     for prop in props {
         let x = prop.tile_x as f32 * TILE;
@@ -2121,6 +2181,14 @@ fn draw_props(sprites: &Sprites, props: &[WorldProp], frame: i32) {
                     y + px(8.0),
                     px(3.0),
                     color_u8!(230, 214, 164, 255),
+                );
+            }
+            PropKind::Npc(NpcKind::GnomeHealer) => {
+                draw_gnome(
+                    x + TILE * 0.5 - px(5.0),
+                    y + TILE * 0.3,
+                    frame,
+                    true,
                 );
             }
             PropKind::Npc(kind) => {

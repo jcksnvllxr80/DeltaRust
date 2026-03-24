@@ -9,6 +9,7 @@ pub enum MusicTrack {
     Title,
     Overworld,
     Dungeon,
+    GnomeShrine,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -20,6 +21,7 @@ enum SoundId {
     EnemyDie,
     PlayerHit,
     Message,
+    GnomeHeal,
 }
 
 pub struct Audio {
@@ -53,6 +55,9 @@ impl Audio {
         {
             music.insert(MusicTrack::Dungeon, bytes);
         }
+        if let Some(bytes) = load_first_existing(&base, "music", "gnome", &["wav", "ogg", "mp3"]) {
+            music.insert(MusicTrack::GnomeShrine, bytes);
+        }
 
         load_sound_slot(&base, "sfx", "sword", SoundId::Sword, &mut sounds);
         load_sound_slot(&base, "sfx", "pickup", SoundId::Pickup, &mut sounds);
@@ -61,6 +66,7 @@ impl Audio {
         load_sound_slot(&base, "sfx", "enemy_die", SoundId::EnemyDie, &mut sounds);
         load_sound_slot(&base, "sfx", "player_hit", SoundId::PlayerHit, &mut sounds);
         load_sound_slot(&base, "sfx", "message", SoundId::Message, &mut sounds);
+        load_sound_slot(&base, "sfx", "gnome_heal", SoundId::GnomeHeal, &mut sounds);
 
         Self {
             _stream: stream,
@@ -128,6 +134,10 @@ impl Audio {
 
     pub fn message(&self) {
         self.play_effect(SoundId::Message, crate::config::get().audio.sfx_volume);
+    }
+
+    pub fn gnome_heal(&self) {
+        self.play_effect(SoundId::GnomeHeal, crate::config::get().audio.sfx_volume);
     }
 
     fn play_effect(&self, sound_id: SoundId, volume: f32) {

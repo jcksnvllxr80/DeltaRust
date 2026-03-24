@@ -106,6 +106,7 @@ pub enum NpcKind {
     CelestialMerchant,
     Senna,
     Wren,
+    GnomeHealer,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -657,6 +658,16 @@ pub struct DeathAnimation {
     pub x: f32,
     pub y: f32,
     pub timer: i32,
+}
+
+#[derive(Clone)]
+pub struct Gnome {
+    pub x: f32,
+    pub y: f32,
+    pub vx: f32,
+    pub vy: f32,
+    pub move_timer: i32,
+    pub caught: bool,
 }
 
 #[derive(Clone)]

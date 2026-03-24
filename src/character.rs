@@ -492,6 +492,9 @@ pub fn npc_appearance(kind: NpcKind) -> CharacterAppearance {
             appearance.clothes = ClothesStyle::Cloak;
             appearance.offhand = OffhandStyle::Potion;
         }
+        NpcKind::GnomeHealer => {
+            // Rendered procedurally — appearance is unused.
+        }
     }
     appearance
 }

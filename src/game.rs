@@ -5,9 +5,9 @@ use crate::constants::{
     knockback_frames, knockback_speed, player_speed, trans_speed,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, ItemSlot,
-    NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType, Transition,
-    WorldProp,
+    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, Gnome,
+    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType,
+    Transition, WorldProp,
 };
 use crate::render;
 use crate::save::{self, SaveData, SaveSlotSummary};
@@ -54,6 +54,7 @@ pub struct Game {
     pub player: Player,
     pub world: World,
     pub enemies: Vec<Enemy>,
+    pub gnomes: Vec<Gnome>,
     pub pickups: Vec<Pickup>,
     pub props: Vec<WorldProp>,
     pub bombs: Vec<Bomb>,
@@ -131,6 +132,7 @@ impl Game {
             player: Player::new(),
             world: World::new(dev_mode),
             enemies: vec![],
+            gnomes: vec![],
             pickups: vec![],
             props: vec![],
             bombs: vec![],
@@ -338,6 +340,7 @@ impl Game {
             &self.timed_snapshot(),
             &self.player,
             &self.enemies,
+            &self.gnomes,
             &self.pickups,
             &self.props,
             &self.bombs,
@@ -359,7 +362,7 @@ impl Game {
         self.spawn_for_screen();
         self.reset_items();
         self.load_screen_items();
-        self.audio.play_music(MusicTrack::Overworld);
+        self.play_screen_music();
         self.state = GameState::Playing;
         self.frame = 0;
         self.inventory_tab = InventoryTab::Inventory;
@@ -545,8 +548,10 @@ impl Game {
         self.update_room_props();
         self.update_items();
         self.update_death_animations();
+        self.update_gnomes();
         self.check_damage();
         self.check_pickups();
+        self.check_gnome_catch();
         if self.player.hp <= 0 {
             self.state = GameState::GameOver;
             self.frame = 0;
@@ -1158,11 +1163,7 @@ impl Game {
                 let dev = self.world.dev_mode;
                 self.world = World::new(dev);
                 self.load_from_save(data);
-                self.audio.play_music(if self.world.in_dungeon {
-                    MusicTrack::Dungeon
-                } else {
-                    MusicTrack::Overworld
-                });
+                self.play_screen_music();
                 self.state = GameState::Playing;
                 self.frame = 0;
                 self.inventory_tab = InventoryTab::Inventory;
@@ -1288,6 +1289,7 @@ impl Game {
             self.spawn_for_screen();
             self.reset_items();
             self.load_screen_items();
+            self.play_screen_music();
             self.state = GameState::Playing;
             crate::log_debug!(
                 "transition_complete dir={:?} new_screen=({}, {})",
@@ -1331,7 +1333,7 @@ impl Game {
             self.spawn_for_screen();
             self.reset_items();
             self.load_screen_items();
-            self.audio.play_music(MusicTrack::Overworld);
+            self.play_screen_music();
             self.state = GameState::Playing;
         }
     }
@@ -2365,6 +2367,84 @@ impl Game {
         self.death_animations.retain(|anim| anim.timer > 0);
     }
 
+    fn update_gnomes(&mut self) {
+        let player_cx = self.player.x + 8.0 * PIXEL_SCALE;
+        let player_cy = self.player.y + 8.0 * PIXEL_SCALE;
+        for gnome in &mut self.gnomes {
+            if gnome.caught {
+                continue;
+            }
+            let dx = player_cx - gnome.x;
+            let dy = player_cy - gnome.y;
+            let dist = (dx * dx + dy * dy).sqrt();
+
+            gnome.move_timer -= 1;
+            if dist < TILE * 3.5 {
+                // Flee from player
+                if dist > 0.0 {
+                    let flee_speed = PIXEL_SCALE * 1.1;
+                    gnome.vx = -dx / dist * flee_speed;
+                    gnome.vy = -dy / dist * flee_speed;
+                }
+                gnome.move_timer = 15;
+            } else if gnome.move_timer <= 0 {
+                // Wander randomly
+                let angle = rand::gen_range(0.0f32, std::f32::consts::TAU);
+                let wander_speed = PIXEL_SCALE * 0.45;
+                gnome.vx = angle.cos() * wander_speed;
+                gnome.vy = angle.sin() * wander_speed;
+                gnome.move_timer = 60 + rand::gen_range(0, 80);
+            }
+
+            let gnome_w = px(10.0);
+            let gnome_h = px(14.0);
+            let nx = gnome.x + gnome.vx;
+            let ny = gnome.y + gnome.vy;
+
+            if nx >= TILE
+                && nx + gnome_w <= GAME_W - TILE
+                && !self.world.collides(nx, gnome.y, gnome_w, gnome_h)
+            {
+                gnome.x = nx;
+            } else {
+                gnome.vx = -gnome.vx;
+                gnome.move_timer = 0;
+            }
+            if ny >= TILE
+                && ny + gnome_h <= GAME_H - TILE
+                && !self.world.collides(gnome.x, ny, gnome_w, gnome_h)
+            {
+                gnome.y = ny;
+            } else {
+                gnome.vy = -gnome.vy;
+                gnome.move_timer = 0;
+            }
+        }
+    }
+
+    fn check_gnome_catch(&mut self) {
+        let player_rect = self.player.hitbox();
+        let gnome_w = px(10.0);
+        let gnome_h = px(14.0);
+        let mut caught_any = false;
+        for gnome in &mut self.gnomes {
+            if gnome.caught {
+                continue;
+            }
+            let gnome_rect = Rect::new(gnome.x, gnome.y + px(5.0), gnome_w, gnome_h);
+            if player_rect.overlaps(&gnome_rect) {
+                gnome.caught = true;
+                self.player.hp = (self.player.hp + 5).min(self.player.max_hp);
+                caught_any = true;
+            }
+        }
+        if caught_any {
+            self.audio.gnome_heal();
+            self.show_message("You caught Nip!\n+5 HP");
+        }
+        self.gnomes.retain(|g| !g.caught);
+    }
+
     fn check_damage(&mut self) {
         if self.player.invuln_timer <= 0
             && self.player.hurt_timer <= 0
@@ -2637,12 +2717,26 @@ impl Game {
             self.world.in_interior,
             &self.world.interior_id,
         );
+        self.gnomes.clear();
+        if !self.world.in_dungeon && !self.world.in_interior {
+            let gnome_x = TILE + rand::gen_range(0.0, GAME_W - 3.0 * TILE - px(10.0));
+            let gnome_y = TILE + rand::gen_range(0.0, GAME_H - 3.0 * TILE - px(17.0));
+            self.gnomes.push(Gnome {
+                x: gnome_x,
+                y: gnome_y,
+                vx: 0.0,
+                vy: 0.0,
+                move_timer: 0,
+                caught: false,
+            });
+        }
     }
 
     fn reset_items(&mut self) {
         self.pickups.clear();
         self.bombs.clear();
         self.projectiles.clear();
+        self.gnomes.clear();
     }
 
     fn load_screen_items(&mut self) {
@@ -3075,7 +3169,7 @@ impl Game {
         self.player.knock_dy = 0.0;
         self.player.last_axis = None;
         self.blocked_interaction = None;
-        self.audio.play_music(MusicTrack::Overworld);
+        self.play_screen_music();
         Ok(())
     }
 
@@ -3363,10 +3457,30 @@ impl Game {
                     self.show_message("Wren keeps the last camp warm and quiet.");
                 }
             }
+            NpcKind::GnomeHealer => {
+                if self.player.hp < self.player.max_hp {
+                    self.player.hp = self.player.max_hp;
+                    self.audio.gnome_heal();
+                    self.show_message("Pip: You look tired, friend.\nSit a moment. Fully healed!");
+                } else {
+                    self.show_message("Pip: The world is big but you\nlook well. Safe travels!");
+                }
+            }
         }
         if first_time {
             self.world.opened_chests.insert(state_key, vec![]);
         }
+    }
+
+    fn play_screen_music(&mut self) {
+        let track = if self.world.in_dungeon {
+            MusicTrack::Dungeon
+        } else if self.props.iter().any(|p| p.kind == PropKind::Npc(crate::model::NpcKind::GnomeHealer)) {
+            MusicTrack::GnomeShrine
+        } else {
+            MusicTrack::Overworld
+        };
+        self.audio.play_music(track);
     }
 
     fn show_message(&mut self, text: &str) {

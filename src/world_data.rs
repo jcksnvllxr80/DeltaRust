@@ -7232,6 +7232,11 @@ fn overworld_screen_props(screen_x: i32, screen_y: i32) -> Vec<WorldProp> {
         (8, 0) => vec![],
         (9, 2) => vec![npc(NpcKind::Senna, 8, 5)],
         (4, 2) => vec![],
+        // Healer gnomes — one per quadrant of the overworld
+        (2, 4) => vec![npc(NpcKind::GnomeHealer, 8, 5)],  // NW quadrant
+        (11, 3) => vec![npc(NpcKind::GnomeHealer, 8, 5)], // NE quadrant
+        (4, 12) => vec![npc(NpcKind::GnomeHealer, 8, 5)], // SW quadrant
+        (11, 12) => vec![npc(NpcKind::GnomeHealer, 8, 5)], // SE quadrant
         _ => vec![],
     }
 }
