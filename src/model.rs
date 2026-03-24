@@ -26,6 +26,7 @@ pub enum GameState {
     GameOver,
     Victory,
     PauseMenu,
+    Shop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -658,6 +659,36 @@ pub struct DeathAnimation {
     pub x: f32,
     pub y: f32,
     pub timer: i32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShopAction {
+    HealFull,
+    GiveHeartContainer,
+    GiveKey,
+    GiveBombAmmo,
+    GiveBombs,
+    GiveSword,
+    GiveHammer,
+    GiveLantern,
+    GiveRaft,
+    GiveAncientKey,
+    GiveTideChart,
+    GiveStrongArmGlove,
+    GivePortalTool,
+    GiveStarSigil,
+    GiveDragonCodex,
+    GiveCrystalOfSeeing,
+    GiveBombUpgrade,
+    GiveVoidCompass,
+    GiveHeart,
+}
+
+pub struct ShopItem {
+    pub label: &'static str,
+    pub description: &'static str,
+    pub price: i32,
+    pub action: ShopAction,
 }
 
 #[derive(Clone)]

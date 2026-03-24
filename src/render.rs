@@ -4,7 +4,7 @@ use crate::game::InventoryTab;
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, Gnome, InventoryEntry,
     InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind,
-    TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
+    ShopItem, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::save::SaveSlotSummary;
 use crate::sprites::{HeartState, Sprites};
@@ -1879,6 +1879,113 @@ pub fn draw_message_box(text: &str) {
             font_size,
             WHITE,
         );
+    }
+}
+
+pub fn draw_shop(npc: NpcKind, items: &[ShopItem], owned: &[bool], selection: usize, feedback: &str, frame: i32) {
+    let total_w = GAME_W;
+    let total_h = GAME_H + HUD_H;
+
+    // Dim the background
+    draw_rectangle(0.0, 0.0, total_w, total_h, Color::new(0.0, 0.0, 0.0, 0.55));
+
+    let panel_w = px(260.0);
+    let row_h = px(18.0);
+    let pad = px(10.0);
+    let desc_h = px(28.0);
+    let header_h = px(36.0);
+    let feedback_h = px(18.0);
+    let hint_h = px(14.0);
+    let panel_h = header_h + pad + items.len() as f32 * row_h + pad + desc_h + pad + feedback_h + pad + hint_h + pad;
+
+    let panel_x = (total_w - panel_w) / 2.0;
+    let panel_y = (total_h - panel_h) / 2.0;
+
+    // Panel background
+    draw_rectangle(panel_x, panel_y, panel_w, panel_h, color_u8!(10, 14, 26, 245));
+    draw_rectangle_lines(panel_x, panel_y, panel_w, panel_h, px(2.0), color_u8!(180, 160, 100, 255));
+
+    // Header — merchant name
+    let name = npc_shop_name(npc);
+    let header_sz = px(14.0);
+    let name_dims = measure_text(name, None, header_sz as u16, 1.0);
+    draw_text(
+        name,
+        panel_x + (panel_w - name_dims.width) / 2.0,
+        panel_y + px(12.0) + name_dims.offset_y,
+        header_sz,
+        color_u8!(230, 200, 120, 255),
+    );
+    draw_rectangle(panel_x + px(8.0), panel_y + header_h - px(2.0), panel_w - px(16.0), px(1.0), color_u8!(100, 90, 60, 255));
+
+    // Item rows
+    let list_y = panel_y + header_h + pad;
+    for (i, item) in items.iter().enumerate() {
+        let row_y = list_y + i as f32 * row_h;
+        let is_selected = i == selection;
+        let is_owned = owned.get(i).copied().unwrap_or(false);
+
+        if is_selected {
+            draw_rectangle(
+                panel_x + px(4.0),
+                row_y - px(1.0),
+                panel_w - px(8.0),
+                row_h - px(1.0),
+                color_u8!(50, 65, 100, 200),
+            );
+            if (frame / 30) % 2 == 0 {
+                let cursor_sz = px(12.0);
+                let cursor_dims = measure_text(">", None, cursor_sz as u16, 1.0);
+                draw_text(">", panel_x + px(6.0), row_y + cursor_dims.offset_y, cursor_sz, YELLOW);
+            }
+        }
+
+        let name_sz = px(11.0);
+        let name_col = if is_owned { color_u8!(120, 120, 120, 255) } else if is_selected { WHITE } else { color_u8!(200, 200, 200, 255) };
+        draw_text(item.label, panel_x + px(14.0), row_y + px(11.0), name_sz, name_col);
+
+        let price_text = if is_owned { "OWNED".to_string() } else { format!("{} g", item.price) };
+        let price_col = if is_owned { color_u8!(100, 100, 100, 255) } else { color_u8!(255, 220, 80, 255) };
+        let price_sz = px(10.0);
+        let price_dims = measure_text(&price_text, None, price_sz as u16, 1.0);
+        draw_text(&price_text, panel_x + panel_w - px(10.0) - price_dims.width, row_y + px(11.0), price_sz, price_col);
+    }
+
+    // Description of selected item
+    let desc_y = list_y + items.len() as f32 * row_h + pad;
+    draw_rectangle(panel_x + px(6.0), desc_y, panel_w - px(12.0), desc_h, color_u8!(20, 24, 40, 200));
+    if let Some(item) = items.get(selection) {
+        let desc_sz = px(9.0);
+        draw_text(item.description, panel_x + px(10.0), desc_y + px(10.0), desc_sz, color_u8!(180, 200, 180, 255));
+    }
+
+    // Feedback line
+    let fb_y = desc_y + desc_h + pad;
+    if !feedback.is_empty() {
+        let fb_sz = px(10.0);
+        let fb_dims = measure_text(feedback, None, fb_sz as u16, 1.0);
+        draw_text(feedback, panel_x + (panel_w - fb_dims.width) / 2.0, fb_y + px(10.0), fb_sz, color_u8!(120, 220, 120, 255));
+    }
+
+    // Controls hint
+    let hint = "UP/DOWN select   ENTER buy   ESC close";
+    let hint_sz = px(8.0);
+    let hint_dims = measure_text(hint, None, hint_sz as u16, 1.0);
+    let hint_y = fb_y + feedback_h + pad;
+    draw_text(hint, panel_x + (panel_w - hint_dims.width) / 2.0, hint_y + px(10.0), hint_sz, color_u8!(120, 130, 150, 255));
+}
+
+fn npc_shop_name(npc: NpcKind) -> &'static str {
+    match npc {
+        NpcKind::Elara => "Elara's Remedies",
+        NpcKind::Maren => "Maren's Armory",
+        NpcKind::Corvin => "Corvin's Vault Goods",
+        NpcKind::Aldric => "Aldric's Coastal Wares",
+        NpcKind::Sael => "Sael's Deep Gear",
+        NpcKind::Dax => "Dax's Heavy Equipment",
+        NpcKind::CelestialMerchant => "Celestial Merchant",
+        NpcKind::Wren => "Wren's Last Supply",
+        _ => "Shop",
     }
 }
 

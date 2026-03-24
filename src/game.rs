@@ -6,8 +6,8 @@ use crate::constants::{
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, Gnome,
-    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, TileType,
-    Transition, WorldProp,
+    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, ShopAction,
+    ShopItem, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::save::{self, SaveData, SaveSlotSummary};
@@ -95,6 +95,9 @@ pub struct Game {
     pub day_number: i32,
     time_tick: i32,
     pub time_speed: i32,
+    pub shop_npc: NpcKind,
+    pub shop_selection: usize,
+    pub shop_feedback: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -173,6 +176,9 @@ impl Game {
             day_number: 0,
             time_tick: 0,
             time_speed: 1,
+            shop_npc: NpcKind::Elara,
+            shop_selection: 0,
+            shop_feedback: String::new(),
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
@@ -254,6 +260,7 @@ impl Game {
                 }
             }
             GameState::PauseMenu => self.update_pause_menu(),
+            GameState::Shop => self.update_shop(),
         }
     }
 
@@ -321,6 +328,19 @@ impl Game {
                     self.pause_menu_selection,
                     self.pause_confirm.map(|c| matches!(c, PauseConfirm::MainMenu)),
                     self.pause_confirm.is_some(),
+                );
+            }
+            GameState::Shop => {
+                self.draw_game();
+                let items = shop_items(self.shop_npc);
+                let owned: Vec<bool> = items.iter().map(|it| self.shop_item_owned(it.action)).collect();
+                render::draw_shop(
+                    self.shop_npc,
+                    &items,
+                    &owned,
+                    self.shop_selection,
+                    &self.shop_feedback,
+                    self.frame,
                 );
             }
         }
@@ -3318,18 +3338,7 @@ impl Game {
         let first_time = !self.world.opened_chests.contains_key(&state_key);
         match npc_kind {
             NpcKind::Elara => {
-                if self.player.hp < self.player.max_hp {
-                    if self.spend_gems(5) {
-                        self.player.hp = self.player.max_hp;
-                        self.show_message("Elara brews a forest tonic.\nFully healed for 5 gems.");
-                    } else {
-                        self.show_message("Elara: 5 gems for a healing tonic.");
-                    }
-                } else {
-                    self.show_message(
-                        "Elara: The Fen cave is old.\nCome back if you need healing.",
-                    );
-                }
+                self.open_shop(NpcKind::Elara);
             }
             NpcKind::Barnett => {
                 self.show_message(
@@ -3337,27 +3346,7 @@ impl Game {
                 );
             }
             NpcKind::Maren => {
-                if !self.player.has_hammer {
-                    if self.spend_gems(24) {
-                        self.player.has_hammer = true;
-                        self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
-                        self.show_message(
-                            "Maren sells you a HAMMER.\nIt feels heavy and reliable.",
-                        );
-                    } else {
-                        self.show_message("Maren: A HAMMER costs 24 gems.");
-                    }
-                } else if self.player.has_bombs && self.player.bomb_count < self.player.max_bombs {
-                    if self.spend_gems(5) {
-                        self.player.bomb_count =
-                            (self.player.bomb_count + 8).min(self.player.max_bombs);
-                        self.show_message("Maren refills your bomb satchel for 5 gems.");
-                    } else {
-                        self.show_message("Maren: 5 gems for a bomb refill.");
-                    }
-                } else {
-                    self.show_message("Maren: The east district post still reeks of old ash.");
-                }
+                self.open_shop(NpcKind::Maren);
             }
             NpcKind::Oswin => {
                 self.show_message(
@@ -3365,16 +3354,7 @@ impl Game {
                 );
             }
             NpcKind::Corvin => {
-                if !self.player.has_ancient_key {
-                    if self.spend_gems(40) {
-                        self.player.has_ancient_key = true;
-                        self.show_message("Corvin sells you the ANCIENT KEY for 40 gems.");
-                    } else {
-                        self.show_message("Corvin: The ANCIENT KEY is 40 gems.");
-                    }
-                } else {
-                    self.show_message("Corvin: The vents are still burning beneath the Vault.");
-                }
+                self.open_shop(NpcKind::Corvin);
             }
             NpcKind::Petra => {
                 self.show_message(
@@ -3382,44 +3362,13 @@ impl Game {
                 );
             }
             NpcKind::Aldric => {
-                if !self.player.has_raft {
-                    if self.spend_gems(35) {
-                        self.player.has_raft = true;
-                        self.show_message("Aldric sells you a RAFT for 35 gems.");
-                    } else {
-                        self.show_message("Aldric: A serviceable RAFT costs 35 gems.");
-                    }
-                } else {
-                    self.show_message("Aldric: Check the Tide Chart before diving the gate.");
-                }
+                self.open_shop(NpcKind::Aldric);
             }
             NpcKind::Sael => {
-                if self.player.max_bombs < crate::config::get().combat.bomb_max_capacity {
-                    if self.spend_gems(20) {
-                        self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
-                        self.player.bomb_count = self
-                            .player
-                            .bomb_count
-                            .max(crate::config::get().combat.bomb_starting_ammo);
-                        self.show_message("Sael upgrades your bomb bag.\nMax bombs increased!");
-                    } else {
-                        self.show_message("Sael: Deep gear isn't cheap.\n20 gems for the upgrade.");
-                    }
-                } else {
-                    self.show_message("Sael: Dawn water shows the Citadel's shape from above.");
-                }
+                self.open_shop(NpcKind::Sael);
             }
             NpcKind::Dax => {
-                if !self.player.has_strong_arm_glove {
-                    if self.spend_gems(45) {
-                        self.player.has_strong_arm_glove = true;
-                        self.show_message("Dax sells you the STRONG ARM GLOVE for 45 gems.");
-                    } else {
-                        self.show_message("Dax: The STRONG ARM GLOVE costs 45 gems.");
-                    }
-                } else {
-                    self.show_message("Dax: The true crystal is the one that feels alive.");
-                }
+                self.open_shop(NpcKind::Dax);
             }
             NpcKind::Vel => {
                 self.show_message(
@@ -3427,35 +3376,13 @@ impl Game {
                 );
             }
             NpcKind::CelestialMerchant => {
-                if !self.player.has_star_sigil {
-                    if self.spend_gems(60) {
-                        self.player.has_star_sigil = true;
-                        self.show_message("The Celestial Merchant sells you the STAR SIGIL.");
-                    } else {
-                        self.show_message("Celestial Merchant: The STAR SIGIL is 60 gems.");
-                    }
-                } else {
-                    self.show_message("Celestial Merchant: The Spire has your measure now.");
-                }
+                self.open_shop(NpcKind::CelestialMerchant);
             }
             NpcKind::Senna => {
                 self.show_message("Senna: The dark seventh star isn't gone.\nIt's waiting.");
             }
             NpcKind::Wren => {
-                if !self.player.has_dragon_codex {
-                    if self.spend_gems(30) {
-                        self.player.has_dragon_codex = true;
-                        self.show_message("Wren pieces together the DRAGON CODEX.");
-                    } else {
-                        self.show_message("Wren: The final codex pages cost 30 gems.");
-                    }
-                } else if first_time {
-                    self.show_message(
-                        "Wren: You've come far.\nThe rest is between you and the mountain.",
-                    );
-                } else {
-                    self.show_message("Wren keeps the last camp warm and quiet.");
-                }
+                self.open_shop(NpcKind::Wren);
             }
             NpcKind::GnomeHealer => {
                 if self.player.hp < self.player.max_hp {
@@ -3488,6 +3415,156 @@ impl Game {
         self.audio.message();
         self.state = GameState::Message;
         crate::log_debug!("show_message text={:?}", text.replace('\n', " | "));
+    }
+
+    fn open_shop(&mut self, npc: NpcKind) {
+        self.shop_npc = npc;
+        self.shop_selection = 0;
+        self.shop_feedback = String::new();
+        self.state = GameState::Shop;
+    }
+
+    fn update_shop(&mut self) {
+        let items = shop_items(self.shop_npc);
+        if is_key_pressed(KeyCode::Escape) {
+            self.state = GameState::Playing;
+            self.blocked_interaction = self.active_interaction_source();
+            return;
+        }
+        if is_key_pressed(KeyCode::Up) || is_key_pressed(KeyCode::W) {
+            if self.shop_selection > 0 {
+                self.shop_selection -= 1;
+            }
+        }
+        if is_key_pressed(KeyCode::Down) || is_key_pressed(KeyCode::S) {
+            if self.shop_selection + 1 < items.len() {
+                self.shop_selection += 1;
+            }
+        }
+        if start_pressed() {
+            if let Some(item) = items.get(self.shop_selection) {
+                if self.shop_item_owned(item.action) {
+                    self.shop_feedback = "You already own this.".to_string();
+                } else if self.player.gems < item.price {
+                    self.shop_feedback = format!("Need {} gems.", item.price);
+                } else {
+                    self.player.gems -= item.price;
+                    self.audio.currency();
+                    self.shop_feedback = self.execute_shop_purchase(item.action);
+                }
+            }
+        }
+    }
+
+    fn shop_item_owned(&self, action: ShopAction) -> bool {
+        match action {
+            ShopAction::GiveSword => self.player.has_sword,
+            ShopAction::GiveHammer => self.player.has_hammer,
+            ShopAction::GiveLantern => self.player.has_lantern,
+            ShopAction::GiveRaft => self.player.has_raft,
+            ShopAction::GiveAncientKey => self.player.has_ancient_key,
+            ShopAction::GiveTideChart => self.player.has_tide_chart,
+            ShopAction::GiveStrongArmGlove => self.player.has_strong_arm_glove,
+            ShopAction::GivePortalTool => self.player.has_portal_tool,
+            ShopAction::GiveStarSigil => self.player.has_star_sigil,
+            ShopAction::GiveDragonCodex => self.player.has_dragon_codex,
+            ShopAction::GiveCrystalOfSeeing => self.player.has_crystal_of_seeing,
+            ShopAction::GiveVoidCompass => self.player.has_void_compass,
+            ShopAction::GiveBombs => self.player.has_bombs,
+            ShopAction::GiveBombUpgrade => {
+                self.player.max_bombs >= crate::config::get().combat.bomb_max_capacity
+            }
+            _ => false,
+        }
+    }
+
+    fn execute_shop_purchase(&mut self, action: ShopAction) -> String {
+        match action {
+            ShopAction::HealFull => {
+                self.player.hp = self.player.max_hp;
+                self.audio.pickup();
+                "Fully healed!".to_string()
+            }
+            ShopAction::GiveHeart => {
+                self.player.hp = (self.player.hp + 2).min(self.player.max_hp);
+                self.audio.pickup();
+                "+2 HP restored.".to_string()
+            }
+            ShopAction::GiveHeartContainer => {
+                self.player.max_hp += 2;
+                self.player.hp = self.player.max_hp;
+                self.audio.pickup();
+                "Max HP increased!".to_string()
+            }
+            ShopAction::GiveKey => {
+                self.player.keys += 1;
+                "Got a key.".to_string()
+            }
+            ShopAction::GiveBombAmmo => {
+                self.player.bomb_count = (self.player.bomb_count + 4).min(self.player.max_bombs);
+                "Got 4 bombs.".to_string()
+            }
+            ShopAction::GiveBombs => {
+                self.player.has_bombs = true;
+                self.player.bomb_count = crate::config::get().combat.bomb_starting_ammo;
+                self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
+                "Got BOMBS!".to_string()
+            }
+            ShopAction::GiveSword => {
+                self.player.has_sword = true;
+                self.auto_assign_item(EquippedItem::Sword, ItemSlot::Main);
+                "Got the SWORD!".to_string()
+            }
+            ShopAction::GiveHammer => {
+                self.player.has_hammer = true;
+                self.auto_assign_item(EquippedItem::Hammer, ItemSlot::Side);
+                "Got the HAMMER!".to_string()
+            }
+            ShopAction::GiveLantern => {
+                self.player.has_lantern = true;
+                "Got the LANTERN!".to_string()
+            }
+            ShopAction::GiveRaft => {
+                self.player.has_raft = true;
+                "Got the RAFT!".to_string()
+            }
+            ShopAction::GiveAncientKey => {
+                self.player.has_ancient_key = true;
+                "Got the ANCIENT KEY!".to_string()
+            }
+            ShopAction::GiveTideChart => {
+                self.player.has_tide_chart = true;
+                "Got the TIDE CHART!".to_string()
+            }
+            ShopAction::GiveStrongArmGlove => {
+                self.player.has_strong_arm_glove = true;
+                "Got the STRONG ARM GLOVE!".to_string()
+            }
+            ShopAction::GivePortalTool => {
+                self.player.has_portal_tool = true;
+                "Got the PORTAL TOOL!".to_string()
+            }
+            ShopAction::GiveStarSigil => {
+                self.player.has_star_sigil = true;
+                "Got the STAR SIGIL!".to_string()
+            }
+            ShopAction::GiveDragonCodex => {
+                self.player.has_dragon_codex = true;
+                "Got the DRAGON CODEX!".to_string()
+            }
+            ShopAction::GiveCrystalOfSeeing => {
+                self.player.has_crystal_of_seeing = true;
+                "Got the CRYSTAL OF SEEING!".to_string()
+            }
+            ShopAction::GiveBombUpgrade => {
+                self.player.max_bombs = crate::config::get().combat.bomb_max_capacity;
+                "Bomb bag upgraded!".to_string()
+            }
+            ShopAction::GiveVoidCompass => {
+                self.player.has_void_compass = true;
+                "Got the VOID COMPASS!".to_string()
+            }
+        }
     }
 
     fn spawn_pickup(&mut self, x: f32, y: f32, pickup_type: PickupType) {
@@ -3816,4 +3893,70 @@ fn pickup_times_out(pickup: PickupType) -> bool {
         pickup,
         PickupType::Heart | PickupType::BombAmmo | PickupType::Gem
     )
+}
+
+fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
+    use ShopAction::*;
+    match npc {
+        NpcKind::Elara => vec![
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",          price: 6,  action: HealFull },
+            ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.", price: 35, action: GiveHeartContainer },
+            ShopItem { label: "Lantern",          description: "Lights your way at night.",         price: 18, action: GiveLantern },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",      price: 8,  action: GiveKey },
+            ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",     price: 4,  action: GiveBombAmmo },
+        ],
+        NpcKind::Maren => vec![
+            ShopItem { label: "Hammer",           description: "Smashes cracked tiles in front of you.", price: 24, action: GiveHammer },
+            ShopItem { label: "Bombs",            description: "Explosive devices. Assign to a slot.",   price: 15, action: GiveBombs },
+            ShopItem { label: "Sword",            description: "A reliable blade. Assign to a slot.",    price: 20, action: GiveSword },
+            ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",           price: 4,  action: GiveBombAmmo },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Quick Heal",       description: "Restores 2 HP on the spot.",            price: 3,  action: GiveHeart },
+        ],
+        NpcKind::Corvin => vec![
+            ShopItem { label: "Ancient Key",      description: "Opens the Iron Highlands vault.",        price: 40, action: GiveAncientKey },
+            ShopItem { label: "Lantern",          description: "Lights your way at night.",              price: 18, action: GiveLantern },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+            ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",          price: 4,  action: GiveBombAmmo },
+        ],
+        NpcKind::Aldric => vec![
+            ShopItem { label: "Raft",             description: "Lets you cross water tiles safely.",     price: 35, action: GiveRaft },
+            ShopItem { label: "Tide Chart",       description: "Marks safe Sunken Coast routes.",        price: 25, action: GiveTideChart },
+            ShopItem { label: "Lantern",          description: "Lights your way at night.",              price: 18, action: GiveLantern },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+        ],
+        NpcKind::Sael => vec![
+            ShopItem { label: "Bomb Bag Upgrade", description: "Increases your maximum bomb capacity.",  price: 20, action: GiveBombUpgrade },
+            ShopItem { label: "Bombs",            description: "Explosive devices. Assign to a slot.",   price: 15, action: GiveBombs },
+            ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",           price: 4,  action: GiveBombAmmo },
+            ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.",     price: 35, action: GiveHeartContainer },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+        ],
+        NpcKind::Dax => vec![
+            ShopItem { label: "Strong Arm Glove", description: "Required for heavy mechanisms and the Ember Crystal.", price: 45, action: GiveStrongArmGlove },
+            ShopItem { label: "Hammer",           description: "Smashes cracked tiles in front of you.", price: 24, action: GiveHammer },
+            ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.",     price: 35, action: GiveHeartContainer },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+        ],
+        NpcKind::CelestialMerchant => vec![
+            ShopItem { label: "Star Sigil",       description: "Merchant seal for the Aetherian ascent.", price: 60, action: GiveStarSigil },
+            ShopItem { label: "Crystal of Seeing",description: "Reveals the hidden path in the last ascent.", price: 55, action: GiveCrystalOfSeeing },
+            ShopItem { label: "Portal Tool",      description: "Attunement focus for rift structures.",  price: 50, action: GivePortalTool },
+            ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.",     price: 35, action: GiveHeartContainer },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+        ],
+        NpcKind::Wren => vec![
+            ShopItem { label: "Dragon Codex",     description: "Ancient lore needed for the final approach.", price: 30, action: GiveDragonCodex },
+            ShopItem { label: "Void Compass",     description: "Stabilizes your route through the fractured sanctum.", price: 40, action: GiveVoidCompass },
+            ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.",     price: 35, action: GiveHeartContainer },
+            ShopItem { label: "Lantern",          description: "Lights your way at night.",              price: 18, action: GiveLantern },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+        ],
+        _ => vec![],
+    }
 }
