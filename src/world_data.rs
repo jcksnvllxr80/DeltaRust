@@ -2637,7 +2637,7 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
         x: 1,
         y: 5,
         tiles: &[
-            "################",
+            "#######  #######",
             "##   f    f   ##",
             "##            ##",
             "##  f      f  ##",
@@ -2670,7 +2670,7 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
             "##            ##",
             "##            ##",
             "#######  #######",
-            "################",
+            "#######  #######",
         ],
         enemies: &[
             SpawnDef {
@@ -3010,7 +3010,7 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         x: 1,
         y: 7,
         tiles: &[
-            "################",
+            "#######  #######",
             "##            ##",
             "##    ffff    ##",
             "##            ##",
@@ -3043,7 +3043,7 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
             "##          ####",
             "##          ####",
             "#######  #######",
-            "################",
+            "#######  #######",
         ],
         enemies: &[
             SpawnDef {
@@ -3118,9 +3118,9 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
             "##    xxxx    ##",
             "##            ##",
             "##            ##",
-            "##      $     ##",
-            "##            ##",
-            "##            ##",
+            "o       $     ##",
+            "o             ##",
+            "o             ##",
             "##   ffff     ##",
             "##            ##",
             "################",
@@ -3406,7 +3406,7 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
             "##            ##",
             "##      s     ##",
             "##            ##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -3468,7 +3468,7 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         x: 3,
         y: 6,
         tiles: &[
-            "################",
+            "#######  #######",
             "##            ##",
             "##   ffff     ##",
             "##            ##",
@@ -3576,9 +3576,9 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
             "##   $        ##",
             "##            ##",
             "##  ffff      ##",
-            "##             o",
-            "##             o",
-            "##             o",
+            "o              o",
+            "o              o",
+            "o              o",
             "##      ffff  ##",
             "##            ##",
             "################",
@@ -3858,7 +3858,7 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
             "##            ##",
             "##      s     ##",
             "##            ##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -3906,7 +3906,7 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         x: 1,
         y: 6,
         tiles: &[
-            "################",
+            "#######  #######",
             "##~~~~....~~~~##",
             "##~~........~~##",
             "##~..........~##",
@@ -3975,9 +3975,9 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
             "##~~~~....~~~~##",
             "##~~....$...~~##",
             "##~..........~##",
-            "##.............o",
-            "##.............o",
-            "##.............o",
+            "o..............o",
+            "o..............o",
+            "o..............o",
             "##~..........~##",
             "##~~~~....~~~~##",
             "################",
@@ -4295,7 +4295,7 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
             "##~..........~##",
             "##~~~~..s.~~~~##",
             "##............##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -4974,7 +4974,7 @@ const LEVEL5_ROOMS: &[DungeonRoomDef] = &[
             "##   ######   ##",
             "##    ..s.    ##",
             "##            ##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -5207,7 +5207,7 @@ const LEVEL6_ROOMS: &[DungeonRoomDef] = &[
             "##....^..^....##",
             "##....^ss^....##",
             "##............##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -5875,7 +5875,7 @@ const LEVEL7_ROOMS: &[DungeonRoomDef] = &[
             "##....^ss^....##",
             "##............##",
             "##............##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
@@ -6125,7 +6125,7 @@ const LEVEL8_ROOMS: &[DungeonRoomDef] = &[
             "##....^ss^....##",
             "##............##",
             "##............##",
-            "#######kk#######",
+            "#######  #######",
         ],
         enemies: &[SpawnDef {
             enemy_type: EnemyType::Boss,
