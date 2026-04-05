@@ -63,10 +63,10 @@ pub enum TileType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EnemyType {
-    Slime,
-    Octorok,
-    Bat,
-    Darknut,
+    Splort,
+    Borespat,
+    Shriekwing,
+    Ironmaw,
     Boss,
 }
 
@@ -255,6 +255,8 @@ pub struct Player {
     pub hurt_timer: i32,
     pub knock_dx: f32,
     pub knock_dy: f32,
+    #[serde(default)]
+    pub stun_timer: i32,
     pub has_sword: bool,
     pub has_bombs: bool,
     #[serde(default)]
@@ -327,6 +329,7 @@ impl Player {
             hurt_timer: 0,
             knock_dx: 0.0,
             knock_dy: 0.0,
+            stun_timer: 0,
             has_sword: false,
             has_bombs: false,
             boss_keys: HashSet::new(),
@@ -607,6 +610,11 @@ pub struct Enemy {
     pub timer: i32,
     pub vx: f32,
     pub vy: f32,
+    pub ai_state: i32,
+    /// true for mini-Splorts spawned from a split — they don't split again
+    pub is_mini: bool,
+    /// true when Borespat is underground — invulnerable and invisible
+    pub buried: bool,
 }
 
 #[derive(Clone)]
@@ -632,6 +640,14 @@ pub struct Bomb {
     pub explosion_timer: i32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProjectileKind {
+    Fireball,
+    Rock,
+    Spike,
+    Ring,
+}
+
 #[derive(Clone)]
 pub struct Projectile {
     pub x: f32,
@@ -643,6 +659,7 @@ pub struct Projectile {
     pub from_enemy: bool,
     pub active: bool,
     pub timer: i32,
+    pub kind: ProjectileKind,
 }
 
 #[derive(Clone)]

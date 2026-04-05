@@ -75,10 +75,10 @@ pub struct EnemyStats {
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct Enemies {
-    pub slime: EnemyStats,
-    pub octorok: EnemyStats,
-    pub bat: EnemyStats,
-    pub darknut: EnemyStats,
+    pub splort: EnemyStats,
+    pub borespat: EnemyStats,
+    pub shriekwing: EnemyStats,
+    pub ironmaw: EnemyStats,
     pub boss: EnemyStats,
 }
 
@@ -160,10 +160,10 @@ impl Default for EnemyStats {
 impl Default for Enemies {
     fn default() -> Self {
         Self {
-            slime: EnemyStats { hp: 1, speed: 0.4 },
-            octorok: EnemyStats { hp: 2, speed: 0.6 },
-            bat: EnemyStats { hp: 1, speed: 0.4 },
-            darknut: EnemyStats { hp: 3, speed: 0.7 },
+            splort: EnemyStats { hp: 1, speed: 0.4 },
+            borespat: EnemyStats { hp: 2, speed: 0.6 },
+            shriekwing: EnemyStats { hp: 1, speed: 0.4 },
+            ironmaw: EnemyStats { hp: 3, speed: 0.7 },
             boss: EnemyStats { hp: 12, speed: 0.5 },
         }
     }

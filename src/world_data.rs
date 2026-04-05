@@ -1598,12 +1598,12 @@ fn is_walkable(tile: TileType) -> bool {
 
 const MOSSHAVEN_FEN_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Octorok,
+        enemy_type: EnemyType::Borespat,
         tile_x: 5.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 10.0,
         tile_y: 6.0,
     },
@@ -1611,19 +1611,19 @@ const MOSSHAVEN_FEN_ENEMIES: &[SpawnDef] = &[
 
 const MOSSHAVEN_WOOD_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 5.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 10.0,
         tile_y: 6.0,
     },
 ];
 
 const MOSSHAVEN_RING_ENEMIES: &[SpawnDef] = &[SpawnDef {
-    enemy_type: EnemyType::Bat,
+    enemy_type: EnemyType::Shriekwing,
     tile_x: 8.0,
     tile_y: 4.0,
 }];
@@ -1858,7 +1858,7 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Slime,
+            enemy_type: EnemyType::Splort,
             tile_x: 10.0,
             tile_y: 5.0,
         }],
@@ -1911,12 +1911,12 @@ const MOSSHAVEN_SCREENS: &[OverworldScreenDef] = &[
 
 const ASHENFALL_PLAIN_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 4.0,
         tile_y: 3.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 11.0,
         tile_y: 6.0,
     },
@@ -1924,12 +1924,12 @@ const ASHENFALL_PLAIN_ENEMIES: &[SpawnDef] = &[
 
 const ASHENFALL_RUIN_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 5.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Octorok,
+        enemy_type: EnemyType::Borespat,
         tile_x: 10.0,
         tile_y: 5.0,
     },
@@ -1979,7 +1979,7 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 8.0,
             tile_y: 4.0,
         }],
@@ -2027,7 +2027,7 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Slime,
+            enemy_type: EnemyType::Splort,
             tile_x: 12.0,
             tile_y: 5.0,
         }],
@@ -2054,12 +2054,12 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         dungeon: None,
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 4.0,
                 tile_y: 2.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 11.0,
                 tile_y: 7.0,
             },
@@ -2130,7 +2130,7 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 9.0,
             tile_y: 4.0,
         }],
@@ -2161,12 +2161,12 @@ const ASHENFALL_SCREENS: &[OverworldScreenDef] = &[
 
 const IRONHIGHLANDS_PIPE_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 5.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 10.0,
         tile_y: 6.0,
     },
@@ -2174,12 +2174,12 @@ const IRONHIGHLANDS_PIPE_ENEMIES: &[SpawnDef] = &[
 
 const IRONHIGHLANDS_VENT_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 5.0,
         tile_y: 3.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 11.0,
         tile_y: 7.0,
     },
@@ -2230,12 +2230,12 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         dungeon: Some(3),
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 6.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 6.0,
             },
@@ -2372,7 +2372,7 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 8.0,
             tile_y: 5.0,
         }],
@@ -2403,12 +2403,12 @@ const IRONHIGHLANDS_SCREENS: &[OverworldScreenDef] = &[
 
 const SUNKEN_COAST_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 5.0,
         tile_y: 6.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 11.0,
         tile_y: 3.0,
     },
@@ -2416,12 +2416,12 @@ const SUNKEN_COAST_ENEMIES: &[SpawnDef] = &[
 
 const FLOODED_RUINS_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 4.0,
         tile_y: 7.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Octorok,
+        enemy_type: EnemyType::Borespat,
         tile_x: 10.0,
         tile_y: 4.0,
     },
@@ -2493,7 +2493,7 @@ const SUNKEN_COAST_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 8.0,
             tile_y: 4.0,
         }],
@@ -2674,12 +2674,12 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -2739,17 +2739,17 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 10.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 7.0,
                 tile_y: 7.0,
             },
@@ -2781,7 +2781,7 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
             "################",
         ],
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 8.0,
             tile_y: 4.0,
         }],
@@ -2813,12 +2813,12 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -2850,7 +2850,7 @@ const LEVEL1_ROOMS: &[DungeonRoomDef] = &[
             "#######  #######",
         ],
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Darknut,
+            enemy_type: EnemyType::Ironmaw,
             tile_x: 8.0,
             tile_y: 5.0,
         }],
@@ -3047,12 +3047,12 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 6.0,
             },
@@ -3085,17 +3085,17 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 7.0,
                 tile_y: 7.0,
             },
@@ -3128,12 +3128,12 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 10.0,
                 tile_y: 5.0,
             },
@@ -3172,12 +3172,12 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 5.0,
             },
@@ -3216,7 +3216,7 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
             "#######  #######",
         ],
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Darknut,
+            enemy_type: EnemyType::Ironmaw,
             tile_x: 8.0,
             tile_y: 5.0,
         }],
@@ -3248,17 +3248,17 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 2.0,
             },
@@ -3291,12 +3291,12 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 5.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -3329,12 +3329,12 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -3367,17 +3367,17 @@ const LEVEL2_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 8.0,
                 tile_y: 2.0,
             },
@@ -3509,12 +3509,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -3543,17 +3543,17 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 9.0,
                 tile_y: 6.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
@@ -3586,12 +3586,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 10.0,
                 tile_y: 5.0,
             },
@@ -3624,12 +3624,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 7.0,
             },
@@ -3662,12 +3662,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -3700,12 +3700,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 6.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 10.0,
                 tile_y: 3.0,
             },
@@ -3738,17 +3738,17 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 7.0,
                 tile_y: 5.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 3.0,
                 tile_y: 2.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 12.0,
                 tile_y: 2.0,
             },
@@ -3781,12 +3781,12 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 5.0,
             },
@@ -3819,17 +3819,17 @@ const LEVEL3_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 8.0,
                 tile_y: 6.0,
             },
@@ -3947,12 +3947,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -3985,12 +3985,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 6.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 10.0,
                 tile_y: 5.0,
             },
@@ -4023,17 +4023,17 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 2.0,
             },
@@ -4066,12 +4066,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 6.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 5.0,
             },
@@ -4104,12 +4104,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 8.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 8.0,
                 tile_y: 7.0,
             },
@@ -4142,12 +4142,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 11.0,
                 tile_y: 6.0,
             },
@@ -4180,12 +4180,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 6.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -4218,12 +4218,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 5.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 11.0,
                 tile_y: 6.0,
             },
@@ -4256,17 +4256,17 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Octorok,
+                enemy_type: EnemyType::Borespat,
                 tile_x: 8.0,
                 tile_y: 2.0,
             },
@@ -4323,12 +4323,12 @@ const LEVEL4_ROOMS: &[DungeonRoomDef] = &[
 
 const GRIMFORGE_FIELDS_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Slime,
+        enemy_type: EnemyType::Splort,
         tile_x: 4.0,
         tile_y: 5.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 11.0,
         tile_y: 4.0,
     },
@@ -4336,12 +4336,12 @@ const GRIMFORGE_FIELDS_ENEMIES: &[SpawnDef] = &[
 
 const VOID_WASTES_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 6.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 10.0,
         tile_y: 6.0,
     },
@@ -4479,7 +4479,7 @@ const GRIMFORGE_APPROACHES_SCREENS: &[OverworldScreenDef] = &[
         cave: None,
         dungeon: None,
         enemies: &[SpawnDef {
-            enemy_type: EnemyType::Bat,
+            enemy_type: EnemyType::Shriekwing,
             tile_x: 8.0,
             tile_y: 4.0,
         }],
@@ -4887,12 +4887,12 @@ const LEVEL5_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 3.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 10.0,
                 tile_y: 6.0,
             },
@@ -4940,12 +4940,12 @@ const LEVEL5_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 5.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Slime,
+                enemy_type: EnemyType::Splort,
                 tile_x: 11.0,
                 tile_y: 5.0,
             },
@@ -5120,12 +5120,12 @@ const LEVEL6_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 10.0,
                 tile_y: 4.0,
             },
@@ -5173,12 +5173,12 @@ const LEVEL6_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 5.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 5.0,
             },
@@ -5235,12 +5235,12 @@ const LEVEL6_ROOMS: &[DungeonRoomDef] = &[
 
 const CELESTIAL_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 5.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 10.0,
         tile_y: 3.0,
     },
@@ -5248,12 +5248,12 @@ const CELESTIAL_ENEMIES: &[SpawnDef] = &[
 
 const DRAGON_APPROACH_ENEMIES: &[SpawnDef] = &[
     SpawnDef {
-        enemy_type: EnemyType::Darknut,
+        enemy_type: EnemyType::Ironmaw,
         tile_x: 7.0,
         tile_y: 4.0,
     },
     SpawnDef {
-        enemy_type: EnemyType::Bat,
+        enemy_type: EnemyType::Shriekwing,
         tile_x: 11.0,
         tile_y: 5.0,
     },
@@ -5788,12 +5788,12 @@ const LEVEL7_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 5.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
@@ -5841,12 +5841,12 @@ const LEVEL7_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
@@ -6021,17 +6021,17 @@ const LEVEL8_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 5.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 6.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 8.0,
                 tile_y: 2.0,
             },
@@ -6086,17 +6086,17 @@ const LEVEL8_ROOMS: &[DungeonRoomDef] = &[
         ],
         enemies: &[
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 4.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Darknut,
+                enemy_type: EnemyType::Ironmaw,
                 tile_x: 11.0,
                 tile_y: 4.0,
             },
             SpawnDef {
-                enemy_type: EnemyType::Bat,
+                enemy_type: EnemyType::Shriekwing,
                 tile_x: 8.0,
                 tile_y: 3.0,
             },
@@ -6977,54 +6977,54 @@ fn overworld_enemy_type(biome: OverworldBiome, difficulty: i32, seed: usize) -> 
         OverworldBiome::Forest | OverworldBiome::DeepForest => match difficulty {
             0 => {
                 if roll == 0 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Slime
+                    EnemyType::Splort
                 }
             }
             1 => {
                 if roll >= 2 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             2 => {
                 if roll == 0 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             _ => {
                 if roll % 2 == 0 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 }
             }
         },
         OverworldBiome::Lake | OverworldBiome::Coast => match difficulty {
-            0 => EnemyType::Octorok,
+            0 => EnemyType::Borespat,
             1 => {
                 if roll == 0 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             2 => {
                 if roll >= 2 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             _ => {
                 if roll == 0 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 }
             }
         },
@@ -7033,50 +7033,50 @@ fn overworld_enemy_type(biome: OverworldBiome, difficulty: i32, seed: usize) -> 
         | OverworldBiome::Mountain
         | OverworldBiome::Snow
         | OverworldBiome::Canyon => match difficulty {
-            0 => EnemyType::Octorok,
+            0 => EnemyType::Borespat,
             1 => {
                 if roll == 0 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             2 => {
                 if roll >= 2 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
             _ => {
                 if roll % 2 == 0 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 }
             }
         },
         OverworldBiome::Plains | OverworldBiome::Highlands => match difficulty {
-            0 => EnemyType::Slime,
+            0 => EnemyType::Splort,
             1 => {
                 if roll == 0 {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 } else {
-                    EnemyType::Slime
+                    EnemyType::Splort
                 }
             }
             2 => {
                 if roll >= 2 {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 } else {
-                    EnemyType::Bat
+                    EnemyType::Shriekwing
                 }
             }
             _ => {
                 if roll % 2 == 0 {
-                    EnemyType::Darknut
+                    EnemyType::Ironmaw
                 } else {
-                    EnemyType::Octorok
+                    EnemyType::Borespat
                 }
             }
         },
@@ -7089,13 +7089,13 @@ fn dungeon_enemy_spawns(dungeon_id: i32, sx: i32, sy: i32) -> Vec<EnemySpawn> {
         // Dungeon 1: Mountain Cave
         1 => match key.as_str() {
             "0,1" => vec![
-                es(EnemyType::Slime, 5.0, 4.0),
-                es(EnemyType::Slime, 10.0, 6.0),
+                es(EnemyType::Splort, 5.0, 4.0),
+                es(EnemyType::Splort, 10.0, 6.0),
             ],
             "1,1" => vec![
-                es(EnemyType::Bat, 5.0, 4.0),
-                es(EnemyType::Bat, 10.0, 6.0),
-                es(EnemyType::Slime, 7.0, 5.0),
+                es(EnemyType::Shriekwing, 5.0, 4.0),
+                es(EnemyType::Shriekwing, 10.0, 6.0),
+                es(EnemyType::Splort, 7.0, 5.0),
             ],
             "1,0" => vec![es(EnemyType::Boss, 7.0, 4.0)],
             _ => vec![],
@@ -7103,9 +7103,9 @@ fn dungeon_enemy_spawns(dungeon_id: i32, sx: i32, sy: i32) -> Vec<EnemySpawn> {
         // Dungeon 2: Forest Shrine
         2 => match key.as_str() {
             "0,1" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Darknut, 10.0, 6.0),
-                es(EnemyType::Bat, 8.0, 3.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Ironmaw, 10.0, 6.0),
+                es(EnemyType::Shriekwing, 8.0, 3.0),
             ],
             "1,0" => vec![es(EnemyType::Boss, 7.0, 4.0)],
             _ => vec![],
@@ -7113,21 +7113,21 @@ fn dungeon_enemy_spawns(dungeon_id: i32, sx: i32, sy: i32) -> Vec<EnemySpawn> {
         // Dungeon 3: Desert Pyramid
         3 => match key.as_str() {
             "0,2" => vec![
-                es(EnemyType::Octorok, 5.0, 4.0),
-                es(EnemyType::Octorok, 10.0, 6.0),
+                es(EnemyType::Borespat, 5.0, 4.0),
+                es(EnemyType::Borespat, 10.0, 6.0),
             ],
             "0,1" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Darknut, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Ironmaw, 10.0, 6.0),
             ],
             "1,1" => vec![
-                es(EnemyType::Octorok, 5.0, 4.0),
-                es(EnemyType::Octorok, 10.0, 6.0),
-                es(EnemyType::Bat, 8.0, 3.0),
+                es(EnemyType::Borespat, 5.0, 4.0),
+                es(EnemyType::Borespat, 10.0, 6.0),
+                es(EnemyType::Shriekwing, 8.0, 3.0),
             ],
             "1,0" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Bat, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Shriekwing, 10.0, 6.0),
             ],
             "0,0" => vec![es(EnemyType::Boss, 7.0, 4.0)],
             _ => vec![],
@@ -7135,24 +7135,24 @@ fn dungeon_enemy_spawns(dungeon_id: i32, sx: i32, sy: i32) -> Vec<EnemySpawn> {
         // Dungeon 4: Castle Depths
         4 => match key.as_str() {
             "2,1" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Darknut, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Ironmaw, 10.0, 6.0),
             ],
             "1,1" => vec![
-                es(EnemyType::Bat, 5.0, 4.0),
-                es(EnemyType::Bat, 10.0, 6.0),
-                es(EnemyType::Darknut, 8.0, 5.0),
-                es(EnemyType::Darknut, 7.0, 7.0),
+                es(EnemyType::Shriekwing, 5.0, 4.0),
+                es(EnemyType::Shriekwing, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 8.0, 5.0),
+                es(EnemyType::Ironmaw, 7.0, 7.0),
             ],
             "2,0" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Octorok, 10.0, 6.0),
-                es(EnemyType::Darknut, 8.0, 3.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Borespat, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 8.0, 3.0),
             ],
             "1,0" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Darknut, 10.0, 6.0),
-                es(EnemyType::Darknut, 8.0, 7.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Ironmaw, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 8.0, 7.0),
             ],
             "0,0" => vec![es(EnemyType::Boss, 7.0, 4.0)],
             _ => vec![],
@@ -7160,15 +7160,15 @@ fn dungeon_enemy_spawns(dungeon_id: i32, sx: i32, sy: i32) -> Vec<EnemySpawn> {
         // Dungeon 5: Secret Ruins
         5 => match key.as_str() {
             "0,2" => vec![
-                es(EnemyType::Darknut, 5.0, 4.0),
-                es(EnemyType::Darknut, 10.0, 6.0),
+                es(EnemyType::Ironmaw, 5.0, 4.0),
+                es(EnemyType::Ironmaw, 10.0, 6.0),
             ],
             "0,1" => vec![
-                es(EnemyType::Darknut, 5.0, 3.0),
-                es(EnemyType::Darknut, 10.0, 3.0),
-                es(EnemyType::Bat, 5.0, 7.0),
-                es(EnemyType::Bat, 10.0, 7.0),
-                es(EnemyType::Darknut, 7.0, 5.0),
+                es(EnemyType::Ironmaw, 5.0, 3.0),
+                es(EnemyType::Ironmaw, 10.0, 3.0),
+                es(EnemyType::Shriekwing, 5.0, 7.0),
+                es(EnemyType::Shriekwing, 10.0, 7.0),
+                es(EnemyType::Ironmaw, 7.0, 5.0),
             ],
             "0,0" => vec![es(EnemyType::Boss, 7.0, 4.0)],
             _ => vec![],

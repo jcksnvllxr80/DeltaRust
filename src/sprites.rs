@@ -259,10 +259,10 @@ impl Sprites {
                 return false;
             };
             let anim = match enemy.enemy_type {
-                EnemyType::Slime => self.layout.enemies.slime.clone(),
-                EnemyType::Octorok => self.layout.enemies.octorok.clone(),
-                EnemyType::Bat => self.layout.enemies.bat.clone(),
-                EnemyType::Darknut => self.layout.enemies.darknut.clone(),
+                EnemyType::Splort => self.layout.enemies.splort.clone(),
+                EnemyType::Borespat => self.layout.enemies.borespat.clone(),
+                EnemyType::Shriekwing => self.layout.enemies.shriekwing.clone(),
+                EnemyType::Ironmaw => self.layout.enemies.ironmaw.clone(),
                 EnemyType::Boss => self.layout.enemies.boss.clone(),
             };
             (sheet, anim)
@@ -487,10 +487,10 @@ struct HeroLayout {
 #[derive(Clone, Deserialize)]
 struct EnemyLayout {
     sheet: String,
-    slime: AnimationLayout,
-    octorok: AnimationLayout,
-    bat: AnimationLayout,
-    darknut: AnimationLayout,
+    splort: AnimationLayout,
+    borespat: AnimationLayout,
+    shriekwing: AnimationLayout,
+    ironmaw: AnimationLayout,
     boss: AnimationLayout,
 }
 
@@ -815,52 +815,52 @@ fn themed_tile_frame(biome_id: Option<i32>, tile: TileType) -> Option<&'static F
 fn themed_enemy_animation(biome_id: Option<i32>, enemy_type: EnemyType) -> Option<AnimationLayout> {
     match biome_id {
         Some(2) => Some(match enemy_type {
-            EnemyType::Slime => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(10, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(10, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(22, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
         }),
         Some(3) => Some(match enemy_type {
-            EnemyType::Slime => anim(20, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(14, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(20, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(14, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
         }),
         Some(4) => Some(match enemy_type {
-            EnemyType::Slime => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(20, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
         }),
         Some(5) => Some(match enemy_type {
-            EnemyType::Slime => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(18, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(20, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
         }),
         Some(6) => Some(match enemy_type {
-            EnemyType::Slime => anim(20, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(16, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(20, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(16, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 48.0, 16.0, 16.0), (16.0, 48.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
         }),
         Some(7) => Some(match enemy_type {
-            EnemyType::Slime => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(18, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(14, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(18, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
         }),
         Some(8) => Some(match enemy_type {
-            EnemyType::Slime => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
-            EnemyType::Octorok => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-            EnemyType::Bat => anim(12, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
-            EnemyType::Darknut => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
+            EnemyType::Splort => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
+            EnemyType::Borespat => anim(16, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Shriekwing => anim(12, &[(0.0, 16.0, 16.0, 16.0), (16.0, 16.0, 16.0, 16.0)]),
+            EnemyType::Ironmaw => anim(16, &[(0.0, 0.0, 16.0, 16.0), (16.0, 0.0, 16.0, 16.0)]),
             EnemyType::Boss => anim(18, &[(0.0, 32.0, 16.0, 16.0), (16.0, 32.0, 16.0, 16.0)]),
         }),
         _ => None,
@@ -1557,22 +1557,22 @@ fn default_layout() -> SpriteLayout {
         },
         enemies: EnemyLayout {
             sheet: "enemies.png".to_string(),
-            slime: AnimationLayout {
+            splort: AnimationLayout {
                 frame_time: 18,
                 dest_scale: Some(3.0),
                 frames: vec![frame(0.0, 0.0, 16.0, 16.0), frame(16.0, 0.0, 16.0, 16.0)],
             },
-            octorok: AnimationLayout {
+            borespat: AnimationLayout {
                 frame_time: 16,
                 dest_scale: Some(3.0),
                 frames: vec![frame(0.0, 16.0, 16.0, 16.0), frame(16.0, 16.0, 16.0, 16.0)],
             },
-            bat: AnimationLayout {
+            shriekwing: AnimationLayout {
                 frame_time: 8,
                 dest_scale: Some(3.0),
                 frames: vec![frame(0.0, 32.0, 16.0, 16.0), frame(16.0, 32.0, 16.0, 16.0)],
             },
-            darknut: AnimationLayout {
+            ironmaw: AnimationLayout {
                 frame_time: 16,
                 dest_scale: Some(3.0),
                 frames: vec![frame(0.0, 48.0, 16.0, 16.0), frame(16.0, 48.0, 16.0, 16.0)],

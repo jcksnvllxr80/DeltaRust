@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, Gnome,
-    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind, ShopAction,
+    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind, PropKind, ShopAction,
     ShopItem, TileType, Transition, WorldProp,
 };
 use crate::render;
@@ -1135,6 +1135,7 @@ impl Game {
         self.player.hurt_timer = 0;
         self.player.knock_dx = 0.0;
         self.player.knock_dy = 0.0;
+        self.player.stun_timer = 0;
         self.appearance = data.appearance;
         self.sprites.set_hero_appearance(&self.appearance);
         self.dungeon_overworld_x = data.dungeon_overworld_x;
@@ -1375,6 +1376,10 @@ impl Game {
             }
             self.player.x = self.player.x.clamp(0.0, GAME_W - TILE);
             self.player.y = self.player.y.clamp(0.0, GAME_H - TILE);
+            return None;
+        }
+        if self.player.stun_timer > 0 {
+            self.player.stun_timer -= 1;
             return None;
         }
         if self.player.attack_timer > 0 {
@@ -2278,7 +2283,8 @@ impl Game {
     fn update_enemies(&mut self) {
         let px = self.player.x + 8.0;
         let py = self.player.y + 8.0;
-        let mut shots = vec![];
+        let mut shots: Vec<(f32, f32, f32, f32, ProjectileKind)> = vec![];
+        let mut mini_spawns: Vec<(f32, f32)> = vec![];
         for enemy in &mut self.enemies {
             if !enemy.active {
                 continue;
@@ -2292,22 +2298,33 @@ impl Game {
             }
             enemy.timer += 1;
             match enemy.enemy_type {
-                EnemyType::Slime => ai_slime(enemy, &self.world),
-                EnemyType::Octorok => {
-                    if let Some(shot) = ai_octorok(enemy, &self.world, px, py) {
-                        shots.push(shot);
-                    }
+                EnemyType::Splort => ai_splort(enemy, &self.world, px, py),
+                EnemyType::Borespat => {
+                    shots.extend(ai_borespat(enemy, &self.world, px, py));
                 }
-                EnemyType::Bat => ai_bat(enemy, px, py),
-                EnemyType::Darknut => ai_darknut(enemy, &self.world, px, py),
-                EnemyType::Boss => shots.extend(ai_boss(enemy, &self.world, px, py)),
+                EnemyType::Shriekwing => {
+                    shots.extend(ai_shriekwing(enemy, &self.world, px, py));
+                }
+                EnemyType::Ironmaw => {
+                    shots.extend(ai_ironmaw(enemy, &self.world, px, py));
+                }
+                EnemyType::Boss => {
+                    let (boss_shots, boss_spawns) = ai_boss(enemy, &self.world, px, py);
+                    shots.extend(boss_shots);
+                    mini_spawns.extend(boss_spawns);
+                }
             }
         }
-        for (x, y, dx, dy) in shots {
-            self.spawn_projectile(x, y, dx, dy, true);
+        for (x, y, dx, dy, kind) in shots {
+            self.spawn_projectile_kind(x, y, dx, dy, true, kind);
+        }
+        // Boss summon phase: spawn mini-splorts
+        for (sx, sy) in mini_spawns {
+            self.spawn_mini_splort(sx, sy);
         }
         self.enemies.retain(|enemy| enemy.active);
     }
+
 
     fn update_items(&mut self) {
         for pickup in &mut self.pickups {
@@ -2474,6 +2491,7 @@ impl Game {
             if let Some(enemy) = self.enemies.iter().find(|enemy| {
                 enemy.active
                     && enemy.hurt_timer <= 0
+                    && !enemy.buried // Borespat underground can't hurt you
                     && player_rect.overlaps(&Rect::new(enemy.x, enemy.y, enemy.w, enemy.h))
             }) {
                 let dx = self.player.x - enemy.x;
@@ -2545,6 +2563,28 @@ impl Game {
         if index >= self.enemies.len() || self.enemies[index].hurt_timer > 0 {
             return;
         }
+        let enemy = &self.enemies[index];
+        // Borespat: invulnerable while buried underground
+        if enemy.buried {
+            return;
+        }
+        // Ironmaw: frontal shield — blocks damage from the direction it's facing
+        if enemy.enemy_type == EnemyType::Ironmaw {
+            let blocked = match enemy.dir {
+                Dir::Up => knock_dir == Dir::Down,    // facing up, attacked from above
+                Dir::Down => knock_dir == Dir::Up,    // facing down, attacked from below
+                Dir::Left => knock_dir == Dir::Right, // facing left, attacked from the left
+                Dir::Right => knock_dir == Dir::Left, // facing right, attacked from the right
+            };
+            if blocked {
+                // Shield clank — knockback the enemy slightly but no damage
+                let enemy = &mut self.enemies[index];
+                enemy.hurt_timer = 8;
+                enemy.flash_timer = 8;
+                self.audio.player_hit(); // clank sound
+                return;
+            }
+        }
         let enemy = &mut self.enemies[index];
         enemy.hp -= amount;
         enemy.hurt_timer = 20;
@@ -2571,6 +2611,12 @@ impl Game {
             y: enemy.y + enemy.h / 2.0,
             timer: 20,
         });
+        // Splort split: non-mini splorts spawn 2 mini-splorts on death
+        if enemy.enemy_type == EnemyType::Splort && !enemy.is_mini {
+            let offset = TILE * 0.6;
+            self.spawn_mini_splort(enemy.x - offset, enemy.y);
+            self.spawn_mini_splort(enemy.x + offset, enemy.y);
+        }
         let roll = rand::gen_range(0.0, 1.0);
         match enemy.enemy_type {
             EnemyType::Boss => {
@@ -3187,6 +3233,7 @@ impl Game {
         self.player.hurt_timer = 0;
         self.player.knock_dx = 0.0;
         self.player.knock_dy = 0.0;
+        self.player.stun_timer = 0;
         self.player.last_axis = None;
         self.blocked_interaction = None;
         self.play_screen_music();
@@ -3627,6 +3674,10 @@ impl Game {
     }
 
     fn spawn_projectile(&mut self, x: f32, y: f32, dx: f32, dy: f32, from_enemy: bool) {
+        self.spawn_projectile_kind(x, y, dx, dy, from_enemy, ProjectileKind::Fireball);
+    }
+
+    fn spawn_projectile_kind(&mut self, x: f32, y: f32, dx: f32, dy: f32, from_enemy: bool, kind: ProjectileKind) {
         self.projectiles.push(Projectile {
             x,
             y,
@@ -3637,6 +3688,36 @@ impl Game {
             from_enemy,
             active: true,
             timer: 120,
+            kind,
+        });
+    }
+
+    /// Spawn a mini-splort (from boss summon or splort death split)
+    fn spawn_mini_splort(&mut self, x: f32, y: f32) {
+        let ecfg = &crate::config::get().enemies;
+        self.enemies.push(Enemy {
+            enemy_type: EnemyType::Splort,
+            x,
+            y,
+            w: px(8.0),
+            h: px(8.0),
+            hp: 1,
+            max_hp: 1,
+            speed: ecfg.splort.speed * PIXEL_SCALE * 1.6,
+            dir: Dir::Down,
+            move_timer: 10 + rand::gen_range(0, 20),
+            hurt_timer: 0,
+            knock_x: 0.0,
+            knock_y: 0.0,
+            flash_timer: 0,
+            shoot_cooldown: 0,
+            active: true,
+            timer: 0,
+            vx: 0.0,
+            vy: 0.0,
+            ai_state: 0,
+            is_mini: true,
+            buried: false,
         });
     }
 }
@@ -3644,30 +3725,30 @@ impl Game {
 fn create_enemy(spawn: EnemySpawn) -> Enemy {
     let ecfg = &crate::config::get().enemies;
     let (hp, speed, w, h, shoot_cooldown) = match spawn.enemy_type {
-        EnemyType::Slime => (
-            ecfg.slime.hp,
-            ecfg.slime.speed * PIXEL_SCALE,
+        EnemyType::Splort => (
+            ecfg.splort.hp,
+            ecfg.splort.speed * PIXEL_SCALE,
             px(12.0),
             px(12.0),
             0,
         ),
-        EnemyType::Octorok => (
-            ecfg.octorok.hp,
-            ecfg.octorok.speed * PIXEL_SCALE,
+        EnemyType::Borespat => (
+            ecfg.borespat.hp,
+            ecfg.borespat.speed * PIXEL_SCALE,
             px(14.0),
             px(14.0),
             120,
         ),
-        EnemyType::Bat => (
-            ecfg.bat.hp,
-            ecfg.bat.speed * PIXEL_SCALE,
+        EnemyType::Shriekwing => (
+            ecfg.shriekwing.hp,
+            ecfg.shriekwing.speed * PIXEL_SCALE,
             px(10.0),
             px(10.0),
             0,
         ),
-        EnemyType::Darknut => (
-            ecfg.darknut.hp,
-            ecfg.darknut.speed * PIXEL_SCALE,
+        EnemyType::Ironmaw => (
+            ecfg.ironmaw.hp,
+            ecfg.ironmaw.speed * PIXEL_SCALE,
             px(14.0),
             px(14.0),
             0,
@@ -3700,6 +3781,9 @@ fn create_enemy(spawn: EnemySpawn) -> Enemy {
         timer: 0,
         vx: 0.0,
         vy: 0.0,
+        ai_state: 0,
+        is_mini: false,
+        buried: false,
     }
 }
 
@@ -3747,326 +3831,310 @@ fn move_enemy(enemy: &mut Enemy, world: &World) {
     }
 }
 
-fn ai_slime(enemy: &mut Enemy, world: &World) {
-    // Slime: Slow movement, then sudden jump charge
+/// Splort AI: HOPS in discrete jumps toward the player.
+/// SPLITS into 2 mini-splorts on death (handled in on_enemy_death).
+/// Mini-splorts are smaller, faster, 1HP, and don't split again.
+fn ai_splort(enemy: &mut Enemy, world: &World, player_x: f32, player_y: f32) {
+    // ai_state 0 = sitting, 1 = mid-hop (airborne), 2 = landing cooldown
     enemy.move_timer -= 1;
-    
-    // State 0: Slow, idle movement
-    // State 1: Windup for charge
-    // State 2: Charging forward
-    let state = (enemy.timer / 30) % 3;
-    
-    if enemy.move_timer <= 0 {
-        match state {
-            0 => {
-                // Idle state - 30% chance to stop
-                enemy.dir = random_dir();
-                enemy.move_timer = 30 + rand::gen_range(0, 60);
-                if rand::gen_range(0.0, 1.0) < 0.3 {
-                    return;
+    let dx = player_x - enemy.x;
+    let dy = player_y - enemy.y;
+
+    match enemy.ai_state {
+        0 => {
+            // Sitting still — face the player, wait for hop timer
+            enemy.dir = facing_dir(dx, dy);
+            enemy.vx = 0.0;
+            enemy.vy = 0.0;
+            if enemy.move_timer <= 0 {
+                let dist = vec2(dx, dy).length();
+                if dist > 0.0 {
+                    let hop_speed = if enemy.is_mini { enemy.speed * 5.0 } else { enemy.speed * 3.5 };
+                    let hop_frames = if enemy.is_mini { 8 } else { 12 };
+                    enemy.vx = dx / dist * hop_speed;
+                    enemy.vy = dy / dist * hop_speed;
+                    enemy.ai_state = 1;
+                    enemy.move_timer = hop_frames;
                 }
             }
-            1 => {
-                // Windup - choose direction toward player if close enough
-                enemy.move_timer = 20;
-                if rand::gen_range(0.0, 1.0) < 0.5 {
-                    enemy.dir = random_dir();
-                }
+        }
+        1 => {
+            // Mid-hop — move in the locked direction
+            let margin = TILE;
+            let nx = enemy.x + enemy.vx;
+            let ny = enemy.y + enemy.vy;
+            if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
+                enemy.x = nx;
             }
-            _ => {
-                // Charge state - move quickly in chosen direction
-                enemy.move_timer = 40;
+            if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
+                enemy.y = ny;
+            }
+            if enemy.move_timer <= 0 {
+                enemy.vx = 0.0;
+                enemy.vy = 0.0;
+                enemy.ai_state = 2;
+                enemy.move_timer = 8;
             }
         }
-    }
-    
-    // Apply movement based on state
-    if state == 2 {
-        // Charge: move at 1.5x speed
-        let scaled = enemy.speed * 0.6 * 1.5;
-        let (mut dx, mut dy) = (0.0, 0.0);
-        match enemy.dir {
-            Dir::Up => dy = -scaled * 0.3,
-            Dir::Down => dy = scaled,
-            Dir::Left => dx = -scaled,
-            Dir::Right => dx = scaled,
+        _ => {
+            // Landing cooldown
+            if enemy.move_timer <= 0 {
+                enemy.ai_state = 0;
+                let wait = if enemy.is_mini { 20 + rand::gen_range(0, 15) } else { 45 + rand::gen_range(0, 30) };
+                enemy.move_timer = wait;
+            }
         }
-        let nx = enemy.x + dx;
-        let ny = enemy.y + dy;
-        let margin = TILE;
-        if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
-            enemy.x = nx;
-        }
-        if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
-            enemy.y = ny;
-        }
-    } else {
-        move_enemy(enemy, world);
     }
 }
 
-fn ai_octorok(
+/// Borespat AI: BURROWING SNIPER. Surfaces -> aims -> fires single rock -> burrows underground.
+/// While buried: invulnerable (handled in damage_enemy), invisible (handled in draw_enemy).
+/// Pops up at random location (away from player) after delay.
+fn ai_borespat(
     enemy: &mut Enemy,
     world: &World,
     player_x: f32,
     player_y: f32,
-) -> Option<(f32, f32, f32, f32)> {
-    // Octorok: Ranged attacker with occasional teleport-dash for repositioning
+) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
+    let mut shots = vec![];
+    enemy.move_timer -= 1;
+    // ai_state: 0 = surfaced (aiming), 1 = buried (underground)
+    match enemy.ai_state {
+        0 => {
+            // Surfaced — face the player, shoot when cooldown expires, don't move
+            let dx = player_x - enemy.x;
+            let dy = player_y - enemy.y;
+            enemy.dir = facing_dir(dx, dy);
+            enemy.buried = false;
+            enemy.shoot_cooldown -= 1;
+            if enemy.shoot_cooldown <= 0 {
+                let dist = vec2(dx, dy).length();
+                if dist > 0.0 {
+                    let angle = dy.atan2(dx);
+                    shots.push((
+                        enemy.x + enemy.w / 2.0 - px(3.0),
+                        enemy.y + enemy.h / 2.0 - px(3.0),
+                        angle.cos() * 0.5 * PIXEL_SCALE,
+                        angle.sin() * 0.5 * PIXEL_SCALE,
+                        ProjectileKind::Rock,
+                    ));
+                }
+                // Burrow after shooting
+                enemy.ai_state = 1;
+                enemy.buried = true;
+                enemy.move_timer = 90 + rand::gen_range(0, 50);
+            }
+        }
+        _ => {
+            // Buried — invisible, invulnerable, waiting to pop up
+            enemy.buried = true;
+            if enemy.move_timer <= 0 {
+                // Pop up at a random location (not near player)
+                let mut tries = 0;
+                loop {
+                    let rx = TILE * 2.0 + rand::gen_range(0.0, GAME_W - TILE * 4.0);
+                    let ry = TILE * 2.0 + rand::gen_range(0.0, GAME_H - TILE * 4.0);
+                    let dist_to_player = vec2(player_x - rx, player_y - ry).length();
+                    tries += 1;
+                    if (dist_to_player > TILE * 3.0 && !world.collides(rx, ry, enemy.w, enemy.h)) || tries > 20 {
+                        enemy.x = rx;
+                        enemy.y = ry;
+                        break;
+                    }
+                }
+                enemy.ai_state = 0;
+                enemy.buried = false;
+                enemy.shoot_cooldown = 60 + rand::gen_range(0, 30);
+            }
+        }
+    }
+    shots
+}
+
+/// Shriekwing AI: IGNORES WALLS. Flies through everything in erratic sine-wave patterns.
+/// Periodically dive-bombs toward the player at high speed.
+/// Cannot be avoided by hiding behind obstacles.
+fn ai_shriekwing(enemy: &mut Enemy, _world: &World, player_x: f32, player_y: f32) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
+    // ai_state 0 = erratic flight, 1 = dive-bombing
+    enemy.move_timer -= 1;
+
+    match enemy.ai_state {
+        0 => {
+            // Erratic sine-wave flight — ignores walls entirely
+            let t = enemy.timer as f32 * 0.08;
+            let dx = player_x - enemy.x;
+            let dy = player_y - enemy.y;
+            let dist = vec2(dx, dy).length();
+            if dist > 0.0 {
+                let base_angle = dy.atan2(dx);
+                let wobble = (t * 2.7).sin() * 1.2 + (t * 4.3).cos() * 0.6;
+                let angle = base_angle + wobble;
+                let spd = enemy.speed * 1.2;
+                enemy.vx = angle.cos() * spd;
+                enemy.vy = angle.sin() * spd;
+            }
+            if enemy.move_timer <= 0 {
+                // Start a dive-bomb
+                enemy.ai_state = 1;
+                let dx = player_x - enemy.x;
+                let dy = player_y - enemy.y;
+                let dist = vec2(dx, dy).length();
+                if dist > 0.0 {
+                    enemy.vx = dx / dist * enemy.speed * 4.0;
+                    enemy.vy = dy / dist * enemy.speed * 4.0;
+                }
+                enemy.move_timer = 15;
+            }
+        }
+        _ => {
+            // Dive-bombing — fast straight line
+            if enemy.move_timer < 5 {
+                enemy.vx *= 0.8;
+                enemy.vy *= 0.8;
+            }
+            if enemy.move_timer <= 0 {
+                enemy.ai_state = 0;
+                enemy.move_timer = 60 + rand::gen_range(0, 50);
+            }
+        }
+    }
+    // NO wall collision — flies through everything
+    enemy.x = (enemy.x + enemy.vx).clamp(px(2.0), GAME_W - px(2.0) - enemy.w);
+    enemy.y = (enemy.y + enemy.vy).clamp(px(2.0), GAME_H - px(2.0) - enemy.h);
+    vec![]
+}
+
+/// Ironmaw AI: FRONTAL SHIELD blocks all damage from the direction it faces
+/// (handled in damage_enemy). Walks deliberately toward the player.
+/// Periodically thrusts sword — fires a spike projectile at melee range.
+/// Player must circle behind to deal damage.
+fn ai_ironmaw(
+    enemy: &mut Enemy,
+    world: &World,
+    player_x: f32,
+    player_y: f32,
+) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
+    let mut shots = vec![];
     enemy.move_timer -= 1;
     enemy.shoot_cooldown -= 1;
-    
-    // Every 150 frames, attempt a teleport-dash to reposition
-    let should_teleport = enemy.timer % 180 == 0 && rand::gen_range(0.0, 1.0) < 0.4;
-    
-    if should_teleport {
-        // Teleport to a new location 2-3 tiles away
-        let angle: f32 = rand::gen_range(0.0, 6.28);
-        let dist = px(32.0) + rand::gen_range(0.0, px(20.0));
-        let new_x = (enemy.x + angle.cos() * dist).clamp(TILE, GAME_W - TILE - enemy.w);
-        let new_y = (enemy.y + angle.sin() * dist).clamp(TILE, GAME_H - TILE - enemy.h);
-        if !world.collides(new_x, new_y, enemy.w, enemy.h) {
-            enemy.x = new_x;
-            enemy.y = new_y;
-            enemy.move_timer = 20;
-        }
-    }
-    
-    if enemy.shoot_cooldown <= 0 {
-        let dx = player_x - enemy.x;
-        let dy = player_y - enemy.y;
-        let dist = vec2(dx, dy).length();
-        enemy.shoot_cooldown = 150 + rand::gen_range(0, 90);
-        enemy.move_timer = 30;
-        if dist > 0.0 && dist < px(100.0) {
-            return Some((
-                enemy.x + enemy.w / 2.0 - px(3.0),
-                enemy.y + enemy.h / 2.0 - px(3.0),
-                dx / dist * 0.4 * PIXEL_SCALE,
-                dy / dist * 0.4 * PIXEL_SCALE,
-            ));
-        }
-    }
-    if enemy.move_timer <= 0 {
-        enemy.dir = random_dir();
-        enemy.move_timer = 40 + rand::gen_range(0, 40);
-    }
-    move_enemy(enemy, world);
-    None
-}
+    let dx = player_x - enemy.x;
+    let dy = player_y - enemy.y;
 
-fn ai_bat(enemy: &mut Enemy, px: f32, py: f32) {
-    // Bat: Erratic jumping patterns with occasional dash attacks
-    enemy.move_timer -= 1;
-    
-    // Periodic dash attack toward player
-    let should_dash = enemy.timer % 120 == 0 && rand::gen_range(0.0, 1.0) < 0.5;
-    
-    if should_dash {
-        // High-speed dash toward player
-        let dx = px - enemy.x;
-        let dy = py - enemy.y;
-        let dist = vec2(dx, dy).length();
-        if dist > 0.0 {
-            enemy.vx = dx / dist * enemy.speed * 1.8;
-            enemy.vy = dy / dist * enemy.speed * 1.8;
-        }
-        enemy.move_timer = 15;
-    } else if enemy.move_timer <= 0 {
-        // Erratic movement with noise
-        let dx = px - enemy.x + rand::gen_range(-60.0, 60.0);
-        let dy = py - enemy.y + rand::gen_range(-60.0, 60.0);
-        let dist = vec2(dx, dy).length();
-        if dist > 0.0 {
-            enemy.vx = dx / dist * enemy.speed;
-            enemy.vy = dy / dist * enemy.speed;
-        }
-        enemy.move_timer = 20 + rand::gen_range(0, 30);
-    }
-    
-    enemy.x = (enemy.x + enemy.vx).clamp(TILE, GAME_W - TILE - enemy.w);
-    enemy.y = (enemy.y + enemy.vy).clamp(TILE, GAME_H - TILE - enemy.h);
-}
-
-fn ai_darknut(enemy: &mut Enemy, world: &World, px: f32, py: f32) {
-    // Darknut: Charge & stun attack - slow approach then sudden dash
-    enemy.move_timer -= 1;
-    
-    // State machine: 0=Normal, 1=Windup, 2=Charging
-    let phase = (enemy.timer / 60) % 3;
-    
-    if enemy.move_timer <= 0 {
-        let dx = px - enemy.x;
-        let dy = py - enemy.y;
-        let _dist = vec2(dx, dy).length();
-        
-        // Choose direction toward player
-        enemy.dir = if dx.abs() > dy.abs() {
-            if dx > 0.0 { Dir::Right } else { Dir::Left }
-        } else if dy > 0.0 {
-            Dir::Down
-        } else {
-            Dir::Up
-        };
-        
-        match phase {
-            1 => {
-                // Windup - slower movement
-                enemy.move_timer = 40;
+    // ai_state 0 = walking, 1 = sword thrust windup, 2 = recovery
+    match enemy.ai_state {
+        0 => {
+            // Walk toward player, always facing them
+            enemy.dir = facing_dir(dx, dy);
+            let dist = vec2(dx, dy).length();
+            if dist > 0.0 {
+                enemy.vx = dx / dist * enemy.speed * 0.5;
+                enemy.vy = dy / dist * enemy.speed * 0.5;
             }
-            2 => {
-                // Charge - fast dash toward player
-                enemy.move_timer = 30;
+            move_enemy(enemy, world);
+            // Sword thrust when close
+            if enemy.shoot_cooldown <= 0 && dist < TILE * 3.0 {
+                enemy.ai_state = 1;
+                enemy.move_timer = 20;
+                enemy.vx = 0.0;
+                enemy.vy = 0.0;
             }
-            _ => {
-                // Normal movement
-                enemy.move_timer = 15 + rand::gen_range(0, 20);
+        }
+        1 => {
+            // Windup — stand still, locked direction
+            if enemy.move_timer <= 0 {
+                let cx = enemy.x + enemy.w / 2.0;
+                let cy = enemy.y + enemy.h / 2.0;
+                let spd = 0.6 * PIXEL_SCALE;
+                let (sdx, sdy) = match enemy.dir {
+                    Dir::Up => (0.0, -spd),
+                    Dir::Down => (0.0, spd),
+                    Dir::Left => (-spd, 0.0),
+                    Dir::Right => (spd, 0.0),
+                };
+                shots.push((cx - px(3.0), cy - px(3.0), sdx, sdy, ProjectileKind::Spike));
+                enemy.ai_state = 2;
+                enemy.move_timer = 15;
+            }
+        }
+        _ => {
+            // Recovery — briefly stunned after thrust
+            if enemy.move_timer <= 0 {
+                enemy.ai_state = 0;
+                enemy.shoot_cooldown = 80 + rand::gen_range(0, 40);
             }
         }
     }
-    
-    // Apply movement with phase modulation
-    if phase == 2 {
-        // Charge attack: 1.6x speed
-        let mut dx = 0.0;
-        let mut dy = 0.0;
-        let scaled = enemy.speed * 0.6 * 1.6;
-        match enemy.dir {
-            Dir::Up => dy = -scaled * 0.3,
-            Dir::Down => dy = scaled,
-            Dir::Left => dx = -scaled,
-            Dir::Right => dx = scaled,
-        }
-        let nx = enemy.x + dx;
-        let ny = enemy.y + dy;
-        let margin = TILE;
-        if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
-            enemy.x = nx;
-        } else {
-            enemy.move_timer = 0;
-        }
-        if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
-            enemy.y = ny;
-        } else {
-            enemy.move_timer = 0;
-        }
-    } else if phase != 1 {
-        move_enemy(enemy, world);
-    }
-    // During windup phase (1), don't move
+    shots
 }
 
+/// Boss AI: MULTI-PHASE SUMMONER with three distinct attack phases.
+/// Phase 0: Aimed 3-shot fireball spread
+/// Phase 1: 8-direction ring blast
+/// Phase 2: Summons 2 mini-splorts as reinforcements
 fn ai_boss(
     enemy: &mut Enemy,
     world: &World,
     player_x: f32,
     player_y: f32,
-) -> Vec<(f32, f32, f32, f32)> {
-    // Boss: Multi-phase attack with charging, teleporting, and projectiles
+) -> (Vec<(f32, f32, f32, f32, ProjectileKind)>, Vec<(f32, f32)>) {
     let mut shots = vec![];
+    let mut spawns = vec![];
     enemy.move_timer -= 1;
     enemy.shoot_cooldown -= 1;
-    
-    // HP-based phase progression
-    let hp_percent = (enemy.hp as f32) / (enemy.max_hp as f32);
-    let phase = if hp_percent > 0.66 { 0 } else if hp_percent > 0.33 { 1 } else { 2 };
-    
-    // Phase 0: Normal ranged attacks with movement
-    // Phase 1: Add occasional charging behavior
-    // Phase 2: Aggressive - frequent charges and teleports
-    
     if enemy.shoot_cooldown <= 0 {
-        let base_angle = (player_y - enemy.y).atan2(player_x - enemy.x);
-        match phase {
+        let cx = enemy.x + enemy.w / 2.0 - px(3.0);
+        let cy = enemy.y + enemy.h / 2.0 - px(3.0);
+        match enemy.ai_state {
             0 => {
-                // Standard 3-shot spread
+                // Aimed spread — fireballs
+                let base_angle = (player_y - enemy.y).atan2(player_x - enemy.x);
                 for offset in [-0.3f32, 0.0, 0.3] {
                     let angle = base_angle + offset;
-                    shots.push((
-                        enemy.x + enemy.w / 2.0 - px(3.0),
-                        enemy.y + enemy.h / 2.0 - px(3.0),
-                        angle.cos() * 0.35 * PIXEL_SCALE,
-                        angle.sin() * 0.35 * PIXEL_SCALE,
-                    ));
+                    shots.push((cx, cy, angle.cos() * 0.35 * PIXEL_SCALE, angle.sin() * 0.35 * PIXEL_SCALE, ProjectileKind::Fireball));
                 }
-                enemy.shoot_cooldown = 140 + rand::gen_range(0, 80);
+                enemy.ai_state = 1;
             }
             1 => {
-                // Wider spread - 5 shots
-                for offset in [-0.5f32, -0.25, 0.0, 0.25, 0.5] {
-                    let angle = base_angle + offset;
-                    shots.push((
-                        enemy.x + enemy.w / 2.0 - px(3.0),
-                        enemy.y + enemy.h / 2.0 - px(3.0),
-                        angle.cos() * 0.35 * PIXEL_SCALE,
-                        angle.sin() * 0.35 * PIXEL_SCALE,
-                    ));
+                // Ring blast — 8 ring projectiles in all directions
+                for i in 0..8 {
+                    let angle = (i as f32) * std::f32::consts::TAU / 8.0;
+                    shots.push((cx, cy, angle.cos() * 0.3 * PIXEL_SCALE, angle.sin() * 0.3 * PIXEL_SCALE, ProjectileKind::Ring));
                 }
-                enemy.shoot_cooldown = 120 + rand::gen_range(0, 60);
+                enemy.ai_state = 2;
             }
             _ => {
-                // Dense spread - 7 shots
-                for offset in [-0.6f32, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6] {
-                    let angle = base_angle + offset;
-                    shots.push((
-                        enemy.x + enemy.w / 2.0 - px(3.0),
-                        enemy.y + enemy.h / 2.0 - px(3.0),
-                        angle.cos() * 0.35 * PIXEL_SCALE,
-                        angle.sin() * 0.35 * PIXEL_SCALE,
+                // Summon phase — spawn 2 mini-splorts near the boss
+                for _ in 0..2 {
+                    let sx = enemy.x + rand::gen_range(-TILE, TILE * 2.0);
+                    let sy = enemy.y + rand::gen_range(-TILE, TILE * 2.0);
+                    spawns.push((
+                        sx.clamp(TILE, GAME_W - TILE * 2.0),
+                        sy.clamp(TILE, GAME_H - TILE * 2.0),
                     ));
                 }
-                enemy.shoot_cooldown = 100 + rand::gen_range(0, 50);
+                enemy.ai_state = 0;
             }
         }
+        enemy.shoot_cooldown = 120 + rand::gen_range(0, 60);
     }
-    
-    // Teleport in phase 2
-    if phase == 2 && enemy.timer % 200 == 0 && rand::gen_range(0.0, 1.0) < 0.4 {
-        let angle: f32 = rand::gen_range(0.0, 6.28);
-        let dist = px(48.0) + rand::gen_range(0.0, px(20.0));
-        let new_x = (enemy.x + angle.cos() * dist).clamp(TILE * 2.0, GAME_W - TILE * 2.0 - enemy.w);
-        let new_y = (enemy.y + angle.sin() * dist).clamp(TILE * 2.0, GAME_H - TILE * 2.0 - enemy.h);
-        if !world.collides(new_x, new_y, enemy.w, enemy.h) {
-            enemy.x = new_x;
-            enemy.y = new_y;
-            enemy.move_timer = 20;
-        }
-    }
-    
-    // Charge behavior in phases 1 and 2
-    let should_charge = (phase > 0) && (enemy.timer % 150 == 0) && rand::gen_range(0.0, 1.0) < if phase == 2 { 0.6 } else { 0.3 };
-    
-    if should_charge {
-        let dx = player_x - enemy.x;
-        let dy = player_y - enemy.y;
-        let dist = vec2(dx, dy).length();
-        if dist > 0.0 {
-            enemy.vx = dx / dist * enemy.speed * 1.4;
-            enemy.vy = dy / dist * enemy.speed * 1.4;
-        }
-        enemy.move_timer = 25;
-    } else if enemy.move_timer <= 0 {
-        let dx = player_x - enemy.x + rand::gen_range(-30.0, 30.0);
-        let dy = player_y - enemy.y + rand::gen_range(-30.0, 30.0);
-        enemy.dir = if dx.abs() > dy.abs() {
-            if dx > 0.0 { Dir::Right } else { Dir::Left }
-        } else if dy > 0.0 {
-            Dir::Down
-        } else {
-            Dir::Up
-        };
+    if enemy.move_timer <= 0 {
+        let ndx = player_x - enemy.x + rand::gen_range(-30.0, 30.0);
+        let ndy = player_y - enemy.y + rand::gen_range(-30.0, 30.0);
+        enemy.dir = facing_dir(ndx, ndy);
         enemy.move_timer = 30 + rand::gen_range(0, 40);
     }
-    
-    // Apply movement based on charge state
-    if should_charge {
-        let margin = TILE * 2.0;
-        enemy.x = (enemy.x + enemy.vx).clamp(margin, GAME_W - margin - enemy.w);
-        enemy.y = (enemy.y + enemy.vy).clamp(margin, GAME_H - margin - enemy.h);
+    move_enemy(enemy, world);
+    (shots, spawns)
+}
+
+fn facing_dir(dx: f32, dy: f32) -> Dir {
+    if dx.abs() > dy.abs() {
+        if dx > 0.0 { Dir::Right } else { Dir::Left }
+    } else if dy > 0.0 {
+        Dir::Down
     } else {
-        move_enemy(enemy, world);
+        Dir::Up
     }
-    
-    shots
 }
 
 fn start_pressed() -> bool {

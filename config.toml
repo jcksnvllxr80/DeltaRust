@@ -37,19 +37,19 @@ full_hearts = false         # start with maximum hearts
 # enemy_heart_drop_chance = 0.25  # 0.0 – 1.0
 # pickup_lifetime_frames  = 600   # frames before ground pickups despawn
 
-[enemies.slime]
+[enemies.splort]
 # hp    = 1
 # speed = 0.4
 
-[enemies.octorok]
+[enemies.borespat]
 # hp    = 2
 # speed = 0.6
 
-[enemies.bat]
+[enemies.shriekwing]
 # hp    = 1
 # speed = 0.4
 
-[enemies.darknut]
+[enemies.ironmaw]
 # hp    = 3
 # speed = 0.7
 

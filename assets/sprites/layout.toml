@@ -34,7 +34,7 @@ up = [
 [enemies]
 sheet = "enemies.png"
 
-[enemies.slime]
+[enemies.splort]
 frame_time = 18
 dest_scale = 3.0
 frames = [
@@ -42,7 +42,7 @@ frames = [
   { x = 16, y = 0, w = 16, h = 16 },
 ]
 
-[enemies.octorok]
+[enemies.borespat]
 frame_time = 16
 dest_scale = 3.0
 frames = [
@@ -50,7 +50,7 @@ frames = [
   { x = 16, y = 16, w = 16, h = 16 },
 ]
 
-[enemies.bat]
+[enemies.shriekwing]
 frame_time = 8
 dest_scale = 3.0
 frames = [
@@ -58,7 +58,7 @@ frames = [
   { x = 16, y = 32, w = 16, h = 16 },
 ]
 
-[enemies.darknut]
+[enemies.ironmaw]
 frame_time = 16
 dest_scale = 3.0
 frames = [

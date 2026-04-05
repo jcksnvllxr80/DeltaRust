@@ -3,7 +3,7 @@ use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_
 use crate::game::InventoryTab;
 use crate::model::{
     Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, Gnome, InventoryEntry,
-    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, PropKind,
+    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind, PropKind,
     ShopItem, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::save::SaveSlotSummary;
@@ -2453,6 +2453,17 @@ fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
 }
 
 fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
+    // Borespat: invisible when buried underground
+    if enemy.buried {
+        // Draw a small dirt mound hint so player knows it exists
+        let x = enemy.x.round();
+        let y = enemy.y.round() + HUD_H;
+        let cx = x + enemy.w / 2.0;
+        let cy = y + enemy.h / 2.0;
+        draw_circle(cx, cy + px(2.0), px(4.0), color_u8!(90, 70, 50, 80));
+        draw_circle(cx, cy + px(1.0), px(2.5), color_u8!(110, 85, 60, 60));
+        return;
+    }
     let x = enemy.x.round();
     let y = enemy.y.round() + HUD_H;
     if enemy.flash_timer > 0 && (enemy.flash_timer / 2) % 2 == 0 {
@@ -2460,11 +2471,22 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
         return;
     }
     if sprites.draw_enemy(theme_id, enemy, x, y) {
+        // Ironmaw: draw shield overlay even when using sprites
+        if enemy.enemy_type == EnemyType::Ironmaw {
+            draw_ironmaw_shield(x, y, enemy);
+        }
         return;
     }
     let outline = color_u8!(18, 18, 24, 255);
     match enemy.enemy_type {
-        EnemyType::Slime => {
+        EnemyType::Splort => {
+            // Mini-splorts are drawn smaller
+            if enemy.is_mini {
+                draw_rectangle(x + px(1.0), y + px(2.0), px(6.0), px(4.0), outline);
+                draw_rectangle(x + px(2.0), y + px(3.0), px(4.0), px(2.0), color_u8!(120, 245, 128, 255));
+                draw_rectangle(x + px(2.0), y + px(1.0), px(4.0), px(3.0), color_u8!(150, 255, 160, 255));
+                return;
+            }
             draw_rectangle(x + px(1.0), y + px(6.0), px(10.0), px(5.0), outline);
             draw_rectangle(
                 x + px(2.0),
@@ -2483,7 +2505,7 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
             draw_rectangle(x + px(4.0), y + px(7.0), px(1.0), px(1.0), outline);
             draw_rectangle(x + px(7.0), y + px(7.0), px(1.0), px(1.0), outline);
         }
-        EnemyType::Octorok => {
+        EnemyType::Borespat => {
             draw_rectangle(x + px(2.0), y + px(3.0), px(10.0), px(9.0), outline);
             draw_rectangle(
                 x + px(3.0),
@@ -2518,7 +2540,7 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
             draw_rectangle(x + px(5.0), y + px(7.0), px(1.0), px(1.0), outline);
             draw_rectangle(x + px(8.0), y + px(7.0), px(1.0), px(1.0), outline);
         }
-        EnemyType::Bat => {
+        EnemyType::Shriekwing => {
             let flap = if (enemy.timer / 8) % 2 == 0 {
                 px(1.0)
             } else {
@@ -2546,7 +2568,7 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
             draw_rectangle(x + px(4.0), y + px(5.0), px(1.0), px(1.0), RED);
             draw_rectangle(x + px(6.0), y + px(5.0), px(1.0), px(1.0), RED);
         }
-        EnemyType::Darknut => {
+        EnemyType::Ironmaw => {
             draw_rectangle(x + px(2.0), y + px(2.0), px(10.0), px(12.0), outline);
             draw_rectangle(
                 x + px(3.0),
@@ -2563,23 +2585,8 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
                 color_u8!(110, 126, 188, 255),
             );
             draw_rectangle(x + px(5.0), y + px(5.0), px(4.0), px(2.0), outline);
-            match enemy.dir {
-                Dir::Left => draw_rectangle(
-                    x + px(1.0),
-                    y + px(5.0),
-                    px(2.0),
-                    px(6.0),
-                    color_u8!(88, 98, 160, 255),
-                ),
-                Dir::Right => draw_rectangle(
-                    x + px(11.0),
-                    y + px(5.0),
-                    px(2.0),
-                    px(6.0),
-                    color_u8!(88, 98, 160, 255),
-                ),
-                _ => {}
-            }
+            // Draw shield on the faced direction
+            draw_ironmaw_shield(x, y, enemy);
         }
         EnemyType::Boss => {
             draw_rectangle(x + px(2.0), y + px(3.0), px(20.0), px(19.0), outline);
@@ -2613,6 +2620,30 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
             draw_rectangle(x + px(14.0), y + px(5.0), px(3.0), px(2.0), YELLOW);
             draw_rectangle(x + px(9.0), y + px(6.0), px(1.0), px(1.0), outline);
             draw_rectangle(x + px(15.0), y + px(6.0), px(1.0), px(1.0), outline);
+        }
+    }
+}
+
+/// Draw the Ironmaw's directional shield — a bright metallic bar on the direction it faces
+fn draw_ironmaw_shield(x: f32, y: f32, enemy: &Enemy) {
+    let shield_color = color_u8!(200, 210, 230, 220);
+    let shield_edge = color_u8!(160, 170, 195, 200);
+    match enemy.dir {
+        Dir::Up => {
+            draw_rectangle(x + px(2.0), y, px(10.0), px(2.0), shield_edge);
+            draw_rectangle(x + px(3.0), y + px(0.5), px(8.0), px(1.0), shield_color);
+        }
+        Dir::Down => {
+            draw_rectangle(x + px(2.0), y + px(12.0), px(10.0), px(2.0), shield_edge);
+            draw_rectangle(x + px(3.0), y + px(12.5), px(8.0), px(1.0), shield_color);
+        }
+        Dir::Left => {
+            draw_rectangle(x, y + px(2.0), px(2.0), px(10.0), shield_edge);
+            draw_rectangle(x + px(0.5), y + px(3.0), px(1.0), px(8.0), shield_color);
+        }
+        Dir::Right => {
+            draw_rectangle(x + px(12.0), y + px(2.0), px(2.0), px(10.0), shield_edge);
+            draw_rectangle(x + px(12.5), y + px(3.0), px(1.0), px(8.0), shield_color);
         }
     }
 }
@@ -2796,17 +2827,48 @@ fn draw_projectiles(sprites: &Sprites, projectiles: &[Projectile]) {
         let x = projectile.x.round();
         let y = projectile.y.round() + HUD_H;
         if !sprites.draw_projectile(projectile, x, y) {
-            draw_rectangle(
-                x,
-                y,
-                projectile.w,
-                projectile.h,
-                if projectile.from_enemy {
-                    ORANGE
-                } else {
-                    SKYBLUE
-                },
-            );
+            let cx = x + projectile.w / 2.0;
+            let cy = y + projectile.h / 2.0;
+            match projectile.kind {
+                ProjectileKind::Fireball => {
+                    // Orange-red circle with yellow core
+                    let r = projectile.w / 2.0;
+                    draw_circle(cx, cy, r, color_u8!(200, 60, 20, 255));
+                    draw_circle(cx, cy, r * 0.5, color_u8!(255, 200, 50, 255));
+                }
+                ProjectileKind::Rock => {
+                    // Gray jagged rock shape (diamond)
+                    let s = projectile.w * 0.4;
+                    draw_triangle(
+                        vec2(cx, cy - s),
+                        vec2(cx - s, cy),
+                        vec2(cx + s, cy),
+                        color_u8!(130, 120, 110, 255),
+                    );
+                    draw_triangle(
+                        vec2(cx - s, cy),
+                        vec2(cx + s, cy),
+                        vec2(cx, cy + s),
+                        color_u8!(100, 90, 80, 255),
+                    );
+                }
+                ProjectileKind::Spike => {
+                    // Thin green spike / thorn
+                    let s = projectile.w * 0.45;
+                    draw_triangle(
+                        vec2(cx, cy - s),
+                        vec2(cx - s * 0.3, cy + s),
+                        vec2(cx + s * 0.3, cy + s),
+                        color_u8!(60, 160, 60, 255),
+                    );
+                }
+                ProjectileKind::Ring => {
+                    // Purple energy ring
+                    let r = projectile.w / 2.0;
+                    draw_circle(cx, cy, r, color_u8!(140, 40, 180, 200));
+                    draw_circle(cx, cy, r * 0.55, color_u8!(20, 10, 30, 255));
+                }
+            }
         }
     }
 }
