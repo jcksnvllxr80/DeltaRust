@@ -3748,15 +3748,61 @@ fn move_enemy(enemy: &mut Enemy, world: &World) {
 }
 
 fn ai_slime(enemy: &mut Enemy, world: &World) {
+    // Slime: Slow movement, then sudden jump charge
     enemy.move_timer -= 1;
+    
+    // State 0: Slow, idle movement
+    // State 1: Windup for charge
+    // State 2: Charging forward
+    let state = (enemy.timer / 30) % 3;
+    
     if enemy.move_timer <= 0 {
-        enemy.dir = random_dir();
-        enemy.move_timer = 30 + rand::gen_range(0, 60);
-        if rand::gen_range(0.0, 1.0) < 0.3 {
-            return;
+        match state {
+            0 => {
+                // Idle state - 30% chance to stop
+                enemy.dir = random_dir();
+                enemy.move_timer = 30 + rand::gen_range(0, 60);
+                if rand::gen_range(0.0, 1.0) < 0.3 {
+                    return;
+                }
+            }
+            1 => {
+                // Windup - choose direction toward player if close enough
+                enemy.move_timer = 20;
+                if rand::gen_range(0.0, 1.0) < 0.5 {
+                    enemy.dir = random_dir();
+                }
+            }
+            _ => {
+                // Charge state - move quickly in chosen direction
+                enemy.move_timer = 40;
+            }
         }
     }
-    move_enemy(enemy, world);
+    
+    // Apply movement based on state
+    if state == 2 {
+        // Charge: move at 1.5x speed
+        let scaled = enemy.speed * 0.6 * 1.5;
+        let (mut dx, mut dy) = (0.0, 0.0);
+        match enemy.dir {
+            Dir::Up => dy = -scaled * 0.3,
+            Dir::Down => dy = scaled,
+            Dir::Left => dx = -scaled,
+            Dir::Right => dx = scaled,
+        }
+        let nx = enemy.x + dx;
+        let ny = enemy.y + dy;
+        let margin = TILE;
+        if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
+            enemy.x = nx;
+        }
+        if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
+            enemy.y = ny;
+        }
+    } else {
+        move_enemy(enemy, world);
+    }
 }
 
 fn ai_octorok(
@@ -3765,8 +3811,26 @@ fn ai_octorok(
     player_x: f32,
     player_y: f32,
 ) -> Option<(f32, f32, f32, f32)> {
+    // Octorok: Ranged attacker with occasional teleport-dash for repositioning
     enemy.move_timer -= 1;
     enemy.shoot_cooldown -= 1;
+    
+    // Every 150 frames, attempt a teleport-dash to reposition
+    let should_teleport = enemy.timer % 180 == 0 && rand::gen_range(0.0, 1.0) < 0.4;
+    
+    if should_teleport {
+        // Teleport to a new location 2-3 tiles away
+        let angle: f32 = rand::gen_range(0.0, 6.28);
+        let dist = px(32.0) + rand::gen_range(0.0, px(20.0));
+        let new_x = (enemy.x + angle.cos() * dist).clamp(TILE, GAME_W - TILE - enemy.w);
+        let new_y = (enemy.y + angle.sin() * dist).clamp(TILE, GAME_H - TILE - enemy.h);
+        if !world.collides(new_x, new_y, enemy.w, enemy.h) {
+            enemy.x = new_x;
+            enemy.y = new_y;
+            enemy.move_timer = 20;
+        }
+    }
+    
     if enemy.shoot_cooldown <= 0 {
         let dx = player_x - enemy.x;
         let dy = player_y - enemy.y;
@@ -3791,10 +3855,26 @@ fn ai_octorok(
 }
 
 fn ai_bat(enemy: &mut Enemy, px: f32, py: f32) {
+    // Bat: Erratic jumping patterns with occasional dash attacks
     enemy.move_timer -= 1;
-    if enemy.move_timer <= 0 {
-        let dx = px - enemy.x + rand::gen_range(-40.0, 40.0);
-        let dy = py - enemy.y + rand::gen_range(-40.0, 40.0);
+    
+    // Periodic dash attack toward player
+    let should_dash = enemy.timer % 120 == 0 && rand::gen_range(0.0, 1.0) < 0.5;
+    
+    if should_dash {
+        // High-speed dash toward player
+        let dx = px - enemy.x;
+        let dy = py - enemy.y;
+        let dist = vec2(dx, dy).length();
+        if dist > 0.0 {
+            enemy.vx = dx / dist * enemy.speed * 1.8;
+            enemy.vy = dy / dist * enemy.speed * 1.8;
+        }
+        enemy.move_timer = 15;
+    } else if enemy.move_timer <= 0 {
+        // Erratic movement with noise
+        let dx = px - enemy.x + rand::gen_range(-60.0, 60.0);
+        let dy = py - enemy.y + rand::gen_range(-60.0, 60.0);
         let dist = vec2(dx, dy).length();
         if dist > 0.0 {
             enemy.vx = dx / dist * enemy.speed;
@@ -3802,15 +3882,24 @@ fn ai_bat(enemy: &mut Enemy, px: f32, py: f32) {
         }
         enemy.move_timer = 20 + rand::gen_range(0, 30);
     }
+    
     enemy.x = (enemy.x + enemy.vx).clamp(TILE, GAME_W - TILE - enemy.w);
     enemy.y = (enemy.y + enemy.vy).clamp(TILE, GAME_H - TILE - enemy.h);
 }
 
 fn ai_darknut(enemy: &mut Enemy, world: &World, px: f32, py: f32) {
+    // Darknut: Charge & stun attack - slow approach then sudden dash
     enemy.move_timer -= 1;
+    
+    // State machine: 0=Normal, 1=Windup, 2=Charging
+    let phase = (enemy.timer / 60) % 3;
+    
     if enemy.move_timer <= 0 {
         let dx = px - enemy.x;
         let dy = py - enemy.y;
+        let _dist = vec2(dx, dy).length();
+        
+        // Choose direction toward player
         enemy.dir = if dx.abs() > dy.abs() {
             if dx > 0.0 { Dir::Right } else { Dir::Left }
         } else if dy > 0.0 {
@@ -3818,9 +3907,52 @@ fn ai_darknut(enemy: &mut Enemy, world: &World, px: f32, py: f32) {
         } else {
             Dir::Up
         };
-        enemy.move_timer = 15 + rand::gen_range(0, 20);
+        
+        match phase {
+            1 => {
+                // Windup - slower movement
+                enemy.move_timer = 40;
+            }
+            2 => {
+                // Charge - fast dash toward player
+                enemy.move_timer = 30;
+            }
+            _ => {
+                // Normal movement
+                enemy.move_timer = 15 + rand::gen_range(0, 20);
+            }
+        }
     }
-    move_enemy(enemy, world);
+    
+    // Apply movement with phase modulation
+    if phase == 2 {
+        // Charge attack: 1.6x speed
+        let mut dx = 0.0;
+        let mut dy = 0.0;
+        let scaled = enemy.speed * 0.6 * 1.6;
+        match enemy.dir {
+            Dir::Up => dy = -scaled * 0.3,
+            Dir::Down => dy = scaled,
+            Dir::Left => dx = -scaled,
+            Dir::Right => dx = scaled,
+        }
+        let nx = enemy.x + dx;
+        let ny = enemy.y + dy;
+        let margin = TILE;
+        if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
+            enemy.x = nx;
+        } else {
+            enemy.move_timer = 0;
+        }
+        if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
+            enemy.y = ny;
+        } else {
+            enemy.move_timer = 0;
+        }
+    } else if phase != 1 {
+        move_enemy(enemy, world);
+    }
+    // During windup phase (1), don't move
 }
 
 fn ai_boss(
@@ -3829,23 +3961,90 @@ fn ai_boss(
     player_x: f32,
     player_y: f32,
 ) -> Vec<(f32, f32, f32, f32)> {
+    // Boss: Multi-phase attack with charging, teleporting, and projectiles
     let mut shots = vec![];
     enemy.move_timer -= 1;
     enemy.shoot_cooldown -= 1;
+    
+    // HP-based phase progression
+    let hp_percent = (enemy.hp as f32) / (enemy.max_hp as f32);
+    let phase = if hp_percent > 0.66 { 0 } else if hp_percent > 0.33 { 1 } else { 2 };
+    
+    // Phase 0: Normal ranged attacks with movement
+    // Phase 1: Add occasional charging behavior
+    // Phase 2: Aggressive - frequent charges and teleports
+    
     if enemy.shoot_cooldown <= 0 {
         let base_angle = (player_y - enemy.y).atan2(player_x - enemy.x);
-        for offset in [-0.3f32, 0.0, 0.3] {
-            let angle = base_angle + offset;
-            shots.push((
-                enemy.x + enemy.w / 2.0 - px(3.0),
-                enemy.y + enemy.h / 2.0 - px(3.0),
-                angle.cos() * 0.35 * PIXEL_SCALE,
-                angle.sin() * 0.35 * PIXEL_SCALE,
-            ));
+        match phase {
+            0 => {
+                // Standard 3-shot spread
+                for offset in [-0.3f32, 0.0, 0.3] {
+                    let angle = base_angle + offset;
+                    shots.push((
+                        enemy.x + enemy.w / 2.0 - px(3.0),
+                        enemy.y + enemy.h / 2.0 - px(3.0),
+                        angle.cos() * 0.35 * PIXEL_SCALE,
+                        angle.sin() * 0.35 * PIXEL_SCALE,
+                    ));
+                }
+                enemy.shoot_cooldown = 140 + rand::gen_range(0, 80);
+            }
+            1 => {
+                // Wider spread - 5 shots
+                for offset in [-0.5f32, -0.25, 0.0, 0.25, 0.5] {
+                    let angle = base_angle + offset;
+                    shots.push((
+                        enemy.x + enemy.w / 2.0 - px(3.0),
+                        enemy.y + enemy.h / 2.0 - px(3.0),
+                        angle.cos() * 0.35 * PIXEL_SCALE,
+                        angle.sin() * 0.35 * PIXEL_SCALE,
+                    ));
+                }
+                enemy.shoot_cooldown = 120 + rand::gen_range(0, 60);
+            }
+            _ => {
+                // Dense spread - 7 shots
+                for offset in [-0.6f32, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6] {
+                    let angle = base_angle + offset;
+                    shots.push((
+                        enemy.x + enemy.w / 2.0 - px(3.0),
+                        enemy.y + enemy.h / 2.0 - px(3.0),
+                        angle.cos() * 0.35 * PIXEL_SCALE,
+                        angle.sin() * 0.35 * PIXEL_SCALE,
+                    ));
+                }
+                enemy.shoot_cooldown = 100 + rand::gen_range(0, 50);
+            }
         }
-        enemy.shoot_cooldown = 140 + rand::gen_range(0, 80);
     }
-    if enemy.move_timer <= 0 {
+    
+    // Teleport in phase 2
+    if phase == 2 && enemy.timer % 200 == 0 && rand::gen_range(0.0, 1.0) < 0.4 {
+        let angle: f32 = rand::gen_range(0.0, 6.28);
+        let dist = px(48.0) + rand::gen_range(0.0, px(20.0));
+        let new_x = (enemy.x + angle.cos() * dist).clamp(TILE * 2.0, GAME_W - TILE * 2.0 - enemy.w);
+        let new_y = (enemy.y + angle.sin() * dist).clamp(TILE * 2.0, GAME_H - TILE * 2.0 - enemy.h);
+        if !world.collides(new_x, new_y, enemy.w, enemy.h) {
+            enemy.x = new_x;
+            enemy.y = new_y;
+            enemy.move_timer = 20;
+        }
+    }
+    
+    // Charge behavior in phases 1 and 2
+    let should_charge = (phase > 0) && (enemy.timer % 150 == 0) && rand::gen_range(0.0, 1.0) < if phase == 2 { 0.6 } else { 0.3 };
+    
+    if should_charge {
+        let dx = player_x - enemy.x;
+        let dy = player_y - enemy.y;
+        let dist = vec2(dx, dy).length();
+        if dist > 0.0 {
+            enemy.vx = dx / dist * enemy.speed * 1.4;
+            enemy.vy = dy / dist * enemy.speed * 1.4;
+        }
+        enemy.move_timer = 25;
+    } else if enemy.move_timer <= 0 {
         let dx = player_x - enemy.x + rand::gen_range(-30.0, 30.0);
         let dy = player_y - enemy.y + rand::gen_range(-30.0, 30.0);
         enemy.dir = if dx.abs() > dy.abs() {
@@ -3857,7 +4056,16 @@ fn ai_boss(
         };
         enemy.move_timer = 30 + rand::gen_range(0, 40);
     }
-    move_enemy(enemy, world);
+    
+    // Apply movement based on charge state
+    if should_charge {
+        let margin = TILE * 2.0;
+        enemy.x = (enemy.x + enemy.vx).clamp(margin, GAME_W - margin - enemy.w);
+        enemy.y = (enemy.y + enemy.vy).clamp(margin, GAME_H - margin - enemy.h);
+    } else {
+        move_enemy(enemy, world);
+    }
+    
     shots
 }
 
