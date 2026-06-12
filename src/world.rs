@@ -66,9 +66,6 @@ impl World {
             interior_id: self.interior_id.clone(),
             tiles: self.tiles.clone(),
             visited: self.visited.clone(),
-            cleared_rooms: self.cleared_rooms.clone(),
-            opened_chests: self.opened_chests.clone(),
-            destroyed_tiles: self.destroyed_tiles.clone(),
             dungeon_rooms: self.dungeon_rooms(),
             dev_mode: self.dev_mode,
             time_minutes: 360, // patched by Game before passing to render

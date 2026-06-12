@@ -5,9 +5,9 @@ use crate::constants::{
     knockback_frames, knockback_speed, player_speed, trans_speed,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState, Gnome,
-    ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind, PropKind, ShopAction,
-    ShopItem, TileType, Transition, WorldProp,
+    Bomb, DeathAnimation, Dir, Ending, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState,
+    Gnome, ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind,
+    PropKind, ShopAction, ShopItem, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::save::{self, SaveData, SaveSlotSummary};
@@ -18,6 +18,40 @@ use macroquad::prelude::*;
 
 fn px(value: f32) -> f32 {
     value * PIXEL_SCALE
+}
+
+fn dir_vector(dir: Dir) -> (f32, f32) {
+    match dir {
+        Dir::Up => (0.0, -1.0),
+        Dir::Down => (0.0, 1.0),
+        Dir::Left => (-1.0, 0.0),
+        Dir::Right => (1.0, 0.0),
+    }
+}
+
+fn dir_from_velocity(dx: f32, dy: f32) -> Dir {
+    if dx.abs() > dy.abs() {
+        if dx > 0.0 { Dir::Right } else { Dir::Left }
+    } else if dy > 0.0 {
+        Dir::Down
+    } else {
+        Dir::Up
+    }
+}
+
+/// Element of each dungeon for armor resistance bonuses.
+/// 0=none 1=water 2=physical 3=void 4=fire 5=celestial
+fn dungeon_element(dungeon_id: i32) -> u8 {
+    match dungeon_id {
+        2 => 2,
+        3 => 4,
+        4 => 1,
+        5 => 4,
+        6 => 3,
+        7 => 5,
+        8 => 5,
+        _ => 0,
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,6 +132,12 @@ pub struct Game {
     pub shop_npc: NpcKind,
     pub shop_selection: usize,
     pub shop_feedback: String,
+    pub final_choice_selection: usize,
+    pub ending: Option<Ending>,
+    pub breath_timer: Option<i32>,
+    mirror_trap_timer: i32,
+    loop_warned: bool,
+    weapon_cooldown: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -179,6 +219,12 @@ impl Game {
             shop_npc: NpcKind::Elara,
             shop_selection: 0,
             shop_feedback: String::new(),
+            final_choice_selection: 0,
+            ending: None,
+            breath_timer: None,
+            mirror_trap_timer: 0,
+            loop_warned: false,
+            weapon_cooldown: 0,
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
@@ -261,6 +307,7 @@ impl Game {
             }
             GameState::PauseMenu => self.update_pause_menu(),
             GameState::Shop => self.update_shop(),
+            GameState::FinalChoice => self.update_final_choice(),
         }
     }
 
@@ -275,7 +322,12 @@ impl Game {
             GameState::CharacterCreate => {
                 render::draw_character_creator(&self.sprites, &self.creator, self.frame)
             }
-            GameState::Playing => self.draw_game(),
+            GameState::Playing => {
+                self.draw_game();
+                if let Some(breath) = self.breath_timer {
+                    render::draw_breath_meter(breath);
+                }
+            }
             GameState::Inventory => {
                 if self.inventory_from_title {
                     render::draw_load_menu(
@@ -319,7 +371,11 @@ impl Game {
                 render::draw_message_box(&self.message_text);
             }
             GameState::GameOver => render::draw_game_over(self.frame),
-            GameState::Victory => render::draw_victory(self.frame),
+            GameState::FinalChoice => {
+                self.draw_game();
+                render::draw_final_choice(self.final_choice_selection, self.frame);
+            }
+            GameState::Victory => render::draw_victory(self.frame, self.ending),
             GameState::PauseMenu => {
                 self.draw_game();
                 render::draw_pause_menu(
@@ -391,6 +447,8 @@ impl Game {
         self.save_load_action_selected = SaveLoadAction::Save;
         self.pending_save_slot = None;
         self.pending_load_slot = None;
+        self.ending = None;
+        self.final_choice_selection = 0;
         crate::log_info!(
             "start_new_game dev_mode={} all_items_mode={} full_hearts_mode={}",
             dev,
@@ -498,6 +556,10 @@ impl Game {
             crate::log_debug!("open_map shortcut");
             return;
         }
+        self.update_special_rooms();
+        if !matches!(self.state, GameState::Playing) {
+            return;
+        }
         if let Some((dir, nx, ny)) = self.update_player() {
             self.start_transition(dir, nx, ny);
             return;
@@ -553,13 +615,21 @@ impl Game {
                 return;
             }
             Some((TileInteraction::Victory, source)) if !self.is_interaction_blocked(source) => {
-                self.state = GameState::Victory;
-                self.frame = 0;
-                crate::log_info!(
-                    "victory_triggered screen=({}, {})",
-                    self.world.screen_x,
-                    self.world.screen_y
-                );
+                if self.player.dragon_pieces >= 8 {
+                    self.state = GameState::FinalChoice;
+                    self.final_choice_selection = 0;
+                    crate::log_info!(
+                        "final_choice_opened screen=({}, {}) pieces={}",
+                        self.world.screen_x,
+                        self.world.screen_y,
+                        self.player.dragon_pieces
+                    );
+                } else {
+                    self.blocked_interaction = Some(source);
+                    self.show_message(
+                        "The Seal Altar does not respond.\nThe dragon's eighth piece\nis still missing.",
+                    );
+                }
                 return;
             }
             _ => {}
@@ -581,6 +651,87 @@ impl Game {
                 self.world.screen_y
             );
         }
+    }
+
+    /// Per-frame logic for rooms with bespoke mechanics: the Sunken Citadel's
+    /// submerged tunnel (breath timer), the Fractured Sanctum's mirror traps and
+    /// loop corridor, and gravity inversion in the Aetherian Spire.
+    fn update_special_rooms(&mut self) {
+        let (d, sx, sy) = (
+            self.world.dungeon_id,
+            self.world.screen_x,
+            self.world.screen_y,
+        );
+        // Breath timer: 15 seconds of air in the submerged tunnel.
+        if self.world.in_dungeon && d == 4 && (sx, sy) == (3, 2) {
+            let t = self.breath_timer.get_or_insert(15 * 60);
+            *t -= 1;
+            if *t <= 0 {
+                self.breath_timer = Some(15 * 60);
+                self.player_take_damage(1, Dir::Left);
+                self.player.x = 1.0 * TILE;
+                self.player.y = 5.0 * TILE;
+                self.show_message("Your breath gives out!\nYou scramble back to the entrance.");
+                return;
+            }
+        } else {
+            self.breath_timer = None;
+        }
+        // Mirror traps: the false rooms quietly fold back to earlier halls.
+        let trap_target = if self.world.in_dungeon && d == 6 {
+            match (sx, sy) {
+                (0, 0) => Some((0, 1)),
+                (4, 3) => Some((1, 1)),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if let Some((tx, ty)) = trap_target {
+            self.mirror_trap_timer += 1;
+            if self.mirror_trap_timer == 1 && self.player.has_void_compass {
+                self.show_message("Your Void Compass needle\nspins wildly. This room is a lie.");
+            }
+            if self.mirror_trap_timer >= 240 {
+                self.mirror_trap_timer = 0;
+                self.world.load_screen(tx, ty);
+                self.player.x = 7.0 * TILE;
+                self.player.y = 7.0 * TILE;
+                self.spawn_for_screen();
+                self.reset_items();
+                self.load_screen_items();
+                self.show_message("The room folds in on itself.\nYou are somewhere else.");
+                crate::log_info!("mirror_trap_triggered to=({}, {})", tx, ty);
+                return;
+            }
+        } else {
+            self.mirror_trap_timer = 0;
+        }
+        // Loop corridor: without the Void Compass the east end never arrives.
+        if self.world.in_dungeon && d == 6 && (sx, sy) == (3, 2) {
+            if !self.player.has_void_compass && self.player.x > GAME_W - TILE * 2.5 {
+                self.player.x = TILE * 1.2;
+                if !self.loop_warned {
+                    self.loop_warned = true;
+                    self.show_message(
+                        "The corridor repeats itself.\nWithout a true bearing you\nwill walk it forever.",
+                    );
+                    return;
+                }
+            }
+        } else {
+            self.loop_warned = false;
+        }
+    }
+
+    /// True while the player stands in a gravity-inverted Spire chamber.
+    fn gravity_inverted(&self) -> bool {
+        self.world.in_dungeon
+            && self.world.dungeon_id == 7
+            && matches!(
+                (self.world.screen_x, self.world.screen_y),
+                (0, 1) | (0, 0)
+            )
     }
 
     fn restore_sprites(&mut self) {
@@ -1208,7 +1359,7 @@ impl Game {
         self.state = GameState::Inventory;
         self.inventory_tab = InventoryTab::SaveLoad;
         self.inventory_selection = 0;
-        self.save_slot_selection = 0;
+        self.save_slot_selection = save::latest_save_slot().unwrap_or(0);
         self.save_load_action_selected = SaveLoadAction::Load;
         self.pending_save_slot = None;
         self.pending_load_slot = None;
@@ -1272,7 +1423,118 @@ impl Game {
                 self.try_use_hammer();
                 false
             }
+            EquippedItem::ThrowingSword => {
+                if self.player.throwing_tier <= 0 || self.weapon_cooldown > 0 {
+                    return false;
+                }
+                self.weapon_cooldown = 16;
+                let tier = self.player.throwing_tier as u8;
+                let speed = px(2.6);
+                let (dx, dy) = dir_vector(self.player.dir);
+                self.spawn_projectile_kind(
+                    self.player.x + px(2.0),
+                    self.player.y + px(2.0),
+                    dx * speed,
+                    dy * speed,
+                    false,
+                    ProjectileKind::ThrownSword(tier),
+                );
+                // Range by tier: 6 / 8 / 10 tiles.
+                let range_tiles = [6.0, 8.0, 10.0][(tier as usize - 1).min(2)];
+                if let Some(p) = self.projectiles.last_mut() {
+                    p.timer = (range_tiles * TILE / speed) as i32;
+                }
+                self.audio.sword();
+                false
+            }
+            EquippedItem::Boomerang => {
+                if self.player.boomerang_tier <= 0 {
+                    return false;
+                }
+                // Only one boomerang in flight at a time.
+                if self
+                    .projectiles
+                    .iter()
+                    .any(|p| p.active && matches!(p.kind, ProjectileKind::Boomerang(_)))
+                {
+                    return false;
+                }
+                let tier = self.player.boomerang_tier as u8;
+                let speed = px(2.2);
+                let (dx, dy) = dir_vector(self.player.dir);
+                self.spawn_projectile_kind(
+                    self.player.x + px(2.0),
+                    self.player.y + px(2.0),
+                    dx * speed,
+                    dy * speed,
+                    false,
+                    ProjectileKind::Boomerang(tier),
+                );
+                // Outbound frames by tier: 4 / 6 / 8 tiles before it turns back.
+                let range_tiles = [4.0, 6.0, 8.0][(tier as usize - 1).min(2)];
+                if let Some(p) = self.projectiles.last_mut() {
+                    p.timer = (range_tiles * TILE / speed) as i32;
+                    if tier >= 3 {
+                        // The Celestial Ring sweeps a wider arc.
+                        p.w = px(34.0);
+                        p.h = px(34.0);
+                    }
+                }
+                self.audio.sword();
+                false
+            }
         }
+    }
+
+    /// Ashbrand special: blind/stagger enemies within 2 tiles of a kill.
+    fn ash_cloud(&mut self, cx: f32, cy: f32) {
+        for enemy in &mut self.enemies {
+            if !enemy.active {
+                continue;
+            }
+            let dx = enemy.x - cx;
+            let dy = enemy.y - cy;
+            if (dx * dx + dy * dy).sqrt() <= TILE * 2.0 {
+                enemy.hurt_timer = enemy.hurt_timer.max(60);
+                enemy.flash_timer = enemy.flash_timer.max(60);
+            }
+        }
+    }
+
+    /// Starforged Blade special: a celestial burst around the player on the 7th hit.
+    fn constellation_strike(&mut self) {
+        let px_ = self.player.x;
+        let py_ = self.player.y;
+        let targets: Vec<usize> = self
+            .enemies
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| {
+                if !e.active {
+                    return None;
+                }
+                let dx = e.x - px_;
+                let dy = e.y - py_;
+                if (dx * dx + dy * dy).sqrt() <= TILE * 3.0 {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for index in targets {
+            // The burst ignores the hurt throttle by clearing it first.
+            if let Some(e) = self.enemies.get_mut(index) {
+                e.hurt_timer = 0;
+            }
+            self.damage_enemy(index, 3, self.player.dir);
+        }
+        self.death_animations.push(DeathAnimation {
+            x: px_ + px(8.0),
+            y: py_ + px(8.0),
+            timer: 20,
+        });
+        self.audio.sword();
     }
 
     fn try_use_hammer(&mut self) {
@@ -1392,15 +1654,27 @@ impl Game {
             }
             return None;
         }
-        if is_key_pressed(KeyCode::Z) || is_key_pressed(KeyCode::Space) {
-            if self.try_use_item(self.player.main_item) {
-                return None;
-            }
+        if self.weapon_cooldown > 0 {
+            self.weapon_cooldown -= 1;
         }
-        if is_key_pressed(KeyCode::X) {
-            if self.try_use_item(self.player.side_item) {
-                return None;
-            }
+        // Weapons repeat while the button is held; utility items need a fresh press.
+        let held_repeats = |item: EquippedItem| {
+            matches!(
+                item,
+                EquippedItem::Sword | EquippedItem::ThrowingSword | EquippedItem::Boomerang
+            )
+        };
+        let main_used = is_key_pressed(KeyCode::Z)
+            || is_key_pressed(KeyCode::Space)
+            || ((is_key_down(KeyCode::Z) || is_key_down(KeyCode::Space))
+                && held_repeats(self.player.main_item));
+        if main_used && self.try_use_item(self.player.main_item) {
+            return None;
+        }
+        let side_used = is_key_pressed(KeyCode::X)
+            || (is_key_down(KeyCode::X) && held_repeats(self.player.side_item));
+        if side_used && self.try_use_item(self.player.side_item) {
+            return None;
         }
         let mut dx = 0.0;
         let mut dy = 0.0;
@@ -1423,6 +1697,9 @@ impl Game {
             dx = player_speed();
             self.player.dir = Dir::Right;
             self.player.last_axis = Some('x');
+        }
+        if self.gravity_inverted() {
+            dy = -dy;
         }
         if dx != 0.0 && dy != 0.0 {
             let factor = 1.0 / 2.0f32.sqrt();
@@ -1675,8 +1952,11 @@ impl Game {
                 return false;
             }
         } else if dungeon_id == 8 {
-            if !self.player.has_dragon_codex {
-                self.show_message("You need the DRAGON CODEX.");
+            if !self.player.has_dragon_codex && self.player.codex_pages < 7 {
+                self.show_message(&format!(
+                    "The seal needs all 7 CODEX pages.\nYou carry {}.",
+                    self.player.codex_pages
+                ));
                 return false;
             }
             if !self.player.has_crystal_of_seeing {
@@ -1826,8 +2106,25 @@ impl Game {
                 }
             })
             .collect();
+        let melee_damage = self.player.sword_tier.max(1);
         for index in hits {
-            self.damage_enemy(index, 1, self.player.dir);
+            let was_active = self.enemies[index].active;
+            self.damage_enemy(index, melee_damage, self.player.dir);
+            let landed = was_active && self.enemies[index].hurt_timer > 0;
+            let killed = was_active && !self.enemies[index].active;
+            if killed && self.player.sword_tier >= 2 {
+                // Ashbrand: an ash cloud blinds nearby enemies on every kill.
+                let (cx, cy) = (self.enemies[index].x, self.enemies[index].y);
+                self.ash_cloud(cx, cy);
+            }
+            if landed {
+                self.player.combo_hits += 1;
+                if self.player.sword_tier >= 3 && self.player.combo_hits >= 7 {
+                    // Starforged Blade: every 7th consecutive hit bursts.
+                    self.player.combo_hits = 0;
+                    self.constellation_strike();
+                }
+            }
         }
         let (col, row, tile) = self.front_tile();
         if tile == TileType::Bush {
@@ -1883,9 +2180,13 @@ impl Game {
                 self.player.keys += 1;
                 self.show_message("Found a KEY!");
             }
-            PickupType::Gem => {
+            PickupType::GemSmall | PickupType::Gem | PickupType::GemLarge => {
                 self.player.gems += pickup_value(item_type);
-                self.show_message("Found a GEM!");
+                self.show_message(match item_type {
+                    PickupType::GemSmall => "Found an EARTHSHARD!",
+                    PickupType::GemLarge => "Found a HEARTHSHARD!",
+                    _ => "Found a TIDESHARD!",
+                });
             }
             PickupType::Ladder => {
                 self.player.has_ladder = true;
@@ -1912,6 +2213,26 @@ impl Game {
                 self.player.dragon_pieces += 1;
                 self.show_message("Dragon piece claimed!");
             }
+            PickupType::WeaponSword(tier)
+            | PickupType::WeaponThrowing(tier)
+            | PickupType::WeaponBoomerang(tier) => {
+                self.grant_weapon(item_type, tier);
+            }
+            PickupType::Armor(slot, tier) => {
+                self.grant_armor(slot, tier);
+            }
+            PickupType::CodexPage => {
+                self.grant_codex_page();
+            }
+            PickupType::Lore => {
+                let text = world_data::lore_text(
+                    self.world.in_dungeon,
+                    self.world.dungeon_id,
+                    self.world.screen_x,
+                    self.world.screen_y,
+                );
+                self.show_message(text);
+            }
             PickupType::BossKey
             | PickupType::Heart
             | PickupType::Sword
@@ -1920,10 +2241,88 @@ impl Game {
             | PickupType::VoidCompass
             | PickupType::CrystalOfSeeing => {}
         }
-        if matches!(item_type, PickupType::Gem | PickupType::DragonPiece) {
+        if matches!(
+            item_type,
+            PickupType::GemSmall | PickupType::Gem | PickupType::GemLarge | PickupType::DragonPiece
+        ) {
             self.audio.currency();
         } else {
             self.audio.pickup();
+        }
+    }
+
+    fn grant_weapon(&mut self, pickup: PickupType, tier: u8) {
+        let tier = tier as i32;
+        match pickup {
+            PickupType::WeaponSword(_) => {
+                if self.player.sword_tier >= tier {
+                    self.show_message("You already carry a finer blade.");
+                    return;
+                }
+                self.player.has_sword = true;
+                self.player.sword_tier = tier;
+                self.auto_assign_item(EquippedItem::Sword, ItemSlot::Main);
+                self.show_message(&format!("You obtained the {}!", crate::model::sword_name(tier)));
+            }
+            PickupType::WeaponThrowing(_) => {
+                if self.player.throwing_tier >= tier {
+                    self.show_message("You already carry a finer throwing blade.");
+                    return;
+                }
+                self.player.throwing_tier = tier;
+                self.auto_assign_item(EquippedItem::ThrowingSword, ItemSlot::Side);
+                self.show_message(&format!(
+                    "You obtained the {}!",
+                    crate::model::throwing_name(tier)
+                ));
+            }
+            PickupType::WeaponBoomerang(_) => {
+                if self.player.boomerang_tier >= tier {
+                    self.show_message("You already carry a finer boomerang.");
+                    return;
+                }
+                self.player.boomerang_tier = tier;
+                self.auto_assign_item(EquippedItem::Boomerang, ItemSlot::Side);
+                self.show_message(&format!(
+                    "You obtained the {}!",
+                    crate::model::boomerang_name(tier)
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    fn grant_armor(&mut self, slot: crate::model::ArmorSlot, tier: u8) {
+        use crate::model::ArmorSlot;
+        let tier = tier as i32;
+        let current = match slot {
+            ArmorSlot::Head => &mut self.player.armor_head,
+            ArmorSlot::Body => &mut self.player.armor_body,
+            ArmorSlot::Legs => &mut self.player.armor_legs,
+        };
+        if *current >= tier {
+            self.show_message("You already wear something sturdier.");
+            return;
+        }
+        *current = tier;
+        self.show_message(&format!(
+            "You equipped the {}!",
+            crate::model::armor_name(slot, tier)
+        ));
+    }
+
+    fn grant_codex_page(&mut self) {
+        if self.player.codex_pages < 7 {
+            self.player.codex_pages += 1;
+        }
+        if self.player.codex_pages >= 7 {
+            self.player.has_dragon_codex = true;
+            self.show_message("The final page! The DRAGON CODEX\nis complete.");
+        } else {
+            self.show_message(&format!(
+                "A Dragon Codex page! ({}/7)",
+                self.player.codex_pages
+            ));
         }
     }
 
@@ -2226,7 +2625,8 @@ impl Game {
             world_data::CaveKind::DragonCodex => {
                 if !self.player.has_dragon_codex {
                     self.player.has_dragon_codex = true;
-                    self.show_message("You assembled the DRAGON CODEX!");
+                    self.player.codex_pages = 7;
+                    self.show_message("Wren binds your pages together.\nThe DRAGON CODEX is complete!");
                 } else {
                     self.show_message("Wren has no more pages for you.");
                 }
@@ -2327,12 +2727,32 @@ impl Game {
 
 
     fn update_items(&mut self) {
+        let magnet_x = self.player.x + px(8.0);
+        let magnet_y = self.player.y + px(8.0);
         for pickup in &mut self.pickups {
             pickup.timer += 1;
             if pickup_times_out(pickup.pickup_type)
                 && pickup.timer > crate::config::get().combat.pickup_lifetime_frames
             {
                 pickup.collected = true;
+            }
+            // Gems and hearts drift toward the player when close — auto-collect feel.
+            if matches!(
+                pickup.pickup_type,
+                PickupType::GemSmall
+                    | PickupType::Gem
+                    | PickupType::GemLarge
+                    | PickupType::Heart
+                    | PickupType::BombAmmo
+            ) {
+                let dx = magnet_x - (pickup.x + pickup.w / 2.0);
+                let dy = magnet_y - (pickup.y + pickup.h / 2.0);
+                let dist = (dx * dx + dy * dy).sqrt();
+                if dist > 1.0 && dist < TILE * 1.4 {
+                    let pull = px(1.4);
+                    pickup.x += dx / dist * pull;
+                    pickup.y += dy / dist * pull;
+                }
             }
         }
         let mut exploded = vec![];
@@ -2351,13 +2771,45 @@ impl Game {
         for (x, y, w, h) in exploded {
             self.bomb_explode(x, y, w, h);
         }
+        let player_cx = self.player.x + px(2.0);
+        let player_cy = self.player.y + px(2.0);
         for projectile in &mut self.projectiles {
+            if let ProjectileKind::Boomerang(_) = projectile.kind {
+                // Boomerangs fly over obstacles, then home back to the player's hand.
+                if !projectile.returning {
+                    projectile.timer -= 1;
+                    if projectile.timer <= 0
+                        || projectile.x < 0.0
+                        || projectile.x > GAME_W - px(8.0)
+                        || projectile.y < 0.0
+                        || projectile.y > GAME_H - px(8.0)
+                    {
+                        projectile.returning = true;
+                    }
+                } else {
+                    let tx = player_cx - projectile.x;
+                    let ty = player_cy - projectile.y;
+                    let len = (tx * tx + ty * ty).sqrt().max(0.01);
+                    if len < px(10.0) {
+                        projectile.active = false; // caught
+                        continue;
+                    }
+                    let speed = px(2.4);
+                    projectile.dx = tx / len * speed;
+                    projectile.dy = ty / len * speed;
+                }
+                projectile.x += projectile.dx;
+                projectile.y += projectile.dy;
+                continue;
+            }
             projectile.x += projectile.dx;
             projectile.y += projectile.dy;
             projectile.timer -= 1;
             let tile_x = ((projectile.x + projectile.w / 2.0) / TILE).floor() as i32;
             let tile_y = ((projectile.y + projectile.h / 2.0) / TILE).floor() as i32;
-            if self.world.is_solid(tile_x, tile_y)
+            // The Voidlance phases through solid terrain.
+            let phases_walls = matches!(projectile.kind, ProjectileKind::ThrownSword(t) if t >= 3);
+            if (!phases_walls && self.world.is_solid(tile_x, tile_y))
                 || projectile.timer <= 0
                 || projectile.x < -8.0
                 || projectile.x > GAME_W + 8.0
@@ -2503,7 +2955,13 @@ impl Game {
                 } else {
                     Dir::Up
                 };
-                self.player_take_damage(1, knock_dir);
+                // Late-game dungeon enemies hit for a full heart.
+                let contact = if self.world.in_dungeon && self.world.dungeon_id >= 5 {
+                    2
+                } else {
+                    1
+                };
+                self.player_take_damage(contact, knock_dir);
             }
         }
         if self.player.invuln_timer <= 0 && self.player.hurt_timer <= 0 {
@@ -2538,10 +2996,106 @@ impl Game {
         for index in hits {
             self.damage_enemy(index, 3, self.player.dir);
         }
+        self.check_player_projectile_hits();
+    }
+
+    fn check_player_projectile_hits(&mut self) {
+        let mut strikes: Vec<(usize, usize)> = vec![];
+        for (pi, p) in self.projectiles.iter().enumerate() {
+            if !p.active || p.from_enemy {
+                continue;
+            }
+            if !matches!(
+                p.kind,
+                ProjectileKind::ThrownSword(_)
+                    | ProjectileKind::SwordFragment
+                    | ProjectileKind::Boomerang(_)
+            ) {
+                continue;
+            }
+            let rect = Rect::new(p.x, p.y, p.w, p.h);
+            for (ei, e) in self.enemies.iter().enumerate() {
+                if e.active
+                    && e.hurt_timer <= 0
+                    && rect.overlaps(&Rect::new(e.x, e.y, e.w, e.h))
+                {
+                    strikes.push((pi, ei));
+                    break;
+                }
+            }
+        }
+        for (pi, ei) in strikes {
+            let kind = self.projectiles[pi].kind;
+            let (sx, sy, vdx, vdy) = {
+                let p = &self.projectiles[pi];
+                (p.x, p.y, p.dx, p.dy)
+            };
+            let dir = dir_from_velocity(vdx, vdy);
+            match kind {
+                ProjectileKind::ThrownSword(tier) => {
+                    self.projectiles[pi].active = false;
+                    self.damage_enemy(ei, if tier >= 3 { 2 } else { 1 }, dir);
+                    if tier == 2 {
+                        // Splitblade: forks into two fragments at 45 degrees.
+                        let speed = (vdx * vdx + vdy * vdy).sqrt();
+                        let angle = vdy.atan2(vdx);
+                        for delta in [-0.785f32, 0.785f32] {
+                            let a = angle + delta;
+                            self.spawn_projectile_kind(
+                                sx,
+                                sy,
+                                a.cos() * speed,
+                                a.sin() * speed,
+                                false,
+                                ProjectileKind::SwordFragment,
+                            );
+                            if let Some(frag) = self.projectiles.last_mut() {
+                                frag.timer = (2.0 * TILE / speed.max(0.1)) as i32;
+                                frag.w = px(12.0);
+                                frag.h = px(12.0);
+                            }
+                        }
+                    }
+                }
+                ProjectileKind::SwordFragment => {
+                    self.projectiles[pi].active = false;
+                    self.damage_enemy(ei, 1, dir);
+                }
+                ProjectileKind::Boomerang(tier) => {
+                    // Pierces: keeps flying after the hit.
+                    self.damage_enemy(ei, if tier >= 3 { 2 } else { 1 }, dir);
+                    if tier >= 2 {
+                        // Ironwing: staggers anything it strikes.
+                        if let Some(e) = self.enemies.get_mut(ei) {
+                            if e.active {
+                                e.hurt_timer = e.hurt_timer.max(40);
+                                e.flash_timer = e.flash_timer.max(40);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     fn player_take_damage(&mut self, amount: i32, from_dir: Dir) {
         if self.god_mode || self.world.dev_mode || self.player.invuln_timer > 0 {
+            return;
+        }
+        // A hit always breaks the Starforged combo, even if armor absorbs it.
+        self.player.combo_hits = 0;
+        // Armor damage reduction: percent chance to fully absorb the blow.
+        let element = if self.world.in_dungeon {
+            dungeon_element(self.world.dungeon_id)
+        } else {
+            0
+        };
+        let dr = self.player.total_dr(element);
+        if dr > 0 && rand::gen_range(0, 100) < dr {
+            // Absorbed: brief invulnerability and a clank, but no damage or knockback.
+            self.player.invuln_timer = 20;
+            self.audio.player_hit();
             return;
         }
         self.player.hp -= amount;
@@ -2620,14 +3174,50 @@ impl Game {
         let roll = rand::gen_range(0.0, 1.0);
         match enemy.enemy_type {
             EnemyType::Boss => {
+                // Bosses always pay out: a Heart Container plus Hearthshards.
                 self.spawn_pickup(enemy.x + 4.0, enemy.y + 4.0, PickupType::HeartContainer);
+                let shards = rand::gen_range(2, 5);
+                for i in 0..shards {
+                    let angle = i as f32 / shards as f32 * std::f32::consts::TAU;
+                    self.spawn_pickup(
+                        enemy.x + angle.cos() * TILE,
+                        enemy.y + angle.sin() * TILE,
+                        PickupType::GemLarge,
+                    );
+                }
             }
             _ if roll < crate::config::get().combat.enemy_heart_drop_chance => {
                 self.spawn_pickup(enemy.x, enemy.y, PickupType::Heart)
             }
             _ if roll < 0.35 => self.spawn_pickup(enemy.x, enemy.y, PickupType::BombAmmo),
-            _ if roll < 0.5 => self.spawn_pickup(enemy.x, enemy.y, PickupType::Gem),
-            _ => {}
+            // Small enemies scatter Earthshards; tougher ones add a Tideshard.
+            EnemyType::Splort | EnemyType::Shriekwing => {
+                let count = if enemy.is_mini {
+                    if roll < 0.6 { 1 } else { 0 }
+                } else {
+                    rand::gen_range(1, 4)
+                };
+                for i in 0..count {
+                    self.spawn_pickup(
+                        enemy.x + (i as f32 - 1.0) * TILE * 0.5,
+                        enemy.y + (i % 2) as f32 * TILE * 0.4,
+                        PickupType::GemSmall,
+                    );
+                }
+            }
+            EnemyType::Borespat | EnemyType::Ironmaw => {
+                if roll < 0.65 {
+                    self.spawn_pickup(enemy.x, enemy.y, PickupType::Gem);
+                }
+                let count = rand::gen_range(1, 3);
+                for i in 0..count {
+                    self.spawn_pickup(
+                        enemy.x + (i as f32 + 1.0) * TILE * 0.4,
+                        enemy.y + TILE * 0.3,
+                        PickupType::GemSmall,
+                    );
+                }
+            }
         }
         if self.world.in_dungeon {
             let remaining = self
@@ -2703,7 +3293,7 @@ impl Game {
                 self.auto_assign_item(EquippedItem::Bombs, ItemSlot::Side);
                 self.show_message("You found BOMBS!");
             }
-            PickupType::Gem => {
+            PickupType::GemSmall | PickupType::Gem | PickupType::GemLarge => {
                 self.player.gems += pickup_value(pickup);
             }
             PickupType::Ladder => {
@@ -2730,6 +3320,26 @@ impl Game {
             PickupType::DragonPiece => {
                 self.player.dragon_pieces += 1;
                 self.show_message("You claimed a dragon piece!");
+            }
+            PickupType::WeaponSword(tier)
+            | PickupType::WeaponThrowing(tier)
+            | PickupType::WeaponBoomerang(tier) => {
+                self.grant_weapon(pickup, tier);
+            }
+            PickupType::Armor(slot, tier) => {
+                self.grant_armor(slot, tier);
+            }
+            PickupType::CodexPage => {
+                self.grant_codex_page();
+            }
+            PickupType::Lore => {
+                let text = world_data::lore_text(
+                    self.world.in_dungeon,
+                    self.world.dungeon_id,
+                    self.world.screen_x,
+                    self.world.screen_y,
+                );
+                self.show_message(text);
             }
             PickupType::Sword => {
                 self.player.has_sword = true;
@@ -2759,7 +3369,11 @@ impl Game {
         }
         if matches!(
             pickup,
-            PickupType::Key | PickupType::Gem | PickupType::DragonPiece
+            PickupType::Key
+                | PickupType::GemSmall
+                | PickupType::Gem
+                | PickupType::GemLarge
+                | PickupType::DragonPiece
         ) {
             self.audio.currency();
         } else {
@@ -2775,6 +3389,20 @@ impl Game {
             .into_iter()
             .map(create_enemy)
             .collect();
+        // Deeper dungeons field tougher foes; bosses scale with their tier.
+        if self.world.in_dungeon && self.world.dungeon_id >= 3 {
+            let d = self.world.dungeon_id;
+            for enemy in &mut self.enemies {
+                if enemy.enemy_type == EnemyType::Boss {
+                    enemy.hp = 8 + 2 * d;
+                    enemy.max_hp = enemy.hp;
+                } else {
+                    enemy.hp += (d - 1) / 3;
+                    enemy.max_hp = enemy.hp;
+                    enemy.speed *= 1.0 + d as f32 * 0.03;
+                }
+            }
+        }
         self.props = world_data::screen_props(
             self.world.screen_x,
             self.world.screen_y,
@@ -2825,28 +3453,41 @@ impl Game {
             }
             return;
         }
+        // Floor items: any screen item not sitting on a chest tile spawns as a
+        // persistent keyed pickup (chest-tile items are claimed via open_chest).
+        for item in self.world.get_screen_items() {
+            if self.world.get_tile(item.tile_x as i32, item.tile_y as i32) == TileType::Chest {
+                continue;
+            }
+            let key = self.screen_pickup_state_key(item.tile_x, item.tile_y);
+            if self.world.opened_chests.contains_key(&key) {
+                continue;
+            }
+            if self.player_already_has_pickup(item.pickup_type) {
+                self.world.opened_chests.insert(key, vec![]);
+                continue;
+            }
+            self.spawn_pickup_with_key(
+                item.tile_x as f32 * TILE,
+                item.tile_y as f32 * TILE + px(4.0),
+                item.pickup_type,
+                key,
+            );
+        }
         if self.world.in_dungeon && !self.player.has_boss_key_for(self.world.dungeon_id) {
             if let Some((tile_x, tile_y)) = world_data::boss_key_spawn_tile(
                 self.world.dungeon_id,
                 self.world.screen_x,
                 self.world.screen_y,
             ) {
+                // Rooms with plate puzzles spawn the key via update_room_props;
+                // plain boss-key rooms spawn it immediately.
                 if self.props.is_empty() {
                     self.spawn_pickup(
                         tile_x as f32 * TILE,
                         tile_y as f32 * TILE + px(4.0),
                         PickupType::BossKey,
                     );
-                }
-            } else {
-                let should_spawn = match self.world.dungeon_id {
-                    2 => self.world.screen_x == 2 && self.world.screen_y == 1,
-                    3 => self.world.screen_x == 1 && self.world.screen_y == 0,
-                    4 => self.world.screen_x == 1 && self.world.screen_y == 0,
-                    _ => false,
-                };
-                if should_spawn {
-                    self.spawn_pickup(8.0 * TILE, 5.0 * TILE + px(4.0), PickupType::BossKey);
                 }
             }
         }
@@ -3389,7 +4030,7 @@ impl Game {
             }
             NpcKind::Barnett => {
                 self.show_message(
-                    "Barnett: East leads to Ashenfall.\nNorth reaches the Highlands.",
+                    "Barnett: East leads to Ashenfall.\nNorth reaches the Highlands.\nI've mapped every region except\nthe one I'm standing in.",
                 );
             }
             NpcKind::Maren => {
@@ -3397,7 +4038,7 @@ impl Game {
             }
             NpcKind::Oswin => {
                 self.show_message(
-                    "Oswin: Ringing the old bell changes things.\nThe ruins reward curiosity.",
+                    "Oswin: Ringing the old bell changes\nthings. I documented what happened.\nI won't tell you what it was.\nThe ruins deserve to be discovered.",
                 );
             }
             NpcKind::Corvin => {
@@ -3405,7 +4046,7 @@ impl Game {
             }
             NpcKind::Petra => {
                 self.show_message(
-                    "Petra: Watch the vent timings.\nThe biggest one always pulses hottest.",
+                    "Petra: Watch the vent timings.\nSomething below the Vault has been\nburning for three hundred years.\nIt isn't slowing down.",
                 );
             }
             NpcKind::Aldric => {
@@ -3418,15 +4059,26 @@ impl Game {
                 self.open_shop(NpcKind::Dax);
             }
             NpcKind::Vel => {
-                self.show_message(
-                    "Vel: Stable rifts point the way.\nFollow the shimmer to the Shade.",
-                );
+                if first_time {
+                    self.show_message(
+                        "Vel: Stable rifts point the way.\nFollow the shimmer to the Shade.\nCome back -- I trade in things\nthe rifts spit out.",
+                    );
+                } else {
+                    self.open_shop(NpcKind::Vel);
+                }
             }
             NpcKind::CelestialMerchant => {
-                self.open_shop(NpcKind::CelestialMerchant);
+                let is_night = self.time_minutes < 360 || self.time_minutes >= 1200;
+                if is_night {
+                    self.open_shop(NpcKind::CelestialMerchant);
+                } else {
+                    self.show_message("A chalk note rests here:\n\"Back at nightfall. -- C.M.\"");
+                }
             }
             NpcKind::Senna => {
-                self.show_message("Senna: The dark seventh star isn't gone.\nIt's waiting.");
+                self.show_message(
+                    "Senna: The dark seventh star isn't\ngone. It's very, very dim. As if\nit's waiting for something to happen\nbefore it decides to shine again.",
+                );
             }
             NpcKind::Wren => {
                 self.open_shop(NpcKind::Wren);
@@ -3464,6 +4116,37 @@ impl Game {
         crate::log_debug!("show_message text={:?}", text.replace('\n', " | "));
     }
 
+    fn update_final_choice(&mut self) {
+        if is_key_pressed(KeyCode::Escape) {
+            self.state = GameState::Playing;
+            self.blocked_interaction = self.active_interaction_source();
+            crate::log_info!("final_choice_deferred");
+            return;
+        }
+        if is_key_pressed(KeyCode::Left)
+            || is_key_pressed(KeyCode::A)
+            || is_key_pressed(KeyCode::Right)
+            || is_key_pressed(KeyCode::D)
+            || is_key_pressed(KeyCode::Up)
+            || is_key_pressed(KeyCode::W)
+            || is_key_pressed(KeyCode::Down)
+            || is_key_pressed(KeyCode::S)
+        {
+            self.final_choice_selection = 1 - self.final_choice_selection;
+        }
+        if start_pressed() {
+            let ending = if self.final_choice_selection == 0 {
+                Ending::BreakSeal
+            } else {
+                Ending::HoldSeal
+            };
+            self.ending = Some(ending);
+            self.state = GameState::Victory;
+            self.frame = 0;
+            crate::log_info!("ending_chosen ending={:?}", ending);
+        }
+    }
+
     fn open_shop(&mut self, npc: NpcKind) {
         self.shop_npc = npc;
         self.shop_selection = 0;
@@ -3492,10 +4175,9 @@ impl Game {
             if let Some(item) = items.get(self.shop_selection) {
                 if self.shop_item_owned(item.action) {
                     self.shop_feedback = "You already own this.".to_string();
-                } else if self.player.gems < item.price {
+                } else if !self.spend_gems(item.price) {
                     self.shop_feedback = format!("Need {} gems.", item.price);
                 } else {
-                    self.player.gems -= item.price;
                     self.audio.currency();
                     self.shop_feedback = self.execute_shop_purchase(item.action);
                 }
@@ -3521,12 +4203,41 @@ impl Game {
             ShopAction::GiveBombUpgrade => {
                 self.player.max_bombs >= crate::config::get().combat.bomb_max_capacity
             }
+            ShopAction::GiveWeaponThrowing(tier) => self.player.throwing_tier >= tier as i32,
+            ShopAction::GiveWeaponBoomerang(tier) => self.player.boomerang_tier >= tier as i32,
+            ShopAction::GiveArmor(slot, tier) => {
+                let current = match slot {
+                    crate::model::ArmorSlot::Head => self.player.armor_head,
+                    crate::model::ArmorSlot::Body => self.player.armor_body,
+                    crate::model::ArmorSlot::Legs => self.player.armor_legs,
+                };
+                current >= tier as i32
+            }
             _ => false,
         }
     }
 
     fn execute_shop_purchase(&mut self, action: ShopAction) -> String {
         match action {
+            ShopAction::GiveWeaponThrowing(tier) => {
+                self.player.throwing_tier = self.player.throwing_tier.max(tier as i32);
+                self.auto_assign_item(EquippedItem::ThrowingSword, ItemSlot::Side);
+                format!("Got the {}!", crate::model::throwing_name(tier as i32))
+            }
+            ShopAction::GiveWeaponBoomerang(tier) => {
+                self.player.boomerang_tier = self.player.boomerang_tier.max(tier as i32);
+                self.auto_assign_item(EquippedItem::Boomerang, ItemSlot::Side);
+                format!("Got the {}!", crate::model::boomerang_name(tier as i32))
+            }
+            ShopAction::GiveArmor(slot, tier) => {
+                let current = match slot {
+                    crate::model::ArmorSlot::Head => &mut self.player.armor_head,
+                    crate::model::ArmorSlot::Body => &mut self.player.armor_body,
+                    crate::model::ArmorSlot::Legs => &mut self.player.armor_legs,
+                };
+                *current = (*current).max(tier as i32);
+                format!("Equipped the {}!", crate::model::armor_name(slot, tier as i32))
+            }
             ShopAction::HealFull => {
                 self.player.hp = self.player.max_hp;
                 self.audio.pickup();
@@ -3597,6 +4308,7 @@ impl Game {
             }
             ShopAction::GiveDragonCodex => {
                 self.player.has_dragon_codex = true;
+                self.player.codex_pages = 7;
                 "Got the DRAGON CODEX!".to_string()
             }
             ShopAction::GiveCrystalOfSeeing => {
@@ -3673,10 +4385,6 @@ impl Game {
         });
     }
 
-    fn spawn_projectile(&mut self, x: f32, y: f32, dx: f32, dy: f32, from_enemy: bool) {
-        self.spawn_projectile_kind(x, y, dx, dy, from_enemy, ProjectileKind::Fireball);
-    }
-
     fn spawn_projectile_kind(&mut self, x: f32, y: f32, dx: f32, dy: f32, from_enemy: bool, kind: ProjectileKind) {
         self.projectiles.push(Projectile {
             x,
@@ -3689,6 +4397,7 @@ impl Game {
             active: true,
             timer: 120,
             kind,
+            returning: false,
         });
     }
 
@@ -3784,15 +4493,6 @@ fn create_enemy(spawn: EnemySpawn) -> Enemy {
         ai_state: 0,
         is_mini: false,
         buried: false,
-    }
-}
-
-fn random_dir() -> Dir {
-    match rand::gen_range(0, 4) {
-        0 => Dir::Up,
-        1 => Dir::Down,
-        2 => Dir::Left,
-        _ => Dir::Right,
     }
 }
 
@@ -4159,7 +4859,9 @@ fn drain_char_input() {
 
 fn pickup_value(pickup: PickupType) -> i32 {
     match pickup {
+        PickupType::GemSmall => 1,
         PickupType::Gem => 5,
+        PickupType::GemLarge => 25,
         _ => 0,
     }
 }
@@ -4167,7 +4869,7 @@ fn pickup_value(pickup: PickupType) -> i32 {
 fn pickup_times_out(pickup: PickupType) -> bool {
     matches!(
         pickup,
-        PickupType::Heart | PickupType::BombAmmo | PickupType::Gem
+        PickupType::Heart | PickupType::BombAmmo | PickupType::GemSmall | PickupType::Gem
     )
 }
 
@@ -4175,6 +4877,10 @@ fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
     use ShopAction::*;
     match npc {
         NpcKind::Elara => vec![
+            ShopItem { label: "Iron Dart",        description: "Throwing sword, tier 1. Infinite throws.", price: 15, action: GiveWeaponThrowing(1) },
+            ShopItem { label: "Carved Boomerang", description: "Boomerang, tier 1. Hits coming and going.", price: 16, action: GiveWeaponBoomerang(1) },
+            ShopItem { label: "Mossveil Hood",    description: "Head armor t2. Smells like forest floor.", price: 18, action: GiveArmor(crate::model::ArmorSlot::Head, 2) },
+            ShopItem { label: "Fen Waders",       description: "Leg armor t2. Waterproof to the knee.",    price: 14, action: GiveArmor(crate::model::ArmorSlot::Legs, 2) },
             ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",          price: 6,  action: HealFull },
             ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.", price: 35, action: GiveHeartContainer },
             ShopItem { label: "Lantern",          description: "Lights your way at night.",         price: 18, action: GiveLantern },
@@ -4182,6 +4888,9 @@ fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
             ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",     price: 4,  action: GiveBombAmmo },
         ],
         NpcKind::Maren => vec![
+            ShopItem { label: "Ashwarden Helm",   description: "Head armor t3. Allegiance filed off.",   price: 26, action: GiveArmor(crate::model::ArmorSlot::Head, 3) },
+            ShopItem { label: "Ash Brigandine",   description: "Body armor t3. Scorched at the edges.",  price: 40, action: GiveArmor(crate::model::ArmorSlot::Body, 3) },
+            ShopItem { label: "Ash Greaves",      description: "Leg armor t3. Ashenfall salvage.",       price: 22, action: GiveArmor(crate::model::ArmorSlot::Legs, 3) },
             ShopItem { label: "Hammer",           description: "Smashes cracked tiles in front of you.", price: 24, action: GiveHammer },
             ShopItem { label: "Bombs",            description: "Explosive devices. Assign to a slot.",   price: 15, action: GiveBombs },
             ShopItem { label: "Sword",            description: "A reliable blade. Assign to a slot.",    price: 20, action: GiveSword },
@@ -4190,6 +4899,8 @@ fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
             ShopItem { label: "Quick Heal",       description: "Restores 2 HP on the spot.",            price: 3,  action: GiveHeart },
         ],
         NpcKind::Corvin => vec![
+            ShopItem { label: "Splitblade",       description: "Throwing sword t2. Forks on impact.",    price: 44, action: GiveWeaponThrowing(2) },
+            ShopItem { label: "Ironwing",         description: "Boomerang t2. Staggers what it strikes.", price: 48, action: GiveWeaponBoomerang(2) },
             ShopItem { label: "Ancient Key",      description: "Opens the Iron Highlands vault.",        price: 40, action: GiveAncientKey },
             ShopItem { label: "Lantern",          description: "Lights your way at night.",              price: 18, action: GiveLantern },
             ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
@@ -4204,6 +4915,7 @@ fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
             ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
         ],
         NpcKind::Sael => vec![
+            ShopItem { label: "Seafarer's Wrap",  description: "Head armor t5. Salt-crystal lining.",    price: 36, action: GiveArmor(crate::model::ArmorSlot::Head, 5) },
             ShopItem { label: "Bomb Bag Upgrade", description: "Increases your maximum bomb capacity.",  price: 20, action: GiveBombUpgrade },
             ShopItem { label: "Bombs",            description: "Explosive devices. Assign to a slot.",   price: 15, action: GiveBombs },
             ShopItem { label: "Bomb Ammo",        description: "Adds 4 bombs to your supply.",           price: 4,  action: GiveBombAmmo },
@@ -4212,13 +4924,20 @@ fn shop_items(npc: NpcKind) -> Vec<ShopItem> {
             ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
         ],
         NpcKind::Dax => vec![
+            ShopItem { label: "Forge Greaves",    description: "Leg armor t6. Heat-shielded soles.",     price: 56, action: GiveArmor(crate::model::ArmorSlot::Legs, 6) },
             ShopItem { label: "Strong Arm Glove", description: "Required for heavy mechanisms and the Ember Crystal.", price: 45, action: GiveStrongArmGlove },
             ShopItem { label: "Hammer",           description: "Smashes cracked tiles in front of you.", price: 24, action: GiveHammer },
             ShopItem { label: "Heart Container",  description: "Permanently increases max HP by 2.",     price: 35, action: GiveHeartContainer },
             ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
             ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
         ],
+        NpcKind::Vel => vec![
+            ShopItem { label: "Voidlance",        description: "Throwing sword t3. Passes through walls.", price: 60, action: GiveWeaponThrowing(3) },
+            ShopItem { label: "Healing Tonic",    description: "Fully restores your HP.",               price: 6,  action: HealFull },
+            ShopItem { label: "Dungeon Key",      description: "Opens a locked dungeon door.",           price: 8,  action: GiveKey },
+        ],
         NpcKind::CelestialMerchant => vec![
+            ShopItem { label: "Celestial Ring",   description: "Boomerang t3. Sweeps an entire room.",   price: 70, action: GiveWeaponBoomerang(3) },
             ShopItem { label: "Star Sigil",       description: "Merchant seal for the Aetherian ascent.", price: 60, action: GiveStarSigil },
             ShopItem { label: "Crystal of Seeing",description: "Reveals the hidden path in the last ascent.", price: 55, action: GiveCrystalOfSeeing },
             ShopItem { label: "Portal Tool",      description: "Attunement focus for rift structures.",  price: 50, action: GivePortalTool },

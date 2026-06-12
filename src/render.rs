@@ -2,9 +2,9 @@ use crate::character::{CharacterCreator, WeaponStyle};
 use crate::constants::{GAME_H, GAME_W, HUD_H, PIXEL_SCALE, TILE, WORLD_H, WORLD_W};
 use crate::game::InventoryTab;
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Enemy, EnemyType, EquippedItem, Gnome, InventoryEntry,
-    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind, PropKind,
-    ShopItem, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
+    Bomb, DeathAnimation, Dir, Ending, Enemy, EnemyType, EquippedItem, Gnome, InventoryEntry,
+    InventoryItem, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind,
+    PropKind, ShopItem, TileGrid, TileType, Transition, WorldProp, WorldSnapshot,
 };
 use crate::save::SaveSlotSummary;
 use crate::sprites::{HeartState, Sprites};
@@ -1831,31 +1831,139 @@ pub fn draw_game_over(frame: i32) {
     }
 }
 
-pub fn draw_victory(frame: i32) {
+pub fn draw_victory(frame: i32, ending: Option<Ending>) {
     clear_background(BLACK);
+    let (title, title_color, lines): (&str, Color, &[&str]) = match ending {
+        Some(Ending::BreakSeal) => (
+            "THE SEAL IS BROKEN",
+            color_u8!(255, 200, 80, 255),
+            &[
+                "You place the eighth piece. The Throne opens.",
+                "The dragon rises, whole for the first time in an age,",
+                "and takes to a sky it had only painted from memory.",
+                "",
+                "The world is changed. Wild, uncertain -- and joyful.",
+                "Above the mountain, the seventh star burns bright.",
+            ],
+        ),
+        Some(Ending::HoldSeal) => (
+            "THE SEAL HOLDS",
+            color_u8!(150, 190, 255, 255),
+            &[
+                "You lower the eighth piece and step back.",
+                "The dragon watches you go. It does not protest.",
+                "It chose this once. You have honored that choice.",
+                "",
+                "The Throne Room is quiet. The world is unchanged.",
+                "Above the mountain, the seventh star burns",
+                "a little brighter than before.",
+            ],
+        ),
+        None => (
+            "VICTORY!",
+            YELLOW,
+            &["You discovered the secret of Delta!"],
+        ),
+    };
     draw_text(
-        "VICTORY!",
-        GAME_W / 2.0 - px(84.0),
-        px(120.0),
-        px(40.0),
-        YELLOW,
+        title,
+        GAME_W / 2.0 - title.len() as f32 * px(10.0) / 2.0,
+        px(90.0),
+        px(36.0),
+        title_color,
     );
-    draw_text(
-        "You discovered the secret of Delta!",
-        px(80.0),
-        px(160.0),
-        px(24.0),
-        LIGHTGRAY,
-    );
+    for (i, line) in lines.iter().enumerate() {
+        draw_text(
+            line,
+            px(60.0),
+            px(132.0) + i as f32 * px(22.0),
+            px(18.0),
+            LIGHTGRAY,
+        );
+    }
     if (frame / 30) % 2 == 0 {
         draw_text(
             "Press ENTER",
             GAME_W / 2.0 - px(72.0),
-            px(210.0),
+            px(132.0) + lines.len() as f32 * px(22.0) + px(28.0),
             px(24.0),
             WHITE,
         );
     }
+}
+
+pub fn draw_breath_meter(frames_left: i32) {
+    let total = 15.0 * 60.0;
+    let frac = (frames_left as f32 / total).clamp(0.0, 1.0);
+    let w = px(120.0);
+    let x = GAME_W / 2.0 - w / 2.0;
+    let y = HUD_H + px(10.0);
+    draw_rectangle(x - px(1.0), y - px(1.0), w + px(2.0), px(8.0), color_u8!(10, 14, 24, 220));
+    draw_rectangle(x, y, w, px(6.0), color_u8!(30, 50, 80, 255));
+    let color = if frac < 0.3 {
+        color_u8!(220, 80, 60, 255)
+    } else {
+        color_u8!(90, 180, 240, 255)
+    };
+    draw_rectangle(x, y, w * frac, px(6.0), color);
+    draw_text("BREATH", x, y - px(4.0), px(12.0), color_u8!(180, 210, 240, 255));
+}
+
+pub fn draw_final_choice(selection: usize, frame: i32) {
+    // Dim the throne room behind the prompt.
+    draw_rectangle(0.0, 0.0, GAME_W, GAME_H, color_u8!(0, 0, 0, 190));
+    draw_text(
+        "THE SEAL STONE",
+        GAME_W / 2.0 - px(92.0),
+        px(60.0),
+        px(32.0),
+        color_u8!(226, 194, 92, 255),
+    );
+    let intro = [
+        "All eight pieces are gathered.",
+        "The dragon watches. It waits.",
+        "Whatever you decide, it is ready.",
+    ];
+    for (i, line) in intro.iter().enumerate() {
+        draw_text(
+            line,
+            GAME_W / 2.0 - px(130.0),
+            px(96.0) + i as f32 * px(20.0),
+            px(18.0),
+            LIGHTGRAY,
+        );
+    }
+    let options = [
+        ("BREAK THE SEAL", "Place the final piece. Free the dragon."),
+        ("HOLD THE SEAL", "Leave the piece unplaced. Walk away."),
+    ];
+    for (i, (label, detail)) in options.iter().enumerate() {
+        let y = px(176.0) + i as f32 * px(54.0);
+        let selected = selection == i;
+        let label_color = if selected {
+            if (frame / 20) % 2 == 0 { WHITE } else { YELLOW }
+        } else {
+            GRAY
+        };
+        if selected {
+            draw_text(">", GAME_W / 2.0 - px(150.0), y, px(26.0), label_color);
+        }
+        draw_text(label, GAME_W / 2.0 - px(128.0), y, px(26.0), label_color);
+        draw_text(
+            detail,
+            GAME_W / 2.0 - px(128.0),
+            y + px(20.0),
+            px(16.0),
+            if selected { LIGHTGRAY } else { DARKGRAY },
+        );
+    }
+    draw_text(
+        "ENTER: decide   ESC: not yet",
+        GAME_W / 2.0 - px(112.0),
+        px(300.0),
+        px(16.0),
+        GRAY,
+    );
 }
 
 pub fn draw_message_box(text: &str) {
@@ -2394,9 +2502,15 @@ fn draw_death_animations(animations: &[DeathAnimation]) {
     }
 }
 
+fn draw_drop_shadow(cx: f32, foot_y: f32, w: f32) {
+    // Soft grounding ellipse — a cheap depth cue under every actor.
+    draw_ellipse(cx, foot_y, w * 0.42, w * 0.16, 0.0, color_u8!(0, 0, 0, 70));
+}
+
 fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
     let x = player.x.round();
     let y = player.y.round() + HUD_H;
+    draw_drop_shadow(x + px(16.0), y + px(30.0), px(26.0));
     if player.invuln_timer > 0 && (player.invuln_timer / 3) % 2 == 0 {
         return;
     }
@@ -2466,6 +2580,16 @@ fn draw_enemy(sprites: &Sprites, enemy: &Enemy, theme_id: Option<i32>) {
     }
     let x = enemy.x.round();
     let y = enemy.y.round() + HUD_H;
+    draw_drop_shadow(x + enemy.w / 2.0, y + enemy.h + px(2.0), enemy.w);
+    if enemy.enemy_type == EnemyType::Boss && enemy.hp < enemy.max_hp {
+        let bar_w = enemy.w * 1.4;
+        let bar_x = x - (bar_w - enemy.w) * 0.5;
+        let bar_y = y - px(6.0);
+        let fill = (enemy.hp.max(0) as f32 / enemy.max_hp as f32) * bar_w;
+        draw_rectangle(bar_x - px(1.0), bar_y - px(1.0), bar_w + px(2.0), px(4.0), color_u8!(18, 18, 24, 220));
+        draw_rectangle(bar_x, bar_y, bar_w, px(2.0), color_u8!(70, 30, 30, 255));
+        draw_rectangle(bar_x, bar_y, fill, px(2.0), color_u8!(220, 60, 60, 255));
+    }
     if enemy.flash_timer > 0 && (enemy.flash_timer / 2) % 2 == 0 {
         draw_rectangle(x, y, enemy.w, enemy.h, WHITE);
         return;
@@ -2661,7 +2785,15 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::Key => YELLOW,
                 PickupType::BossKey => ORANGE,
                 PickupType::BombAmmo | PickupType::Bombs => DARKGRAY,
+                PickupType::GemSmall => color_u8!(196, 148, 77, 255),
                 PickupType::Gem => SKYBLUE,
+                PickupType::GemLarge => color_u8!(214, 57, 57, 255),
+                PickupType::WeaponSword(_) => color_u8!(210, 224, 232, 255),
+                PickupType::WeaponThrowing(_) => color_u8!(176, 196, 222, 255),
+                PickupType::WeaponBoomerang(_) => color_u8!(186, 140, 80, 255),
+                PickupType::Armor(_, _) => color_u8!(150, 130, 96, 255),
+                PickupType::CodexPage => color_u8!(232, 214, 160, 255),
+                PickupType::Lore => color_u8!(240, 240, 240, 255),
                 PickupType::Ladder => color_u8!(166, 120, 72, 255),
                 PickupType::Hammer => color_u8!(124, 124, 136, 255),
                 PickupType::Raft => color_u8!(126, 90, 52, 255),
@@ -2675,7 +2807,11 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::CrystalOfSeeing => color_u8!(182, 241, 255, 255),
             };
             match pickup.pickup_type {
+                PickupType::GemSmall => {
+                    draw_gem_icon(x + px(2.0), y + px(2.0), draw_w / px(22.0), color)
+                }
                 PickupType::Gem => draw_gem_icon(x, y, draw_w / px(16.0), SKYBLUE),
+                PickupType::GemLarge => draw_gem_icon(x, y, draw_w / px(13.0), color),
                 PickupType::Ladder => {
                     draw_ladder_icon(x + px(4.0), y + px(2.0), draw_w / px(18.0), color)
                 }
@@ -2690,7 +2826,26 @@ fn draw_pickups(sprites: &Sprites, pickups: &[Pickup], theme_id: Option<i32>) {
                 PickupType::DragonPiece => {
                     draw_dragon_piece_icon(x + px(3.0), y + px(2.0), draw_w / px(16.0))
                 }
-                PickupType::Sword => draw_hammer_icon(x + px(2.0), y + px(2.0), draw_w / px(16.0)),
+                PickupType::Sword | PickupType::WeaponSword(_) | PickupType::WeaponThrowing(_) => {
+                    draw_sword_icon(x + px(3.0), y + px(2.0), draw_w / px(18.0), color)
+                }
+                PickupType::WeaponBoomerang(_) => {
+                    draw_gem_icon(x + px(1.0), y + px(1.0), draw_w / px(15.0), color)
+                }
+                PickupType::Armor(_, _) => draw_rectangle(
+                    x + px(3.0),
+                    y + px(4.0),
+                    draw_w - px(6.0),
+                    draw_h - px(8.0),
+                    color,
+                ),
+                PickupType::CodexPage | PickupType::Lore => draw_rectangle(
+                    x + px(4.0),
+                    y + px(2.0),
+                    draw_w - px(8.0),
+                    draw_h - px(4.0),
+                    color,
+                ),
                 PickupType::TideChart => draw_rectangle(
                     x + px(3.0),
                     y + px(3.0),
@@ -2867,6 +3022,46 @@ fn draw_projectiles(sprites: &Sprites, projectiles: &[Projectile]) {
                     let r = projectile.w / 2.0;
                     draw_circle(cx, cy, r, color_u8!(140, 40, 180, 200));
                     draw_circle(cx, cy, r * 0.55, color_u8!(20, 10, 30, 255));
+                }
+                ProjectileKind::ThrownSword(tier) => {
+                    // Spinning pale blade; the Voidlance shimmers translucent.
+                    let alpha = if tier >= 3 { 170 } else { 255 };
+                    let s = projectile.w * 0.35;
+                    draw_rectangle(
+                        cx - s * 0.2,
+                        cy - s,
+                        s * 0.4,
+                        s * 2.0,
+                        color_u8!(214, 226, 238, alpha),
+                    );
+                    draw_rectangle(
+                        cx - s * 0.6,
+                        cy + s * 0.4,
+                        s * 1.2,
+                        s * 0.35,
+                        color_u8!(196, 160, 74, alpha),
+                    );
+                }
+                ProjectileKind::SwordFragment => {
+                    let s = projectile.w * 0.3;
+                    draw_triangle(
+                        vec2(cx, cy - s),
+                        vec2(cx - s * 0.5, cy + s),
+                        vec2(cx + s * 0.5, cy + s),
+                        color_u8!(190, 200, 214, 230),
+                    );
+                }
+                ProjectileKind::Boomerang(tier) => {
+                    let r = projectile.w * 0.3;
+                    let color = if tier >= 3 {
+                        color_u8!(226, 230, 255, 255)
+                    } else if tier >= 2 {
+                        color_u8!(150, 154, 168, 255)
+                    } else {
+                        color_u8!(186, 140, 80, 255)
+                    };
+                    draw_circle(cx, cy, r, color);
+                    draw_circle(cx, cy, r * 0.45, color_u8!(20, 16, 12, 255));
                 }
             }
         }
@@ -3146,6 +3341,15 @@ fn draw_equipped_item_icon(sprites: &Sprites, item: EquippedItem, x: f32, y: f32
             }
         }
         EquippedItem::Hammer => draw_hammer_icon(x + px(1.0), y + px(2.0), px(1.0)),
+        EquippedItem::ThrowingSword => {
+            draw_sword_icon(x + px(4.0), y + px(1.0), px(0.7), color_u8!(176, 196, 222, 255))
+        }
+        EquippedItem::Boomerang => {
+            let cx = x + px(9.0);
+            let cy = y + px(9.0);
+            draw_circle(cx, cy, px(6.0), color_u8!(186, 140, 80, 255));
+            draw_circle(cx, cy, px(2.8), color_u8!(27, 31, 42, 255));
+        }
     }
 }
 
@@ -3611,7 +3815,6 @@ fn draw_dungeon_map_panel(
     area_h: f32,
     frame: i32,
 ) {
-    const MAP_CELL: f32 = 18.0;
     const MAP_GAP: f32 = 2.0;
     let gap_x = px(MAP_GAP);
     let gap_y = px(MAP_GAP);

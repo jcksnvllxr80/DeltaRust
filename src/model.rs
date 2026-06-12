@@ -1,7 +1,7 @@
 use crate::constants::{PIXEL_SCALE, TILE, attack_duration, player_full_hearts_hp, player_max_hp};
 use macroquad::prelude::Rect;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 pub type TileGrid = Vec<Vec<TileType>>;
 
@@ -24,9 +24,17 @@ pub enum GameState {
     DungeonExit,
     Message,
     GameOver,
+    FinalChoice,
     Victory,
     PauseMenu,
     Shop,
+}
+
+/// The moral decision made at the Seal Altar in the Dragon's Eternal Throne.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ending {
+    BreakSeal,
+    HoldSeal,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -78,7 +86,15 @@ pub enum PickupType {
     BossKey,
     BombAmmo,
     Bombs,
+    GemSmall,
     Gem,
+    GemLarge,
+    WeaponSword(u8),
+    WeaponThrowing(u8),
+    WeaponBoomerang(u8),
+    Armor(ArmorSlot, u8),
+    CodexPage,
+    Lore,
     Ladder,
     Hammer,
     Raft,
@@ -132,6 +148,8 @@ pub enum EquippedItem {
     Sword,
     Bombs,
     Hammer,
+    ThrowingSword,
+    Boomerang,
 }
 
 impl EquippedItem {
@@ -141,8 +159,63 @@ impl EquippedItem {
             EquippedItem::Sword => "Sword",
             EquippedItem::Bombs => "Bombs",
             EquippedItem::Hammer => "Hammer",
+            EquippedItem::ThrowingSword => "T.Sword",
+            EquippedItem::Boomerang => "Boomerang",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArmorSlot {
+    Head,
+    Body,
+    Legs,
+}
+
+/// Damage-reduction percent per armor tier (index 0 = no armor, 1-8 per spec).
+pub fn armor_dr(slot: ArmorSlot, tier: i32) -> i32 {
+    let tier = tier.clamp(0, 8) as usize;
+    match slot {
+        ArmorSlot::Head => [0, 2, 4, 5, 6, 6, 7, 8, 10][tier],
+        ArmorSlot::Body => [0, 5, 8, 12, 16, 18, 22, 26, 30][tier],
+        ArmorSlot::Legs => [0, 2, 4, 6, 9, 10, 13, 16, 20][tier],
+    }
+}
+
+pub fn armor_name(slot: ArmorSlot, tier: i32) -> &'static str {
+    let tier = tier.clamp(0, 8) as usize;
+    match slot {
+        ArmorSlot::Head => [
+            "None", "Worn Leather Cap", "Mossveil Hood", "Ashwarden Helm", "Ironclad Visor",
+            "Seafarer's Wrap", "Forge Crown", "Void Veil", "Star Helm",
+        ][tier],
+        ArmorSlot::Body => [
+            "None", "Traveller's Coat", "Mosshaven Vest", "Ash Brigandine", "Vault Plate",
+            "Tidecoat", "Forgeplate", "Void Mantle", "Constellation Plate",
+        ][tier],
+        ArmorSlot::Legs => [
+            "None", "Worn Trousers", "Fen Waders", "Ash Greaves", "Ironclad Legplates",
+            "Tidestride Boots", "Forge Greaves", "Void Steps", "Star Greaves",
+        ][tier],
+    }
+}
+
+/// Element affinity per armor tier (shared across slots): bonus DR inside matching dungeons.
+/// 0=none 1=water 2=physical 3=void 4=fire 5=celestial
+pub fn armor_element(tier: i32) -> u8 {
+    [0, 0, 1, 2, 3, 1, 4, 3, 5][tier.clamp(0, 8) as usize]
+}
+
+pub fn sword_name(tier: i32) -> &'static str {
+    ["None", "Irongrip Sword", "Ashbrand", "Starforged Blade"][tier.clamp(0, 3) as usize]
+}
+
+pub fn throwing_name(tier: i32) -> &'static str {
+    ["None", "Iron Dart", "Splitblade", "Voidlance"][tier.clamp(0, 3) as usize]
+}
+
+pub fn boomerang_name(tier: i32) -> &'static str {
+    ["None", "Carved Boomerang", "Ironwing", "Celestial Ring"][tier.clamp(0, 3) as usize]
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -172,6 +245,11 @@ pub enum InventoryItem {
     CrystalOfSeeing,
     Gems,
     DragonPieces,
+    ThrowingSword,
+    Boomerang,
+    ArmorHead,
+    ArmorBody,
+    ArmorLegs,
 }
 
 impl InventoryItem {
@@ -180,6 +258,8 @@ impl InventoryItem {
             InventoryItem::Sword => Some(EquippedItem::Sword),
             InventoryItem::Bombs => Some(EquippedItem::Bombs),
             InventoryItem::Hammer => Some(EquippedItem::Hammer),
+            InventoryItem::ThrowingSword => Some(EquippedItem::ThrowingSword),
+            InventoryItem::Boomerang => Some(EquippedItem::Boomerang),
             _ => None,
         }
     }
@@ -196,9 +276,14 @@ pub struct InventoryEntry {
 }
 
 // BossKey is excluded — entries are appended dynamically per dungeon in inventory_entries().
-pub const INVENTORY_ITEMS: [InventoryItem; 18] = [
+pub const INVENTORY_ITEMS: [InventoryItem; 23] = [
     InventoryItem::Sword,
+    InventoryItem::ThrowingSword,
+    InventoryItem::Boomerang,
     InventoryItem::Bombs,
+    InventoryItem::ArmorHead,
+    InventoryItem::ArmorBody,
+    InventoryItem::ArmorLegs,
     InventoryItem::Keys,
     InventoryItem::Ladder,
     InventoryItem::Hammer,
@@ -259,6 +344,22 @@ pub struct Player {
     pub stun_timer: i32,
     pub has_sword: bool,
     pub has_bombs: bool,
+    #[serde(default)]
+    pub sword_tier: i32,
+    #[serde(default)]
+    pub throwing_tier: i32,
+    #[serde(default)]
+    pub boomerang_tier: i32,
+    #[serde(default)]
+    pub armor_head: i32,
+    #[serde(default)]
+    pub armor_body: i32,
+    #[serde(default)]
+    pub armor_legs: i32,
+    #[serde(default)]
+    pub codex_pages: i32,
+    #[serde(default)]
+    pub combo_hits: i32,
     #[serde(default)]
     pub boss_keys: HashSet<i32>,
     pub keys: i32,
@@ -332,6 +433,15 @@ impl Player {
             stun_timer: 0,
             has_sword: false,
             has_bombs: false,
+            sword_tier: 0,
+            throwing_tier: 0,
+            boomerang_tier: 0,
+            // Starting gear per the item progression doc: worn cap, coat, trousers.
+            armor_head: 1,
+            armor_body: 1,
+            armor_legs: 1,
+            codex_pages: 0,
+            combo_hits: 0,
             boss_keys: HashSet::new(),
             keys: 0,
             gems: 0,
@@ -359,9 +469,33 @@ impl Player {
         }
     }
 
+    /// Total damage-reduction percent, capped at 60, plus elemental bonus inside
+    /// dungeons whose element matches equipped armor pieces.
+    pub fn total_dr(&self, dungeon_element: u8) -> i32 {
+        let mut dr = armor_dr(ArmorSlot::Head, self.armor_head)
+            + armor_dr(ArmorSlot::Body, self.armor_body)
+            + armor_dr(ArmorSlot::Legs, self.armor_legs);
+        dr = dr.min(60);
+        if dungeon_element != 0 {
+            for tier in [self.armor_head, self.armor_body, self.armor_legs] {
+                if armor_element(tier) == dungeon_element {
+                    dr += 8;
+                }
+            }
+        }
+        dr.min(80)
+    }
+
     pub fn grant_all_items(&mut self) {
         self.has_sword = true;
         self.has_bombs = true;
+        self.sword_tier = 3;
+        self.throwing_tier = 3;
+        self.boomerang_tier = 3;
+        self.armor_head = 8;
+        self.armor_body = 8;
+        self.armor_legs = 8;
+        self.codex_pages = 7;
         self.boss_keys = (1..=10).collect();
         self.keys = 9999;
         self.gems = 9999;
@@ -414,11 +548,51 @@ impl Player {
         match item {
             InventoryItem::Sword => InventoryEntry {
                 item,
-                label: "Sword",
-                description: "Assign to MAIN or SIDE. Swings instantly and interrupts movement.",
+                label: if self.has_sword { sword_name(self.sword_tier.max(1)) } else { "Sword" },
+                description: "Melee blade. Higher tiers hit harder; the Starforged Blade bursts on the 7th hit.",
                 owned: self.has_sword,
                 count: None,
                 equipable: true,
+            },
+            InventoryItem::ThrowingSword => InventoryEntry {
+                item,
+                label: if self.throwing_tier > 0 { throwing_name(self.throwing_tier) } else { "Throwing Sword" },
+                description: "Infinite thrown blades. The Splitblade forks on impact; the Voidlance passes through walls.",
+                owned: self.throwing_tier > 0,
+                count: None,
+                equipable: true,
+            },
+            InventoryItem::Boomerang => InventoryEntry {
+                item,
+                label: if self.boomerang_tier > 0 { boomerang_name(self.boomerang_tier) } else { "Boomerang" },
+                description: "Arcs out and returns, striking on both legs. The Ironwing staggers foes.",
+                owned: self.boomerang_tier > 0,
+                count: None,
+                equipable: true,
+            },
+            InventoryItem::ArmorHead => InventoryEntry {
+                item,
+                label: armor_name(ArmorSlot::Head, self.armor_head),
+                description: "Head armor. Contributes to damage reduction (60% cap).",
+                owned: self.armor_head > 0,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::ArmorBody => InventoryEntry {
+                item,
+                label: armor_name(ArmorSlot::Body, self.armor_body),
+                description: "Body armor. The largest share of damage reduction.",
+                owned: self.armor_body > 0,
+                count: None,
+                equipable: false,
+            },
+            InventoryItem::ArmorLegs => InventoryEntry {
+                item,
+                label: armor_name(ArmorSlot::Legs, self.armor_legs),
+                description: "Leg armor. Rounds out damage reduction and footing.",
+                owned: self.armor_legs > 0,
+                count: None,
+                equipable: false,
             },
             InventoryItem::Bombs => InventoryEntry {
                 item,
@@ -535,9 +709,9 @@ impl Player {
             InventoryItem::DragonCodex => InventoryEntry {
                 item,
                 label: "Dragon Codex",
-                description: "Ancient lore needed to face the final approach.",
-                owned: self.has_dragon_codex,
-                count: None,
+                description: "Seven scattered pages. All seven open the Throne's seal gate.",
+                owned: self.codex_pages >= 7 || self.has_dragon_codex,
+                count: Some(self.codex_pages),
                 equipable: false,
             },
             InventoryItem::CrystalOfSeeing => InventoryEntry {
@@ -551,7 +725,7 @@ impl Player {
             InventoryItem::Gems => InventoryEntry {
                 item,
                 label: "Gems",
-                description: "Currency used by merchants across the overworld.",
+                description: "Dragonstone shards: Earthshard 1, Tideshard 5, Hearthshard 25.",
                 owned: true,
                 count: Some(self.gems),
                 equipable: false,
@@ -559,7 +733,7 @@ impl Player {
             InventoryItem::DragonPieces => InventoryEntry {
                 item,
                 label: "Dragon Pieces",
-                description: "Collect all seven to unlock the final confrontation.",
+                description: "Seven pieces open the Throne. The eighth waits inside.",
                 owned: self.dragon_pieces > 0,
                 count: Some(self.dragon_pieces),
                 equipable: false,
@@ -646,6 +820,9 @@ pub enum ProjectileKind {
     Rock,
     Spike,
     Ring,
+    ThrownSword(u8),
+    SwordFragment,
+    Boomerang(u8),
 }
 
 #[derive(Clone)]
@@ -660,6 +837,7 @@ pub struct Projectile {
     pub active: bool,
     pub timer: i32,
     pub kind: ProjectileKind,
+    pub returning: bool,
 }
 
 #[derive(Clone)]
@@ -699,6 +877,9 @@ pub enum ShopAction {
     GiveBombUpgrade,
     GiveVoidCompass,
     GiveHeart,
+    GiveWeaponThrowing(u8),
+    GiveWeaponBoomerang(u8),
+    GiveArmor(ArmorSlot, u8),
 }
 
 pub struct ShopItem {
@@ -735,9 +916,6 @@ pub struct WorldSnapshot {
     pub interior_id: String,
     pub tiles: TileGrid,
     pub visited: HashSet<String>,
-    pub cleared_rooms: HashSet<String>,
-    pub opened_chests: HashMap<String, Vec<(usize, usize)>>,
-    pub destroyed_tiles: HashMap<String, Vec<(usize, usize, TileType)>>,
     pub dungeon_rooms: HashSet<String>,
     pub dev_mode: bool,
     pub time_minutes: i32,

@@ -615,7 +615,15 @@ fn base_pickup_frame(layout: &SpriteLayout, pickup: PickupType) -> Option<&Frame
         PickupType::BossKey => &layout.items.boss_key,
         PickupType::BombAmmo => &layout.items.bomb_ammo,
         PickupType::Bombs => &layout.items.bombs,
-        PickupType::Gem
+        PickupType::GemSmall
+        | PickupType::Gem
+        | PickupType::GemLarge
+        | PickupType::WeaponSword(_)
+        | PickupType::WeaponThrowing(_)
+        | PickupType::WeaponBoomerang(_)
+        | PickupType::Armor(_, _)
+        | PickupType::CodexPage
+        | PickupType::Lore
         | PickupType::Ladder
         | PickupType::Hammer
         | PickupType::Raft
