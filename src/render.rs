@@ -2510,13 +2510,14 @@ fn draw_drop_shadow(cx: f32, foot_y: f32, w: f32) {
 fn draw_player(sprites: &Sprites, player: &Player, frame: i32) {
     let x = player.x.round();
     let y = player.y.round() + HUD_H;
-    draw_drop_shadow(x + px(16.0), y + px(30.0), px(26.0));
     if player.invuln_timer > 0 && (player.invuln_timer / 3) % 2 == 0 {
         return;
     }
     if sprites.draw_player(player, x, y, frame) {
+        // The generated hero sprite bakes in its own shadow — don't add another.
         return;
     }
+    draw_drop_shadow(x + px(16.0), y + px(30.0), px(26.0));
     let outline = color_u8!(20, 24, 20, 255);
     let tunic = color_u8!(50, 148, 66, 255);
     let tunic_shadow = color_u8!(34, 104, 46, 255);

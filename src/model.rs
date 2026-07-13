@@ -763,6 +763,41 @@ pub struct EnemySpawn {
     pub y: f32,
 }
 
+/// Movement personality. All tuning lives in `ai::tuning(archetype)`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Archetype {
+    /// Direct pursuer with organic wobble (Splort).
+    Grunt,
+    /// Flocking unit — separation/alignment/cohesion (mini Splorts).
+    Swarm,
+    /// Predicts player movement, attacks from the side or behind (Shriekwing).
+    Flanker,
+    /// Holds a firing range, retreats when crowded (Borespat).
+    Sniper,
+    /// Momentum and commitment — slow to start, hard to redirect (Ironmaw).
+    Tank,
+    /// Dormant until the player is close, then erupts (dungeon variants).
+    Ambusher,
+    /// Arena boss — deliberate mid-range drift.
+    Boss,
+}
+
+/// High-level behavior state. Transitions are driven by perception in the
+/// game.rs AI driver; `ai::on_state_enter` is the animation/SFX hook point.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AiState {
+    /// Wandering near home / standing watch.
+    Idle,
+    /// Heard or glimpsed something — investigating the last known position.
+    Alert,
+    /// Fully engaged, pursuing or closing distance.
+    Chase,
+    /// At preferred combat range — strafing, circling, firing.
+    Position,
+    /// Health/fear response — disengaging.
+    Flee,
+}
+
 #[derive(Clone)]
 pub struct Enemy {
     pub enemy_type: EnemyType,
@@ -784,11 +819,37 @@ pub struct Enemy {
     pub timer: i32,
     pub vx: f32,
     pub vy: f32,
+    /// Per-type action sub-state (hop phase, burrow phase, dive phase...).
     pub ai_state: i32,
     /// true for mini-Splorts spawned from a split — they don't split again
     pub is_mini: bool,
     /// true when Borespat is underground — invulnerable and invisible
     pub buried: bool,
+    /// Movement personality; selects the `ai::AiTuning` row.
+    pub archetype: Archetype,
+    /// Current state-machine state.
+    pub ai: AiState,
+    /// Movement heading in radians — turn-rate limited, drives FOV facing.
+    pub heading: f32,
+    /// Random-walk angle for wander steering.
+    pub wander_angle: f32,
+    /// Frames left before the enemy may react to a new sighting.
+    pub reaction: i32,
+    /// Last known player position (memory after losing line of sight).
+    pub last_seen_x: f32,
+    pub last_seen_y: f32,
+    /// Frames of memory remaining for last_seen.
+    pub memory: i32,
+    /// Spawn anchor — idle wander and ambush posts center here.
+    pub home_x: f32,
+    pub home_y: f32,
+    /// Frames spent in the Alert state (gives up when patience runs out).
+    pub alert_timer: i32,
+    /// Frames remaining in Flee before re-evaluating.
+    pub flee_timer: i32,
+    /// Cached steering target, refreshed every decision interval.
+    pub desired_vx: f32,
+    pub desired_vy: f32,
 }
 
 #[derive(Clone)]

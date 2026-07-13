@@ -5,9 +5,9 @@ use crate::constants::{
     knockback_frames, knockback_speed, player_speed, trans_speed,
 };
 use crate::model::{
-    Bomb, DeathAnimation, Dir, Ending, Enemy, EnemySpawn, EnemyType, EquippedItem, GameState,
-    Gnome, ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState, Projectile, ProjectileKind,
-    PropKind, ShopAction, ShopItem, TileType, Transition, WorldProp,
+    AiState, Archetype, Bomb, DeathAnimation, Dir, Ending, Enemy, EnemySpawn, EnemyType,
+    EquippedItem, GameState, Gnome, ItemSlot, NpcKind, Pickup, PickupType, Player, PlayerState,
+    Projectile, ProjectileKind, PropKind, ShopAction, ShopItem, TileType, Transition, WorldProp,
 };
 use crate::render;
 use crate::save::{self, SaveData, SaveSlotSummary};
@@ -138,6 +138,9 @@ pub struct Game {
     mirror_trap_timer: i32,
     loop_warned: bool,
     weapon_cooldown: i32,
+    /// Player velocity this frame — feeds enemy pursuit prediction.
+    player_vel: (f32, f32),
+    player_prev: (f32, f32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -225,6 +228,8 @@ impl Game {
             mirror_trap_timer: 0,
             loop_warned: false,
             weapon_cooldown: 0,
+            player_vel: (0.0, 0.0),
+            player_prev: (0.0, 0.0),
         };
         game.apply_starting_loadout();
         game.spawn_for_screen();
@@ -560,10 +565,15 @@ impl Game {
         if !matches!(self.state, GameState::Playing) {
             return;
         }
+        self.player_prev = (self.player.x, self.player.y);
         if let Some((dir, nx, ny)) = self.update_player() {
             self.start_transition(dir, nx, ny);
             return;
         }
+        self.player_vel = (
+            self.player.x - self.player_prev.0,
+            self.player.y - self.player_prev.1,
+        );
 
         self.clear_blocked_interaction();
 
@@ -2681,37 +2691,81 @@ impl Game {
     }
 
     fn update_enemies(&mut self) {
-        let px = self.player.x + 8.0;
-        let py = self.player.y + 8.0;
+        let target_x = self.player.x + 8.0;
+        let target_y = self.player.y + 8.0;
+        // Player noise: heard while walking or mid-attack. Standing still is silent.
+        let player_noisy = self.player.state == PlayerState::Walking
+            || self.player.state == PlayerState::Attacking
+            || self.player.attack_timer > 0;
+        let perception = PlayerPerception {
+            x: target_x,
+            y: target_y,
+            vx: self.player_vel.0,
+            vy: self.player_vel.1,
+            noisy: player_noisy,
+        };
+        // Snapshots for separation / flocking — consistent and borrow-friendly.
+        let positions: Vec<(f32, f32, bool)> = self
+            .enemies
+            .iter()
+            .map(|e| (e.x + e.w / 2.0, e.y + e.h / 2.0, e.active && !e.buried))
+            .collect();
+        let swarm: Vec<(usize, f32, f32, f32, f32)> = self
+            .enemies
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.active && e.archetype == crate::model::Archetype::Swarm)
+            .map(|(i, e)| (i, e.x, e.y, e.vx, e.vy))
+            .collect();
+
         let mut shots: Vec<(f32, f32, f32, f32, ProjectileKind)> = vec![];
         let mut mini_spawns: Vec<(f32, f32)> = vec![];
-        for enemy in &mut self.enemies {
-            if !enemy.active {
+        let mut shouts: Vec<(f32, f32, f32)> = vec![]; // x, y, radius
+
+        for index in 0..self.enemies.len() {
+            if !self.enemies[index].active {
                 continue;
             }
-            if enemy.hurt_timer > 0 {
+            // Stunned: knockback playout, no thinking, momentum is lost.
+            if self.enemies[index].hurt_timer > 0 {
+                let enemy = &mut self.enemies[index];
                 enemy.hurt_timer -= 1;
                 enemy.x += enemy.knock_x;
                 enemy.y += enemy.knock_y;
                 enemy.flash_timer = enemy.hurt_timer;
+                enemy.vx *= 0.85;
+                enemy.vy *= 0.85;
                 continue;
             }
-            enemy.timer += 1;
-            match enemy.enemy_type {
-                EnemyType::Splort => ai_splort(enemy, &self.world, px, py),
-                EnemyType::Borespat => {
-                    shots.extend(ai_borespat(enemy, &self.world, px, py));
+            self.enemies[index].timer += 1;
+            update_enemy_ai(
+                index,
+                &mut self.enemies,
+                &self.world,
+                &perception,
+                &positions,
+                &swarm,
+                &mut shots,
+                &mut mini_spawns,
+                &mut shouts,
+            );
+        }
+        // Group awareness: a first sighting alerts allies within shout range.
+        for (sx, sy, radius) in shouts {
+            for enemy in &mut self.enemies {
+                if !enemy.active || enemy.ai == AiState::Chase || enemy.ai == AiState::Position {
+                    continue;
                 }
-                EnemyType::Shriekwing => {
-                    shots.extend(ai_shriekwing(enemy, &self.world, px, py));
-                }
-                EnemyType::Ironmaw => {
-                    shots.extend(ai_ironmaw(enemy, &self.world, px, py));
-                }
-                EnemyType::Boss => {
-                    let (boss_shots, boss_spawns) = ai_boss(enemy, &self.world, px, py);
-                    shots.extend(boss_shots);
-                    mini_spawns.extend(boss_spawns);
+                let dx = enemy.x - sx;
+                let dy = enemy.y - sy;
+                if (dx * dx + dy * dy).sqrt() <= radius {
+                    enemy.last_seen_x = target_x;
+                    enemy.last_seen_y = target_y;
+                    enemy.memory = crate::ai::tuning(enemy.archetype).memory_frames;
+                    if enemy.ai == AiState::Idle {
+                        enemy.ai = AiState::Alert;
+                        crate::ai::on_state_enter(enemy);
+                    }
                 }
             }
         }
@@ -3143,6 +3197,15 @@ impl Game {
         enemy.hp -= amount;
         enemy.hurt_timer = 20;
         enemy.flash_timer = 20;
+        // Pain is loud: getting hit reveals the player instantly.
+        enemy.last_seen_x = self.player.x + 8.0;
+        enemy.last_seen_y = self.player.y + 8.0;
+        enemy.memory = crate::ai::tuning(enemy.archetype).memory_frames;
+        enemy.reaction = 0;
+        if matches!(enemy.ai, AiState::Idle | AiState::Alert) {
+            enemy.ai = AiState::Chase;
+            crate::ai::on_state_enter(enemy);
+        }
         enemy.knock_x = 0.0;
         enemy.knock_y = 0.0;
         match knock_dir {
@@ -3400,6 +3463,13 @@ impl Game {
                     enemy.hp += (d - 1) / 3;
                     enemy.max_hp = enemy.hp;
                     enemy.speed *= 1.0 + d as f32 * 0.03;
+                    // Some dungeon guards are AMBUSHERS: dormant at their post
+                    // until the player wanders close, then they erupt.
+                    if matches!(enemy.archetype, Archetype::Grunt | Archetype::Tank)
+                        && rand::gen_range(0.0, 1.0) < 0.3
+                    {
+                        enemy.archetype = Archetype::Ambusher;
+                    }
                 }
             }
         }
@@ -4401,7 +4471,8 @@ impl Game {
         });
     }
 
-    /// Spawn a mini-splort (from boss summon or splort death split)
+    /// Spawn a mini-splort (from boss summon or splort death split).
+    /// Minis are SWARM units — they school together via boids steering.
     fn spawn_mini_splort(&mut self, x: f32, y: f32) {
         let ecfg = &crate::config::get().enemies;
         self.enemies.push(Enemy {
@@ -4421,12 +4492,27 @@ impl Game {
             flash_timer: 0,
             shoot_cooldown: 0,
             active: true,
-            timer: 0,
+            timer: rand::gen_range(0, 60),
             vx: 0.0,
             vy: 0.0,
             ai_state: 0,
             is_mini: true,
             buried: false,
+            archetype: Archetype::Swarm,
+            // Born from combat — they arrive already engaged.
+            ai: AiState::Chase,
+            heading: rand::gen_range(0.0, std::f32::consts::TAU),
+            wander_angle: rand::gen_range(0.0, std::f32::consts::TAU),
+            reaction: 0,
+            last_seen_x: self.player.x,
+            last_seen_y: self.player.y,
+            memory: 120,
+            home_x: x,
+            home_y: y,
+            alert_timer: 0,
+            flee_timer: 0,
+            desired_vx: 0.0,
+            desired_vy: 0.0,
         });
     }
 }
@@ -4487,86 +4573,405 @@ fn create_enemy(spawn: EnemySpawn) -> Enemy {
         flash_timer: 0,
         shoot_cooldown,
         active: true,
-        timer: 0,
+        timer: rand::gen_range(0, 60), // desync decision ticks across spawns
         vx: 0.0,
         vy: 0.0,
         ai_state: 0,
         is_mini: false,
         buried: false,
+        archetype: match spawn.enemy_type {
+            EnemyType::Splort => Archetype::Grunt,
+            EnemyType::Borespat => Archetype::Sniper,
+            EnemyType::Shriekwing => Archetype::Flanker,
+            EnemyType::Ironmaw => Archetype::Tank,
+            EnemyType::Boss => Archetype::Boss,
+        },
+        ai: if spawn.enemy_type == EnemyType::Boss {
+            // Arena bosses are awake the moment the door opens.
+            AiState::Chase
+        } else {
+            AiState::Idle
+        },
+        heading: rand::gen_range(0.0, std::f32::consts::TAU),
+        wander_angle: rand::gen_range(0.0, std::f32::consts::TAU),
+        reaction: 0,
+        last_seen_x: spawn.x,
+        last_seen_y: spawn.y,
+        memory: 0,
+        home_x: spawn.x,
+        home_y: spawn.y,
+        alert_timer: 0,
+        flee_timer: 0,
+        desired_vx: 0.0,
+        desired_vy: 0.0,
     }
 }
 
-fn move_enemy(enemy: &mut Enemy, world: &World) {
-    let mut dx = 0.0;
-    let mut dy = 0.0;
-    let scaled = enemy.speed * 0.6;
-    match enemy.dir {
-        Dir::Up => dy = -scaled * 0.3,
-        Dir::Down => dy = scaled,
-        Dir::Left => dx = -scaled,
-        Dir::Right => dx = scaled,
+/// Everything an enemy may know about the player this frame.
+struct PlayerPerception {
+    x: f32,
+    y: f32,
+    vx: f32,
+    vy: f32,
+    noisy: bool,
+}
+
+/// The AI driver: perception -> state transitions -> steering -> per-type
+/// action layer. Movement math lives in `crate::ai`; this function owns the
+/// state machine and hands the steered velocity to each type's action layer
+/// (hop / burrow / dive / thrust), which preserves every enemy's signature
+/// attack identity.
+#[allow(clippy::too_many_arguments)]
+fn update_enemy_ai(
+    index: usize,
+    enemies: &mut [Enemy],
+    world: &World,
+    p: &PlayerPerception,
+    positions: &[(f32, f32, bool)],
+    swarm: &[(usize, f32, f32, f32, f32)],
+    shots: &mut Vec<(f32, f32, f32, f32, ProjectileKind)>,
+    mini_spawns: &mut Vec<(f32, f32)>,
+    shouts: &mut Vec<(f32, f32, f32)>,
+) {
+    use crate::ai;
+    let enemy = &mut enemies[index];
+    let tun = ai::tuning(enemy.archetype);
+    let cx = enemy.x + enemy.w / 2.0;
+    let cy = enemy.y + enemy.h / 2.0;
+    let dx = p.x - cx;
+    let dy = p.y - cy;
+    let dist = (dx * dx + dy * dy).sqrt();
+    let max_speed = enemy.speed * tun.max_speed_mult;
+
+    // ---- Perception -------------------------------------------------------
+    // Shriekwings fly — walls don't block their sight either.
+    let los = enemy.enemy_type == EnemyType::Shriekwing
+        || ai::line_of_sight(world, cx, cy, p.x, p.y);
+    let sees = dist < tun.sight_tiles * TILE
+        && los
+        && ai::in_fov(enemy.heading, dx, dy, tun.fov_deg);
+    let near = dist < tun.aggro_tiles * TILE && los;
+    let hears = p.noisy && dist < tun.hearing_tiles * TILE;
+    let detected = sees || near;
+
+    if detected {
+        enemy.last_seen_x = p.x;
+        enemy.last_seen_y = p.y;
+        enemy.memory = tun.memory_frames;
+        if enemy.reaction > 0 {
+            enemy.reaction -= 1;
+        }
+    } else {
+        if enemy.memory > 0 {
+            enemy.memory -= 1;
+        }
+        // Attention resets once contact is fully lost.
+        if matches!(enemy.ai, AiState::Idle | AiState::Alert) {
+            enemy.reaction = tun.reaction_frames;
+        }
     }
-    let nx = enemy.x + dx;
-    let ny = enemy.y + dy;
+    let engaged = detected && enemy.reaction <= 0;
+
+    // ---- State transitions -------------------------------------------------
+    // Fear response: low health sends fragile archetypes running.
+    if tun.flee_hp_frac > 0.0
+        && enemy.ai != AiState::Flee
+        && (enemy.hp as f32) < enemy.max_hp as f32 * tun.flee_hp_frac
+        && enemy.max_hp > 1
+    {
+        enemy.ai = AiState::Flee;
+        enemy.flee_timer = 150;
+        ai::on_state_enter(enemy);
+    }
+    let prev_state = enemy.ai;
+    match enemy.ai {
+        AiState::Idle => {
+            if engaged {
+                enemy.ai = AiState::Chase;
+                if tun.shout_tiles > 0.0 {
+                    shouts.push((cx, cy, tun.shout_tiles * TILE));
+                }
+            } else if hears {
+                // Heard something: investigate roughly where the sound was.
+                enemy.ai = AiState::Alert;
+                enemy.last_seen_x = p.x + rand::gen_range(-TILE, TILE);
+                enemy.last_seen_y = p.y + rand::gen_range(-TILE, TILE);
+                enemy.memory = tun.memory_frames / 2;
+            }
+        }
+        AiState::Alert => {
+            enemy.alert_timer += 1;
+            if engaged {
+                enemy.ai = AiState::Chase;
+                if tun.shout_tiles > 0.0 {
+                    shouts.push((cx, cy, tun.shout_tiles * TILE));
+                }
+            } else if hears {
+                enemy.last_seen_x = p.x;
+                enemy.last_seen_y = p.y;
+                enemy.memory = tun.memory_frames / 2;
+            } else if enemy.memory <= 0 && enemy.alert_timer > 180 {
+                enemy.ai = AiState::Idle;
+            }
+        }
+        AiState::Chase => {
+            if tun.preferred_tiles > 0.0 && dist <= tun.preferred_tiles * TILE && detected {
+                enemy.ai = AiState::Position;
+            } else if !detected && enemy.memory <= 0 {
+                enemy.ai = AiState::Alert;
+            }
+        }
+        AiState::Position => {
+            if !detected && enemy.memory <= 0 {
+                enemy.ai = AiState::Alert;
+            } else if dist > tun.preferred_tiles * TILE * 1.7 {
+                enemy.ai = AiState::Chase;
+            }
+        }
+        AiState::Flee => {
+            enemy.flee_timer -= 1;
+            if enemy.flee_timer <= 0 {
+                enemy.ai = if detected { AiState::Chase } else { AiState::Alert };
+            }
+        }
+    }
+    if enemy.ai != prev_state {
+        ai::on_state_enter(enemy);
+    }
+
+    // ---- Steering (retargeted on staggered decision ticks) -----------------
+    if (enemy.timer + index as i32) % tun.decision_interval == 0 {
+        let (mut sx, mut sy) = match enemy.ai {
+            AiState::Idle => {
+                if enemy.archetype == crate::model::Archetype::Ambusher {
+                    // Plays dead at its post.
+                    (0.0, 0.0)
+                } else {
+                    let home_dx = enemy.home_x - cx;
+                    let home_dy = enemy.home_y - cy;
+                    if (home_dx * home_dx + home_dy * home_dy).sqrt() > TILE * 3.0 {
+                        // Drifted too far — amble home.
+                        ai::arrive(cx, cy, enemy.home_x, enemy.home_y, max_speed * 0.5, TILE)
+                    } else {
+                        ai::wander(&mut enemy.wander_angle, max_speed, 0.4)
+                    }
+                }
+            }
+            AiState::Alert => {
+                // Investigate the last known position, cautiously.
+                let (ax, ay) = ai::arrive(
+                    cx,
+                    cy,
+                    enemy.last_seen_x,
+                    enemy.last_seen_y,
+                    max_speed * 0.65,
+                    tun.arrive_tiles * TILE,
+                );
+                (ax, ay)
+            }
+            AiState::Chase => {
+                let (tx, ty) = if detected {
+                    (p.x, p.y)
+                } else {
+                    (enemy.last_seen_x, enemy.last_seen_y)
+                };
+                if enemy.archetype == crate::model::Archetype::Flanker && detected {
+                    // Aim for a point beside/behind the player, off their
+                    // movement axis. Side alternates per individual.
+                    let (mvx, mvy) = ai::normalize(p.vx, p.vy);
+                    let (fx, fy) = if mvx == 0.0 && mvy == 0.0 {
+                        ai::normalize(cx - p.x, cy - p.y)
+                    } else {
+                        (-mvx, -mvy)
+                    };
+                    let side = if index % 2 == 0 { 1.0 } else { -1.0 };
+                    let offset = tun.preferred_tiles * TILE * 0.8;
+                    let flank_x = p.x + fx * offset * 0.5 - fy * side * offset;
+                    let flank_y = p.y + fy * offset * 0.5 + fx * side * offset;
+                    ai::pursue(cx, cy, flank_x, flank_y, p.vx, p.vy, max_speed, tun.lookahead)
+                } else if detected {
+                    ai::pursue(cx, cy, tx, ty, p.vx, p.vy, max_speed, tun.lookahead)
+                } else {
+                    ai::arrive(cx, cy, tx, ty, max_speed, tun.arrive_tiles * TILE)
+                }
+            }
+            AiState::Position => {
+                // Hold the ring: radial correction + tangential strafe.
+                let preferred = tun.preferred_tiles * TILE;
+                let radial_err = dist - preferred;
+                let (rx, ry) = ai::normalize(dx, dy);
+                let strafe_dir = if index % 2 == 0 { 1.0 } else { -1.0 };
+                let radial_speed = (radial_err / preferred).clamp(-1.0, 1.0) * max_speed;
+                let strafe_speed = max_speed * 0.6 * strafe_dir;
+                let mut vx = rx * radial_speed - ry * strafe_speed;
+                let mut vy = ry * radial_speed + rx * strafe_speed;
+                // Too close for comfort: snipers back out hard.
+                if dist < tun.min_range_tiles * TILE {
+                    let (fx2, fy2) = ai::flee(cx, cy, p.x, p.y, max_speed);
+                    vx = fx2;
+                    vy = fy2;
+                }
+                (vx, vy)
+            }
+            AiState::Flee => ai::flee(cx, cy, p.x, p.y, max_speed),
+        };
+        // Directional imprecision — nobody tracks the player perfectly.
+        let wob = rand::gen_range(-tun.wobble, tun.wobble);
+        let (rsx, rsy) = (
+            sx * wob.cos() - sy * wob.sin(),
+            sx * wob.sin() + sy * wob.cos(),
+        );
+        sx = rsx;
+        sy = rsy;
+        // Swarm units flock: alignment + cohesion folded into the target.
+        if enemy.archetype == crate::model::Archetype::Swarm {
+            let (flx, fly) = ai::flock(index, cx, cy, swarm, tun.separation_tiles * TILE * 3.0);
+            sx += flx * max_speed * 0.5;
+            sy += fly * max_speed * 0.5;
+        }
+        enemy.desired_vx = sx;
+        enemy.desired_vy = sy;
+    }
+
+    // ---- Per-type action layer + integration -------------------------------
+    match enemy.enemy_type {
+        EnemyType::Splort => action_splort(index, enemy, world, positions),
+        EnemyType::Borespat => action_borespat(enemy, world, p, dist, shots),
+        EnemyType::Shriekwing => action_shriekwing(index, enemy, world, p, positions),
+        EnemyType::Ironmaw => action_ironmaw(index, enemy, world, p, positions, dist, shots),
+        EnemyType::Boss => action_boss(index, enemy, world, p, positions, shots, mini_spawns),
+    }
+}
+
+/// Shared kinematics: combine the steered target velocity with separation and
+/// wall avoidance, rotate the heading under the turn-rate cap, accelerate
+/// smoothly toward the result, then move with per-axis wall collision.
+fn integrate_enemy(
+    index: usize,
+    enemy: &mut Enemy,
+    world: &World,
+    positions: &[(f32, f32, bool)],
+    phases_walls: bool,
+) {
+    use crate::ai;
+    let tun = ai::tuning(enemy.archetype);
+    let cx = enemy.x + enemy.w / 2.0;
+    let cy = enemy.y + enemy.h / 2.0;
+    let max_speed = enemy.speed * tun.max_speed_mult;
+
+    let (sep_x, sep_y) = ai::separation(index, cx, cy, positions, tun.separation_tiles * TILE);
+    let mut tx = enemy.desired_vx + sep_x * max_speed * tun.separation_weight;
+    let mut ty = enemy.desired_vy + sep_y * max_speed * tun.separation_weight;
+    if !phases_walls {
+        let (wx, wy) = ai::wall_avoid(world, enemy.x, enemy.y, tx, ty, enemy.w, enemy.h);
+        tx += wx * max_speed;
+        ty += wy * max_speed;
+    }
+
+    let target_speed = (tx * tx + ty * ty).sqrt().min(max_speed);
+    if target_speed > 0.01 {
+        // Heading turns under the cap — tanks carve wide, committed arcs.
+        enemy.heading = ai::turn_toward(enemy.heading, ty.atan2(tx), tun.turn_rate);
+    }
+    let goal_vx = enemy.heading.cos() * target_speed;
+    let goal_vy = enemy.heading.sin() * target_speed;
+    // Smooth acceleration/deceleration — never snap velocity.
+    enemy.vx += (goal_vx - enemy.vx) * tun.accel;
+    enemy.vy += (goal_vy - enemy.vy) * tun.accel;
+
     let margin = if enemy.enemy_type == EnemyType::Boss {
         TILE * 2.0
     } else {
-        TILE
+        TILE * 0.5
     };
-    if nx >= margin
-        && nx + enemy.w <= GAME_W - margin
-        && !world.collides(nx, enemy.y, enemy.w, enemy.h)
-    {
-        enemy.x = nx;
+    let nx = enemy.x + enemy.vx;
+    let ny = enemy.y + enemy.vy;
+    if phases_walls {
+        enemy.x = nx.clamp(px(2.0), GAME_W - px(2.0) - enemy.w);
+        enemy.y = ny.clamp(px(2.0), GAME_H - px(2.0) - enemy.h);
     } else {
-        enemy.move_timer = 0;
+        if nx >= margin
+            && nx + enemy.w <= GAME_W - margin
+            && !world.collides(nx, enemy.y, enemy.w, enemy.h)
+        {
+            enemy.x = nx;
+        } else {
+            enemy.vx *= -0.2; // soft bounce instead of a dead stop
+        }
+        if ny >= margin
+            && ny + enemy.h <= GAME_H - margin
+            && !world.collides(enemy.x, ny, enemy.w, enemy.h)
+        {
+            enemy.y = ny;
+        } else {
+            enemy.vy *= -0.2;
+        }
     }
-    if ny >= margin
-        && ny + enemy.h <= GAME_H - margin
-        && !world.collides(enemy.x, ny, enemy.w, enemy.h)
-    {
-        enemy.y = ny;
-    } else {
-        enemy.move_timer = 0;
+    // Sprite facing follows the heading (the Ironmaw shield faces this way,
+    // which is why its slow turn rate makes flanking genuinely possible).
+    if enemy.vx.abs() + enemy.vy.abs() > 0.05 {
+        enemy.dir = facing_dir(enemy.heading.cos(), enemy.heading.sin());
     }
 }
 
-/// Splort AI: HOPS in discrete jumps toward the player.
+/// Splort action layer. Normal Splorts are GRUNTS that keep their signature
+/// discrete hop — but every hop launches along the steered heading, so they
+/// flow around walls and each other instead of bonking into them. Mini
+/// Splorts are SWARM units: continuous boids motion, no hop, schooling.
 /// SPLITS into 2 mini-splorts on death (handled in on_enemy_death).
-/// Mini-splorts are smaller, faster, 1HP, and don't split again.
-fn ai_splort(enemy: &mut Enemy, world: &World, player_x: f32, player_y: f32) {
-    // ai_state 0 = sitting, 1 = mid-hop (airborne), 2 = landing cooldown
+fn action_splort(index: usize, enemy: &mut Enemy, world: &World, positions: &[(f32, f32, bool)]) {
+    if enemy.is_mini {
+        // Swarm: smooth continuous flocking handled entirely by integration.
+        integrate_enemy(index, enemy, world, positions, false);
+        return;
+    }
     enemy.move_timer -= 1;
-    let dx = player_x - enemy.x;
-    let dy = player_y - enemy.y;
-
+    // ai_state 0 = grounded (turning), 1 = mid-hop, 2 = landing cooldown
     match enemy.ai_state {
         0 => {
-            // Sitting still — face the player, wait for hop timer
-            enemy.dir = facing_dir(dx, dy);
-            enemy.vx = 0.0;
-            enemy.vy = 0.0;
-            if enemy.move_timer <= 0 {
-                let dist = vec2(dx, dy).length();
-                if dist > 0.0 {
-                    let hop_speed = if enemy.is_mini { enemy.speed * 5.0 } else { enemy.speed * 3.5 };
-                    let hop_frames = if enemy.is_mini { 8 } else { 12 };
-                    enemy.vx = dx / dist * hop_speed;
-                    enemy.vy = dy / dist * hop_speed;
-                    enemy.ai_state = 1;
-                    enemy.move_timer = hop_frames;
-                }
+            // Grounded: bleed velocity, rotate heading toward the steered
+            // direction so the next hop is committed but informed.
+            enemy.vx *= 0.7;
+            enemy.vy *= 0.7;
+            let tun = crate::ai::tuning(enemy.archetype);
+            if enemy.desired_vx.abs() + enemy.desired_vy.abs() > 0.05 {
+                enemy.heading = crate::ai::turn_toward(
+                    enemy.heading,
+                    enemy.desired_vy.atan2(enemy.desired_vx),
+                    tun.turn_rate * 2.0,
+                );
+                enemy.dir = facing_dir(enemy.heading.cos(), enemy.heading.sin());
+            }
+            let idle = enemy.ai == AiState::Idle;
+            // Ambushers hold perfectly still at their post until triggered.
+            if idle && enemy.archetype == Archetype::Ambusher {
+                return;
+            }
+            if enemy.move_timer <= 0 && (!idle || rand::gen_range(0.0, 1.0) < 0.3) {
+                let urgency = if idle { 2.0 } else { 3.5 };
+                enemy.vx = enemy.heading.cos() * enemy.speed * urgency;
+                enemy.vy = enemy.heading.sin() * enemy.speed * urgency;
+                enemy.ai_state = 1;
+                enemy.move_timer = 12;
+            } else if enemy.move_timer <= 0 {
+                enemy.move_timer = 30; // lazy idle pause between half-hearted hops
             }
         }
         1 => {
-            // Mid-hop — move in the locked direction
-            let margin = TILE;
+            // Mid-hop: locked trajectory with wall collision.
+            let margin = TILE * 0.5;
             let nx = enemy.x + enemy.vx;
             let ny = enemy.y + enemy.vy;
-            if nx >= margin && nx + enemy.w <= GAME_W - margin && !world.collides(nx, enemy.y, enemy.w, enemy.h) {
+            if nx >= margin
+                && nx + enemy.w <= GAME_W - margin
+                && !world.collides(nx, enemy.y, enemy.w, enemy.h)
+            {
                 enemy.x = nx;
             }
-            if ny >= margin && ny + enemy.h <= GAME_H - margin && !world.collides(enemy.x, ny, enemy.w, enemy.h) {
+            if ny >= margin
+                && ny + enemy.h <= GAME_H - margin
+                && !world.collides(enemy.x, ny, enemy.w, enemy.h)
+            {
                 enemy.y = ny;
             }
             if enemy.move_timer <= 0 {
@@ -4577,170 +4982,201 @@ fn ai_splort(enemy: &mut Enemy, world: &World, player_x: f32, player_y: f32) {
             }
         }
         _ => {
-            // Landing cooldown
+            // Landing cooldown — pace depends on how engaged it is.
             if enemy.move_timer <= 0 {
                 enemy.ai_state = 0;
-                let wait = if enemy.is_mini { 20 + rand::gen_range(0, 15) } else { 45 + rand::gen_range(0, 30) };
-                enemy.move_timer = wait;
+                enemy.move_timer = match enemy.ai {
+                    AiState::Chase | AiState::Position | AiState::Flee => {
+                        25 + rand::gen_range(0, 20)
+                    }
+                    _ => 50 + rand::gen_range(0, 40),
+                };
             }
         }
     }
 }
 
-/// Borespat AI: BURROWING SNIPER. Surfaces -> aims -> fires single rock -> burrows underground.
-/// While buried: invulnerable (handled in damage_enemy), invisible (handled in draw_enemy).
-/// Pops up at random location (away from player) after delay.
-fn ai_borespat(
+/// Borespat action layer: BURROWING SNIPER. While the player is undetected it
+/// stays buried — a natural ambush. Once engaged it surfaces on its preferred
+/// ring around the player, fires only with line of sight, retreats (burrows)
+/// the moment the player closes inside its minimum range, and resurfaces at a
+/// spot that restores its firing distance.
+/// While buried: invulnerable (damage_enemy), invisible (draw_enemy).
+fn action_borespat(
     enemy: &mut Enemy,
     world: &World,
-    player_x: f32,
-    player_y: f32,
-) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
-    let mut shots = vec![];
+    p: &PlayerPerception,
+    dist: f32,
+    shots: &mut Vec<(f32, f32, f32, f32, ProjectileKind)>,
+) {
+    use crate::ai;
+    let tun = ai::tuning(enemy.archetype);
     enemy.move_timer -= 1;
+    // Undetected: lurk underground. The pop-up IS the alert.
+    if enemy.ai == AiState::Idle {
+        enemy.buried = true;
+        enemy.ai_state = 1;
+        return;
+    }
     // ai_state: 0 = surfaced (aiming), 1 = buried (underground)
     match enemy.ai_state {
         0 => {
-            // Surfaced — face the player, shoot when cooldown expires, don't move
-            let dx = player_x - enemy.x;
-            let dy = player_y - enemy.y;
-            enemy.dir = facing_dir(dx, dy);
             enemy.buried = false;
+            let dx = p.x - enemy.x;
+            let dy = p.y - enemy.y;
+            enemy.dir = facing_dir(dx, dy);
+            enemy.heading = dy.atan2(dx);
             enemy.shoot_cooldown -= 1;
-            if enemy.shoot_cooldown <= 0 {
-                let dist = vec2(dx, dy).length();
-                if dist > 0.0 {
-                    let angle = dy.atan2(dx);
-                    shots.push((
-                        enemy.x + enemy.w / 2.0 - px(3.0),
-                        enemy.y + enemy.h / 2.0 - px(3.0),
-                        angle.cos() * 0.5 * PIXEL_SCALE,
-                        angle.sin() * 0.5 * PIXEL_SCALE,
-                        ProjectileKind::Rock,
-                    ));
-                }
-                // Burrow after shooting
+            // Player too close: emergency burrow — the retreat behavior.
+            if dist < tun.min_range_tiles * TILE || enemy.ai == AiState::Flee {
+                enemy.ai_state = 1;
+                enemy.buried = true;
+                enemy.move_timer = 50 + rand::gen_range(0, 30);
+                return;
+            }
+            // Fires only with a clear line — no more shooting through walls.
+            if enemy.shoot_cooldown <= 0
+                && ai::line_of_sight(world, enemy.x, enemy.y, p.x, p.y)
+            {
+                // Slight lead on a moving player.
+                let lead = 14.0;
+                let tx = p.x + p.vx * lead;
+                let ty = p.y + p.vy * lead;
+                let angle = (ty - enemy.y).atan2(tx - enemy.x);
+                shots.push((
+                    enemy.x + enemy.w / 2.0 - px(3.0),
+                    enemy.y + enemy.h / 2.0 - px(3.0),
+                    angle.cos() * 0.5 * PIXEL_SCALE,
+                    angle.sin() * 0.5 * PIXEL_SCALE,
+                    ProjectileKind::Rock,
+                ));
                 enemy.ai_state = 1;
                 enemy.buried = true;
                 enemy.move_timer = 90 + rand::gen_range(0, 50);
             }
         }
         _ => {
-            // Buried — invisible, invulnerable, waiting to pop up
             enemy.buried = true;
             if enemy.move_timer <= 0 {
-                // Pop up at a random location (not near player)
-                let mut tries = 0;
-                loop {
-                    let rx = TILE * 2.0 + rand::gen_range(0.0, GAME_W - TILE * 4.0);
-                    let ry = TILE * 2.0 + rand::gen_range(0.0, GAME_H - TILE * 4.0);
-                    let dist_to_player = vec2(player_x - rx, player_y - ry).length();
-                    tries += 1;
-                    if (dist_to_player > TILE * 3.0 && !world.collides(rx, ry, enemy.w, enemy.h)) || tries > 20 {
+                // Resurface on the preferred-range ring around the player,
+                // preferring spots with line of sight.
+                let ring = tun.preferred_tiles * TILE;
+                let mut placed = false;
+                for _ in 0..14 {
+                    let angle = rand::gen_range(0.0, std::f32::consts::TAU);
+                    let rx = (p.x + angle.cos() * ring)
+                        .clamp(TILE * 1.5, GAME_W - TILE * 1.5 - enemy.w);
+                    let ry = (p.y + angle.sin() * ring)
+                        .clamp(TILE * 1.5, GAME_H - TILE * 1.5 - enemy.h);
+                    if !world.collides(rx, ry, enemy.w, enemy.h)
+                        && ai::line_of_sight(world, rx, ry, p.x, p.y)
+                    {
                         enemy.x = rx;
                         enemy.y = ry;
+                        placed = true;
                         break;
                     }
                 }
+                if !placed {
+                    // No clean firing position: stay buried a little longer.
+                    enemy.move_timer = 40;
+                    return;
+                }
                 enemy.ai_state = 0;
                 enemy.buried = false;
-                enemy.shoot_cooldown = 60 + rand::gen_range(0, 30);
+                enemy.shoot_cooldown = 45 + rand::gen_range(0, 30);
             }
         }
     }
-    shots
 }
 
-/// Shriekwing AI: IGNORES WALLS. Flies through everything in erratic sine-wave patterns.
-/// Periodically dive-bombs toward the player at high speed.
-/// Cannot be avoided by hiding behind obstacles.
-fn ai_shriekwing(enemy: &mut Enemy, _world: &World, player_x: f32, player_y: f32) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
-    // ai_state 0 = erratic flight, 1 = dive-bombing
+/// Shriekwing action layer: FLANKER. Ignores walls (it flies). The steering
+/// layer routes it toward the player's blind side; once in position it
+/// telegraphs and dive-bombs at the player's PREDICTED location, so dodging
+/// sideways at the last moment actually works.
+fn action_shriekwing(
+    index: usize,
+    enemy: &mut Enemy,
+    world: &World,
+    p: &PlayerPerception,
+    positions: &[(f32, f32, bool)],
+) {
     enemy.move_timer -= 1;
-
+    // ai_state 0 = flight (steered), 1 = dive-bombing
     match enemy.ai_state {
         0 => {
-            // Erratic sine-wave flight — ignores walls entirely
+            // Organic flight: the steered flank target plus a gentle sine sway.
             let t = enemy.timer as f32 * 0.08;
-            let dx = player_x - enemy.x;
-            let dy = player_y - enemy.y;
-            let dist = vec2(dx, dy).length();
-            if dist > 0.0 {
-                let base_angle = dy.atan2(dx);
-                let wobble = (t * 2.7).sin() * 1.2 + (t * 4.3).cos() * 0.6;
-                let angle = base_angle + wobble;
-                let spd = enemy.speed * 1.2;
-                enemy.vx = angle.cos() * spd;
-                enemy.vy = angle.sin() * spd;
-            }
-            if enemy.move_timer <= 0 {
-                // Start a dive-bomb
+            let sway = (t * 2.7).sin() * 0.5;
+            let (dvx, dvy) = (enemy.desired_vx, enemy.desired_vy);
+            enemy.desired_vx = dvx * sway.cos() - dvy * sway.sin();
+            enemy.desired_vy = dvx * sway.sin() + dvy * sway.cos();
+            // Flying integration: no wall collision, smooth accel.
+            integrate_enemy(index, enemy, world, positions, true);
+            // Dive only when actually in position on the flank.
+            if enemy.ai == AiState::Position && enemy.move_timer <= 0 {
+                let lead = 10.0;
+                let tx = p.x + p.vx * lead;
+                let ty = p.y + p.vy * lead;
+                let ddx = tx - enemy.x;
+                let ddy = ty - enemy.y;
+                let dist = (ddx * ddx + ddy * ddy).sqrt().max(0.01);
+                enemy.vx = ddx / dist * enemy.speed * 4.0;
+                enemy.vy = ddy / dist * enemy.speed * 4.0;
                 enemy.ai_state = 1;
-                let dx = player_x - enemy.x;
-                let dy = player_y - enemy.y;
-                let dist = vec2(dx, dy).length();
-                if dist > 0.0 {
-                    enemy.vx = dx / dist * enemy.speed * 4.0;
-                    enemy.vy = dy / dist * enemy.speed * 4.0;
-                }
                 enemy.move_timer = 15;
             }
         }
         _ => {
-            // Dive-bombing — fast straight line
+            // Dive: committed straight line, braking at the end.
             if enemy.move_timer < 5 {
                 enemy.vx *= 0.8;
                 enemy.vy *= 0.8;
             }
+            enemy.x = (enemy.x + enemy.vx).clamp(px(2.0), GAME_W - px(2.0) - enemy.w);
+            enemy.y = (enemy.y + enemy.vy).clamp(px(2.0), GAME_H - px(2.0) - enemy.h);
             if enemy.move_timer <= 0 {
                 enemy.ai_state = 0;
                 enemy.move_timer = 60 + rand::gen_range(0, 50);
             }
         }
     }
-    // NO wall collision — flies through everything
-    enemy.x = (enemy.x + enemy.vx).clamp(px(2.0), GAME_W - px(2.0) - enemy.w);
-    enemy.y = (enemy.y + enemy.vy).clamp(px(2.0), GAME_H - px(2.0) - enemy.h);
-    vec![]
 }
 
-/// Ironmaw AI: FRONTAL SHIELD blocks all damage from the direction it faces
-/// (handled in damage_enemy). Walks deliberately toward the player.
-/// Periodically thrusts sword — fires a spike projectile at melee range.
-/// Player must circle behind to deal damage.
-fn ai_ironmaw(
+/// Ironmaw action layer: TANK. The frontal shield blocks damage from the
+/// direction it FACES (damage_enemy) — and facing now follows a turn-rate
+/// limited heading, so it cannot whip around to track a circling player.
+/// Momentum builds as it advances; it commits to lines and carves wide arcs.
+/// Thrusts its sword at melee range, then recovers.
+fn action_ironmaw(
+    index: usize,
     enemy: &mut Enemy,
     world: &World,
-    player_x: f32,
-    player_y: f32,
-) -> Vec<(f32, f32, f32, f32, ProjectileKind)> {
-    let mut shots = vec![];
+    p: &PlayerPerception,
+    positions: &[(f32, f32, bool)],
+    dist: f32,
+    shots: &mut Vec<(f32, f32, f32, f32, ProjectileKind)>,
+) {
     enemy.move_timer -= 1;
     enemy.shoot_cooldown -= 1;
-    let dx = player_x - enemy.x;
-    let dy = player_y - enemy.y;
-
-    // ai_state 0 = walking, 1 = sword thrust windup, 2 = recovery
+    // ai_state 0 = advancing, 1 = sword thrust windup, 2 = recovery
     match enemy.ai_state {
         0 => {
-            // Walk toward player, always facing them
-            enemy.dir = facing_dir(dx, dy);
-            let dist = vec2(dx, dy).length();
-            if dist > 0.0 {
-                enemy.vx = dx / dist * enemy.speed * 0.5;
-                enemy.vy = dy / dist * enemy.speed * 0.5;
-            }
-            move_enemy(enemy, world);
-            // Sword thrust when close
-            if enemy.shoot_cooldown <= 0 && dist < TILE * 3.0 {
+            integrate_enemy(index, enemy, world, positions, false);
+            let engaged = matches!(enemy.ai, AiState::Chase | AiState::Position);
+            if engaged && enemy.shoot_cooldown <= 0 && dist < TILE * 3.0 {
                 enemy.ai_state = 1;
                 enemy.move_timer = 20;
+                // Plant the feet — momentum dumps into the thrust.
                 enemy.vx = 0.0;
                 enemy.vy = 0.0;
+                // Lock facing onto the player for the strike.
+                enemy.heading = (p.y - enemy.y).atan2(p.x - enemy.x);
+                enemy.dir = facing_dir(enemy.heading.cos(), enemy.heading.sin());
             }
         }
         1 => {
-            // Windup — stand still, locked direction
+            // Windup — stand still, direction locked, clearly telegraphed.
             if enemy.move_timer <= 0 {
                 let cx = enemy.x + enemy.w / 2.0;
                 let cy = enemy.y + enemy.h / 2.0;
@@ -4757,40 +5193,48 @@ fn ai_ironmaw(
             }
         }
         _ => {
-            // Recovery — briefly stunned after thrust
+            // Recovery — the window to circle behind the shield.
             if enemy.move_timer <= 0 {
                 enemy.ai_state = 0;
                 enemy.shoot_cooldown = 80 + rand::gen_range(0, 40);
             }
         }
     }
-    shots
 }
 
-/// Boss AI: MULTI-PHASE SUMMONER with three distinct attack phases.
-/// Phase 0: Aimed 3-shot fireball spread
-/// Phase 1: 8-direction ring blast
-/// Phase 2: Summons 2 mini-splorts as reinforcements
-fn ai_boss(
+/// Boss action layer: MULTI-PHASE SUMMONER. Attack cycle unchanged —
+/// Phase 0: aimed 3-shot fireball spread; Phase 1: 8-direction ring blast;
+/// Phase 2: summons 2 mini-splorts. Movement is now a deliberate mid-range
+/// drift (arrive + strafe from the steering layer) instead of random shuffling,
+/// and the attack rate quickens below half health.
+fn action_boss(
+    index: usize,
     enemy: &mut Enemy,
     world: &World,
-    player_x: f32,
-    player_y: f32,
-) -> (Vec<(f32, f32, f32, f32, ProjectileKind)>, Vec<(f32, f32)>) {
-    let mut shots = vec![];
-    let mut spawns = vec![];
-    enemy.move_timer -= 1;
+    p: &PlayerPerception,
+    positions: &[(f32, f32, bool)],
+    shots: &mut Vec<(f32, f32, f32, f32, ProjectileKind)>,
+    spawns: &mut Vec<(f32, f32)>,
+) {
     enemy.shoot_cooldown -= 1;
     if enemy.shoot_cooldown <= 0 {
         let cx = enemy.x + enemy.w / 2.0 - px(3.0);
         let cy = enemy.y + enemy.h / 2.0 - px(3.0);
         match enemy.ai_state {
             0 => {
-                // Aimed spread — fireballs
-                let base_angle = (player_y - enemy.y).atan2(player_x - enemy.x);
+                // Aimed spread — fireballs, led slightly toward player motion.
+                let tx = p.x + p.vx * 8.0;
+                let ty = p.y + p.vy * 8.0;
+                let base_angle = (ty - enemy.y).atan2(tx - enemy.x);
                 for offset in [-0.3f32, 0.0, 0.3] {
                     let angle = base_angle + offset;
-                    shots.push((cx, cy, angle.cos() * 0.35 * PIXEL_SCALE, angle.sin() * 0.35 * PIXEL_SCALE, ProjectileKind::Fireball));
+                    shots.push((
+                        cx,
+                        cy,
+                        angle.cos() * 0.35 * PIXEL_SCALE,
+                        angle.sin() * 0.35 * PIXEL_SCALE,
+                        ProjectileKind::Fireball,
+                    ));
                 }
                 enemy.ai_state = 1;
             }
@@ -4798,7 +5242,13 @@ fn ai_boss(
                 // Ring blast — 8 ring projectiles in all directions
                 for i in 0..8 {
                     let angle = (i as f32) * std::f32::consts::TAU / 8.0;
-                    shots.push((cx, cy, angle.cos() * 0.3 * PIXEL_SCALE, angle.sin() * 0.3 * PIXEL_SCALE, ProjectileKind::Ring));
+                    shots.push((
+                        cx,
+                        cy,
+                        angle.cos() * 0.3 * PIXEL_SCALE,
+                        angle.sin() * 0.3 * PIXEL_SCALE,
+                        ProjectileKind::Ring,
+                    ));
                 }
                 enemy.ai_state = 2;
             }
@@ -4815,16 +5265,11 @@ fn ai_boss(
                 enemy.ai_state = 0;
             }
         }
-        enemy.shoot_cooldown = 120 + rand::gen_range(0, 60);
+        // Enrage: the cycle accelerates below half health.
+        let base = if enemy.hp * 2 < enemy.max_hp { 80 } else { 120 };
+        enemy.shoot_cooldown = base + rand::gen_range(0, 60);
     }
-    if enemy.move_timer <= 0 {
-        let ndx = player_x - enemy.x + rand::gen_range(-30.0, 30.0);
-        let ndy = player_y - enemy.y + rand::gen_range(-30.0, 30.0);
-        enemy.dir = facing_dir(ndx, ndy);
-        enemy.move_timer = 30 + rand::gen_range(0, 40);
-    }
-    move_enemy(enemy, world);
-    (shots, spawns)
+    integrate_enemy(index, enemy, world, positions, false);
 }
 
 fn facing_dir(dx: f32, dy: f32) -> Dir {
